@@ -1,6 +1,7 @@
 import os
 
-DEBUG_MODE = False if (os.getenv("NWS_DROUGHT_DEBUG", False) is False) else True
+debug = os.getenv("NWS_DROUGHT_DEBUG", False)
+DEBUG_MODE = False if (debug is False or debug != "False") else True
 dl_loc = os.getenv("NWS_DROUGHT_DOWNLOAD_DIR", False)
 DOWNLOAD_DIR = dl_loc if dl_loc is not False else "/tmp/nws_drought/"
 DATA_LAG_TIME_DAYS = 8

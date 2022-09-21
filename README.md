@@ -45,7 +45,7 @@ This path must be writable by the user executing the script.  If no path is spec
 
 ## Testing + Development
 
-Set the application debug mode with `EXPORT NWS_DROUGHT_DEBUG=True`.  Debug mode bypasses the downloads.  
+Set the application debug mode with `export NWS_DROUGHT_DEBUG=True` (or disable it with `unset NWS_DROUGHT_DEBUG` or use `export NWS_DROUGHT_DEBUG=False`).  Debug mode bypasses the downloads.
 
 If you are testing the download functionality, I recommend constraining the `area` like so:
 
