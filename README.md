@@ -37,6 +37,9 @@ Setup the download directory by setting a path variable:
 
 This path must be writable by the user executing the script.  If no path is specified, the tool defaults to `/tmp/nws_drought/`.  Downloads are removed before each run.
 
+Add this project directory to the `PYTHONPATH`, i.e. `export PYTHONPATH=$PYTHONPATH:/full/path/to/this/directory`
+
+
 ### Download Data
 
 `cd scripts`
@@ -44,6 +47,8 @@ This path must be writable by the user executing the script.  If no path is spec
 `python download.py`
 
 ## Testing + Development
+
+Set the PYTHONPATH to include the root project, i.e. `export PYTHONPATH=$PYTHONPATH:/full/path/to/this/directory`
 
 Set the application debug mode with `export NWS_DROUGHT_DEBUG=True` (or disable it with `unset NWS_DROUGHT_DEBUG` or use `export NWS_DROUGHT_DEBUG=False`).  Debug mode bypasses the downloads.
 
