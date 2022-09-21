@@ -4,14 +4,39 @@ channels:
   - defaults
 dependencies:
   - bzip2=1.0.8=h0d85af4_4
-  - ca-certificates=2022.6.15.2=h033912b_0
+  - c-ares=1.18.1=h0d85af4_0
+  - ca-certificates=2022.9.14=h033912b_0
+  - cftime=1.6.2=py38hbd87e4b_0
+  - curl=7.83.1=h23f1065_0
+  - hdf4=4.2.15=h0623a88_4
+  - hdf5=1.12.2=nompi_h1f71328_100
+  - jpeg=9e=hac89ed1_2
+  - krb5=1.19.3=hb98e516_0
+  - libblas=3.9.0=16_osx64_openblas
+  - libcblas=3.9.0=16_osx64_openblas
+  - libcurl=7.83.1=h23f1065_0
+  - libcxx=14.0.6=hccf4f1f_0
+  - libedit=3.1.20191231=h0678c8f_2
+  - libev=4.33=haf1e3a3_1
   - libffi=3.4.2=h0d85af4_5
+  - libgfortran=5.0.0=10_4_0_h97931a8_25
+  - libgfortran5=11.3.0=h082f757_25
+  - liblapack=3.9.0=16_osx64_openblas
+  - libnetcdf=4.8.1=nompi_hebd45d5_104
+  - libnghttp2=1.47.0=h5aae05b_1
+  - libopenblas=0.3.21=openmp_h429af6e_3
   - libsqlite=3.39.3=ha978bb4_0
+  - libssh2=1.10.0=h47af595_3
+  - libzip=1.9.2=h6db710c_1
   - libzlib=1.2.12=hfd90126_3
+  - llvm-openmp=14.0.4=ha654fa7_0
   - ncurses=6.3=h96cf925_1
+  - netcdf4=1.6.1=nompi_py38hbdcf7ac_100
+  - numpy=1.23.3=py38h4289407_0
   - openssl=3.0.5=hfd90126_2
   - pip=22.2.2=pyhd8ed1ab_0
   - python=3.8.13=h66c20e1_0_cpython
+  - python_abi=3.8=2_cp38
   - readline=8.1.2=h3899abd_0
   - setuptools=65.3.0=pyhd8ed1ab_1
   - sqlite=3.39.3=h9ae0607_0

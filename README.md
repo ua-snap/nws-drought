@@ -1,6 +1,7 @@
 # NWS Drought Indicators
 
 ## Set Up
+
 ### Python Environment
 We'll use `conda` as the umbrella environment for Python. To create the Python environment for the first time, run the following command after cloning this repository:
 
@@ -10,9 +11,8 @@ and then activate the environment with
 
 `conda activate drought-indicators`
 
-Development note: if you need to add a package to the environment, refresh the `environment.yml` file this way:
+Finally, add the project directory to the `PYTHONPATH`, i.e. `export PYTHONPATH=$PYTHONPATH:/full/path/to/this/directory`
 
-`conda env export | grep -v "^prefix: " > environment.yml`
 
 ### Climate Data Store (CDS) API Credentials
 
@@ -25,7 +25,7 @@ Complete the following items.
 
 ### Configuration
 
-Visit `scripts/config.py` to...
+If needed, edit `./config.py` to...
 
  - Control the lag between the present date and the first date of data fetched by the CDS API
 
@@ -36,8 +36,6 @@ Setup the download directory by setting a path variable:
 `export NWS_DROUGHT_DOWNLOAD_DIR=/path/to/writable/location`
 
 This path must be writable by the user executing the script.  If no path is specified, the tool defaults to `/tmp/nws_drought/`.  Downloads are removed before each run.
-
-Add this project directory to the `PYTHONPATH`, i.e. `export PYTHONPATH=$PYTHONPATH:/full/path/to/this/directory`
 
 
 ### Download Data
@@ -73,3 +71,11 @@ The full bounding box is
     -125,
  ]
 ```
+
+### Updating dependencies
+
+
+Development note: if you need to add a package to the environment, refresh the `environment.yml` file this way:
+
+`conda env export | grep -v "^prefix: " > environment.yml`
+
