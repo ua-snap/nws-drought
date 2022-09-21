@@ -6,41 +6,42 @@ import shutil
 import datetime
 import cdsapi
 from pathlib import Path
-from config import api_credentials_check, MOCK_DOWNLOAD, DATA_LAG_TIME_DAYS
+from config import (
+    api_credentials_check,
+    DEBUG_MODE,
+    DATA_LAG_TIME_DAYS,
+    DOWNLOAD_DIR,
+    DL_BBOX,
+)
 
 api_credentials_check()
-
-logging.basicConfig(
-    filename="download.log",
-    filemode="w",
-    level=logging.DEBUG,
-)
 
 
 def set_download_directory():
     """Verify and/or create the directory structure for the data download."""
-    download_directory = Path.cwd().parent / "inputs"
-    if MOCK_DOWNLOAD is True:
-        logging.info("This is a mock download. No data will be fetched or overwritten.")
+    download_directory = Path(DOWNLOAD_DIR) / "inputs"
+    if DEBUG_MODE:
+        logging.info("Running in debug mode, no data will be fetched or overwritten.")
         # create the directory if it isn't there, but do not overwrite or raise an error if it does exist already
-        download_directory.mkdir(exist_ok=True)
+        download_directory.mkdir(exist_ok=True, parents=True)
     else:
         # wipe the download directory and make a new one
         try:
             shutil.rmtree(download_directory)
-            download_directory.mkdir(exist_ok=False)
         except:
-            download_directory.mkdir(exist_ok=False)
+            pass
+
+        download_directory.mkdir(exist_ok=False, parents=True)
 
 
-def set_analysis_date():
+def get_analysis_date():
     """Create a date-of-analysis for which the prior 365 days will have their data fetched. We use this lagged date because data is not available in real-time.
 
     Returns:
         analysis_date (datetime object): date to mark and structure the data download
     """
     analysis_date = datetime.date.today() - datetime.timedelta(days=DATA_LAG_TIME_DAYS)
-    logging.info("analysis date=%s", analysis_date)
+    logging.info("Downloading last 365 days of data before %s", analysis_date)
     return analysis_date
 
 
@@ -50,7 +51,7 @@ def analysis_date_not_in_january():
     Returns:
         (bool) indicating whether or not the analysis date is not in January.
     """
-    if set_analysis_date().month == 1:
+    if get_analysis_date().month == 1:
         return False
     else:
         return True
@@ -64,10 +65,10 @@ def get_current_month_dates():
         month (str): the current numerical month
         days (list): strings of numeric days 01 through the the analysis date
     """
-    analysis_date = set_analysis_date()
+    analysis_date = get_analysis_date()
     year = str(analysis_date.year)
     month = str(analysis_date.month)
-    days = ["0" + str(x) if x <= 9 else str(x) for x in range(1, analysis_date.day + 1)]
+    days = [str(x) for x in range(1, analysis_date.day + 1)]
     logging.info(
         f"Trying to download data for {month}/{year} for {len(days)} days between {days[0]} and {days[-1]}..."
     )
@@ -82,11 +83,11 @@ def get_rest_of_current_year_dates():
         months (list): strings of numerical months, January through the previous month
         days (list): strings of numeric days 01 through 31
     """
-    analysis_date = set_analysis_date()
+    analysis_date = get_analysis_date()
     current_year = str(analysis_date.year)
     current_month = analysis_date.month
-    months = ["0" + str(x) if x <= 9 else str(x) for x in range(1, current_month)]
-    days = ["0" + str(x) if x <= 9 else str(x) for x in range(1, 32)]
+    months = [str(x) for x in range(1, current_month)]
+    days = [str(x) for x in range(1, 32)]
     logging.info(
         f"Trying to download data for {current_year} for {len(months)} months between {months[0]} and {months[-1]}..."
     )
@@ -101,10 +102,10 @@ def get_all_previous_year_dates():
         months (list): strings of numerical months, January through December.
         days (list): strings of numeric days 01 through 31
     """
-    analysis_date = set_analysis_date()
+    analysis_date = get_analysis_date()
     previous_year = str(analysis_date.year - 1)
-    months = ["0" + str(x) if x <= 9 else str(x) for x in range(1, 13)]
-    days = ["0" + str(x) if x <= 9 else str(x) for x in range(1, 32)]
+    months = [str(x) for x in range(1, 13)]
+    days = [str(x) for x in range(1, 32)]
     logging.info(
         f"Trying to download data for the entire calendar year of {previous_year}..."
     )
@@ -121,8 +122,11 @@ def download_data(year, months, days, data_variable, output_name):
         data_variable (str): ERA5 data variable to download
         output_name (str): output name describing the time chunk downloaded
     """
-    download_location = f"../inputs/{data_variable}_{output_name}.nc"
-    if not MOCK_DOWNLOAD:
+    download_location = (
+        Path(DOWNLOAD_DIR) / "inputs" / f"{data_variable}_{output_name}.nc"
+    )
+    logging.info("Downloading data to %s", download_location)
+    if not DEBUG_MODE:
         c = cdsapi.Client()
         c.retrieve(
             "reanalysis-era5-single-levels",
@@ -137,18 +141,12 @@ def download_data(year, months, days, data_variable, output_name):
                     "0" + str(x) + ":00" if x <= 9 else str(x) + ":00"
                     for x in range(0, 24)
                 ],
-                "area": [
-                    76,
-                    -180,
-                    44,
-                    -125,
-                ],
+                "area": DL_BBOX,
             },
             download_location,
         )
-        logging.info(f"Data downloaded to {download_location}")
     else:
-        logging.info("CDS API download requests bypassed for mock download.")
+        logging.info("CDS API download requests bypassed for debug mode.")
 
 
 def run_all_downloads(data_variable):
@@ -165,6 +163,13 @@ def run_all_downloads(data_variable):
 
 
 if __name__ == "__main__":
+
+    # Log to STDOUT (+ STDERR)
+    logging.basicConfig(
+        level=logging.DEBUG if DEBUG_MODE else logging.INFO,
+    )
+    logging.info("Running in %s mode", "DEBUG" if DEBUG_MODE else "production")
+
     set_download_directory()
     run_all_downloads("total_precipitation")
     logging.info("Download script completed.")

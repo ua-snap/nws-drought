@@ -1,8 +1,15 @@
 import os
-from pathlib import Path
 
-MOCK_DOWNLOAD = False
+DEBUG_MODE = False if (os.getenv("NWS_DROUGHT_DEBUG", False) is False) else True
+dl_loc = os.getenv("NWS_DROUGHT_DOWNLOAD_DIR", False)
+DOWNLOAD_DIR = dl_loc if dl_loc is not False else "/tmp/nws_drought/"
 DATA_LAG_TIME_DAYS = 8
+DL_BBOX = [
+    76,
+    -180,
+    44,
+    -125,
+]
 
 
 def api_credentials_check():
