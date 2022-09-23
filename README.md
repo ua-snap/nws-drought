@@ -3,15 +3,16 @@
 ## Set Up
 
 ### Python Environment
-We'll use `conda` as the umbrella environment for Python. To create the Python environment for the first time, run the following command after cloning this repository:
+W
+e'll use `conda` as the umbrella environment for Python. To create the Python environment for the first time, run the following command after cloning this repository:
 
-`conda env create -f environment.yml`
+```
+cd /path/to/this/repository
+conda env create -f environment.yml
+conda activate drought-indicators
+```
 
-and then activate the environment with
-
-`conda activate drought-indicators`
-
-Finally, add the project directory to the `PYTHONPATH`, i.e. `export PYTHONPATH=$PYTHONPATH:/full/path/to/this/directory`
+Finally, add the project directory to the `PYTHONPATH`, i.e. `export PYTHONPATH=$PYTHONPATH:$(pwd)`
 
 
 ### Climate Data Store (CDS) API Credentials
@@ -44,13 +45,21 @@ This path must be writable by the user executing the script.  If no path is spec
 
 `python download.py`
 
+## Data sources
+
+Data is sourced from the Climate Data Store.
+
+The ERA5 hourly and monthly data are delayed by three months, so the [ERA5T near-real-time preliminary dataset](https://confluence.ecmwf.int/display/CUSF/ERA5+CDS+requests+which+return+a+mixture+of+ERA5+and+ERA5T+data) is used to fill in data up until five days from the current date.
+
 ## Testing + Development
+
+*TBD pending finalizing the environment default install* You may want to install `jupyter` within the Conda environment to use the files in the `notebooks/` directory for interactive work with these scripts.  To do so, `conda install jupyter notebook`.
 
 Set the PYTHONPATH to include the root project, i.e. `export PYTHONPATH=$PYTHONPATH:/full/path/to/this/directory`
 
 Set the application debug mode with `export NWS_DROUGHT_DEBUG=True` (or disable it with `unset NWS_DROUGHT_DEBUG` or use `export NWS_DROUGHT_DEBUG=False`).  Debug mode bypasses the downloads.
 
-If you are testing the download functionality, I recommend constraining the `area` like so:
+If you are testing the download functionality, consider constraining the `area` like so:
 
 ```
  "area": [
