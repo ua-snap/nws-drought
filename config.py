@@ -4,6 +4,9 @@ debug = os.getenv("NWS_DROUGHT_DEBUG", False)
 DEBUG_MODE = False if (debug is False or debug == "False") else True
 dl_loc = os.getenv("NWS_DROUGHT_DOWNLOAD_DIR", False)
 DOWNLOAD_DIR = dl_loc if dl_loc is not False else "/tmp/nws_drought/"
+input_loc = os.getenv("NWS_DROUGHT_INPUTS_DIR", False)
+INPUT_DIR = input_loc if input_loc is not False else os.getcwd()
+
 DATA_LAG_TIME_DAYS = 8
 DL_BBOX = [
     76,
