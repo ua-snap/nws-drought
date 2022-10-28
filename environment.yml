@@ -10,3 +10,5 @@ dependencies:
   - netcdf4
   - rasterio
   - python=3.8.13
+  - pip:
+    - cdsapi
