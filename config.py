@@ -8,6 +8,10 @@ DOWNLOAD_DIR = Path(dl_loc if dl_loc is not False else "/tmp/nws_drought/")
 input_loc = os.getenv("NWS_DROUGHT_INPUTS_DIR", False)
 INPUT_DIR = Path(input_loc if input_loc is not False else os.getcwd())
 
+# final output dataset (NetCDF) of indices summarized over key intervals
+indices_fp = DOWNLOAD_DIR.joinpath("outputs/nws_drought_indices.nc")
+indices_fp.parent.mkdir(exist_ok=True)
+
 DATA_LAG_TIME_DAYS = 8
 DL_BBOX = [
     76,
