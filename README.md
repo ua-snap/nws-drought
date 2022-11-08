@@ -12,7 +12,6 @@ conda env create -f environment.yml
 conda activate drought-indicators
 ```
 
-
 ### Climate Data Store (CDS) API Credentials
 
 Complete the following items.
@@ -20,7 +19,6 @@ Complete the following items.
  - Register for the [Climate Data Store API](https://cds.climate.copernicus.eu/api-how-to).
  - Copy your credentials from the black box in the link above to a file called `.cdsapirc` in your `$HOME` directory.
  - Make sure you have accepted the [Terms and Conditions](https://cds.climate.copernicus.eu/cdsapp/#!/terms/licence-to-use-copernicus-products).
-
 
 ### Configuration
 
@@ -45,7 +43,6 @@ This path must be writable by the user executing the script.  If no path is spec
 Store the directory containing the ERA5 climatology files:
 
 `export NWS_DROUGHT_INPUTS_DIR=/path/to/climatologies`
-
 
 ### Download Data
 
@@ -91,8 +88,6 @@ The full bounding box is
 
 ### Updating dependencies
 
-
 Development note: if you need to add a package to the environment, refresh the `environment.yml` file this way:
 
 `conda env export --no-builds | grep -v "^prefix: " > environment.yml`
-
