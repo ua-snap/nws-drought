@@ -281,4 +281,3 @@ dependencies:
   - pip:
     - cdsapi==0.5.1
     - urllib3==1.26.12
-prefix: /home/UA/kmredilla/miniconda3/envs/drought-indicators
