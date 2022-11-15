@@ -172,4 +172,5 @@ if __name__ == "__main__":
 
     set_download_directory()
     run_all_downloads("total_precipitation")
+    run_all_downloads("snow_depth")
     logging.info("Download script completed.")

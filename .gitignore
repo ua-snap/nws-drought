@@ -1,3 +1,6 @@
+# ignore source files in ./input
+inputs/
+
 # log files
 *.log 
 

@@ -3,17 +3,14 @@
 ## Set Up
 
 ### Python Environment
-W
-e'll use `conda` as the umbrella environment for Python. To create the Python environment for the first time, run the following command after cloning this repository:
+
+We'll use `conda` as the umbrella environment for Python. To create the Python environment for the first time, run the following command after cloning this repository:
 
 ```
 cd /path/to/this/repository
 conda env create -f environment.yml
 conda activate drought-indicators
 ```
-
-Finally, add the project directory to the `PYTHONPATH`, i.e. `export PYTHONPATH=$PYTHONPATH:$(pwd)`
-
 
 ### Climate Data Store (CDS) API Credentials
 
@@ -23,7 +20,6 @@ Complete the following items.
  - Copy your credentials from the black box in the link above to a file called `.cdsapirc` in your `$HOME` directory.
  - Make sure you have accepted the [Terms and Conditions](https://cds.climate.copernicus.eu/cdsapp/#!/terms/licence-to-use-copernicus-products).
 
-
 ### Configuration
 
 If needed, edit `./config.py` to...
@@ -32,12 +28,23 @@ If needed, edit `./config.py` to...
 
 ## Usage
 
+### Environment variables
+
+The follwing environment variables need to be set/modified prior to starting a Jupyter server or running any scripts:
+
+Add the project directory to the `PYTHONPATH`, i.e. `export PYTHONPATH=$PYTHONPATH:$(pwd)`
+
 Setup the download directory by setting a path variable:
 
 `export NWS_DROUGHT_DOWNLOAD_DIR=/path/to/writable/location`
 
 This path must be writable by the user executing the script.  If no path is specified, the tool defaults to `/tmp/nws_drought/`.  Downloads are removed before each run.
 
+Store the directory containing the ERA5 climatology files:
+
+`export NWS_DROUGHT_INPUTS_DIR=/path/to/climatologies`
+
+Note - if not set, the project config will assume the climatology datasets are available at the path where they reside on Poseidon/Atlas (`/workspace/Shared/Tech_Projects/NWS_Drought_Indicators/project_data/climatologies`).
 
 ### Download Data
 
@@ -83,8 +90,6 @@ The full bounding box is
 
 ### Updating dependencies
 
-
 Development note: if you need to add a package to the environment, refresh the `environment.yml` file this way:
 
-`conda env export | grep -v "^prefix: " > environment.yml`
-
+`conda env export --no-builds | grep -v "^prefix: " > environment.yml`

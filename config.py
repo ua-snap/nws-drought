@@ -1,9 +1,23 @@
 import os
+from pathlib import Path
 
 debug = os.getenv("NWS_DROUGHT_DEBUG", False)
 DEBUG_MODE = False if (debug is False or debug == "False") else True
 dl_loc = os.getenv("NWS_DROUGHT_DOWNLOAD_DIR", False)
-DOWNLOAD_DIR = dl_loc if dl_loc is not False else "/tmp/nws_drought/"
+
+DOWNLOAD_DIR = Path(dl_loc if dl_loc is not False else "/tmp/nws_drought/")
+DOWNLOAD_DIR.mkdir(exist_ok=True, parents=True)
+input_loc = os.getenv("NWS_DROUGHT_INPUTS_DIR", False)
+INPUT_DIR = Path(
+    input_loc
+    if input_loc is not False
+    else "/workspace/Shared/Tech_Projects/NWS_Drought_Indicators/project_data/climatologies"
+)
+
+# final output dataset (NetCDF) of indices summarized over key intervals
+indices_fp = DOWNLOAD_DIR.joinpath("outputs/nws_drought_indices.nc")
+indices_fp.parent.mkdir(exist_ok=True)
+
 DATA_LAG_TIME_DAYS = 8
 DL_BBOX = [
     76,
