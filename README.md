@@ -44,6 +44,8 @@ Store the directory containing the ERA5 climatology files:
 
 `export NWS_DROUGHT_INPUTS_DIR=/path/to/climatologies`
 
+Note - if not set, the project config will assume the climatology datasets are available at the path where they reside on Poseidon/Atlas (`/workspace/Shared/Tech_Projects/NWS_Drought_Indicators/project_data/climatologies`).
+
 ### Download Data
 
 `cd scripts`
