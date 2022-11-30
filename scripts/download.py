@@ -176,5 +176,4 @@ if __name__ == "__main__":
     run_all_downloads("volumetric_soil_water_layer_1")
     run_all_downloads("volumetric_soil_water_layer_2")
     run_all_downloads("potential_evaporation")
-    run_all_downloads("soil_type")
     logging.info("Download script completed.")
