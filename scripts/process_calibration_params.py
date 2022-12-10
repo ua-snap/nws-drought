@@ -65,15 +65,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     index = args.index
     
-    # testing
-    sel_di = {"latitude": slice(65,64), "longitude": slice(-148, -147)}
-    
     # this one is getting loaded either way
     print("Reading in precip data", end="...", flush=True)
     tic = time.perf_counter()
     tp_cal_ds = xr.load_dataset("era5_daily_tp_1981_2020.nc")
-#     tp_cal_ds = xr.open_dataset("era5_daily_tp_1981_2020.nc")
-#     tp_cal_ds = tp_cal_ds.sel(sel_di).load()
     print(f"done, {round((time.perf_counter() - tic) / 60)}m", flush=True)
     
     # intervals (in days) to compute params over:
@@ -84,13 +79,15 @@ if __name__ == "__main__":
         print("Reading in PET data", end="...", flush=True)
         tic = time.perf_counter()
         pev_cal_ds = xr.load_dataset("era5_daily_pev_1981_2020.nc")
-#         pev_cal_ds = xr.open_dataset("era5_daily_pev_1981_2020.nc")
-#         pev_cal_ds = pev_cal_ds.sel(sel_di).load()
         print(f"done, {round((time.perf_counter() - tic) / 60)}m", flush=True)
         
         # make water balance DataArray
         # water balance is pr - pet. pet (pev) in ERA5 is usually negative because upward fluxes are negative. So we add pet.
         wb = tp_cal_ds["tp"] + pev_cal_ds["pev"]
+        
+        # Gamma is bounded by zero: Water budget must be shifted, only positive values
+        # are allowed. See xclim code, 1mm is used, 0.001 in m units
+        wb += 0.001
         wb.name = "wb"
         
         args = [(wb, window) for window in intervals]
