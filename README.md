@@ -14,7 +14,7 @@ conda activate drought-indicators
 
 ### Climate Data Store (CDS) API Credentials
 
-Complete the following items.
+Complete the following items to set up permissions for downloading ERA5 data.
 
  - Register for the [Climate Data Store API](https://cds.climate.copernicus.eu/api-how-to).
  - Copy your credentials from the black box in the link above to a file called `.cdsapirc` in your `$HOME` directory.
@@ -25,12 +25,16 @@ Complete the following items.
 If needed, edit `./config.py` to...
 
  - Control the lag between the present date and the first date of data fetched by the CDS API
+ 
+### Input data
+
+Unzip the `nws_data.zip` archive file somewhere and make note of this path. This folder contains some data that is necessary for computing the indices.
 
 ## Usage
 
 ### Environment variables
 
-The follwing environment variables need to be set/modified prior to starting a Jupyter server or running any scripts:
+The follwing environment variables need to be set/modified prior to running any of the code herein, such as starting a Jupyter server or running any scripts:
 
 Add the project directory to the `PYTHONPATH`, i.e. `export PYTHONPATH=$PYTHONPATH:$(pwd)`
 
@@ -40,9 +44,9 @@ Setup the download directory by setting a path variable:
 
 This path must be writable by the user executing the script.  If no path is specified, the tool defaults to `/tmp/nws_drought/`.  Downloads are removed before each run.
 
-Store the directory containing the ERA5 climatology files:
+Store the directory created from extracting the `nws_data.zip` file above in `NWS_DROUGHT_INPUTS_DIR`:
 
-`export NWS_DROUGHT_INPUTS_DIR=/path/to/climatologies`
+`export NWS_DROUGHT_INPUTS_DIR=/path/to/climatologies_and_inputs`
 
 Note - if not set, the project config will assume the climatology datasets are available at the path where they reside on Poseidon/Atlas (`/workspace/Shared/Tech_Projects/NWS_Drought_Indicators/project_data/climatologies`).
 
@@ -51,6 +55,10 @@ Note - if not set, the project config will assume the climatology datasets are a
 `cd scripts`
 
 `python download.py`
+
+### Run the processing script
+
+`python process.py`
 
 ## Data sources
 
