@@ -13,4 +13,6 @@ index_lu = {
     "pntp": "Total precipitation % of Normal",
     "swe": "Snow water equivalent",
     "pnswe": "Snow water equivalent % of Normal",
+    "spi": "Standardized Precipitation Index",
+    "spei": "Standardized Precipitation Evapotranspiration Index",
 }
