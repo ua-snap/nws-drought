@@ -1,0 +1,1 @@
+This folder contains code used by SNAP to complete various preprocessing tasks for this codebase, such as downloading and precomuting the parameters of the gamma distirbutions fit to daily data from the climatology period, 1981-2020. 
