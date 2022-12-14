@@ -15,8 +15,8 @@ INPUT_DIR = Path(
 )
 
 # final output dataset (NetCDF) of indices summarized over key intervals
-indices_fp = DOWNLOAD_DIR.joinpath("outputs/nws_drought_indices.nc")
-indices_fp.parent.mkdir(exist_ok=True)
+indices_dir = DOWNLOAD_DIR.joinpath("outputs")
+indices_dir.mkdir(exist_ok=True)
 
 DATA_LAG_TIME_DAYS = 8
 DL_BBOX = [

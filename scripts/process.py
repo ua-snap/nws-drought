@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import xclim.indices as xci
-from config import DOWNLOAD_DIR, INPUT_DIR, indices_fp
+from config import DOWNLOAD_DIR, INPUT_DIR, indices_dir
 import luts
 import indices as ic
 
@@ -201,14 +201,10 @@ if __name__ == "__main__":
     
     # combine and save
     logging.info("Combining and saving as whole dataset")
-    indices_ds = xr.merge([
-        xr.concat(
-            [indices[varname][i] for i in intervals], 
-            pd.Index(intervals, name="interval")
-        )
-        for varname in indices
-    ])
-    indices_ds.to_netcdf(indices_fp)
+    # write a single file for each interval
+    for i in intervals:
+        out_ds = xr.merge([indices[varname][i] for varname in indices])
+        out_ds.to_netcdf(indices_dir.joinpath(f"nws_drought_indices_{i}day.nc"))
+
     logging.info(f"Pipeline completed in {round((time.perf_counter() - tic) / 60)}m")
-    
     

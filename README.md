@@ -60,6 +60,8 @@ Note - if not set, the project config will assume the climatology datasets are a
 
 `python process.py`
 
+The new datasets - one for each interval, containing results across the grid for all indices - will be written to the `$NWS_DROUGHT_INPUTS_DIR/outputs` directory, with files named as such: `nws_drought_indices_<interval>day.nc`
+
 ## Data sources
 
 Data is sourced from the Climate Data Store.
