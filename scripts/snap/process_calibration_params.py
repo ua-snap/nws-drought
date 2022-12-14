@@ -1,8 +1,8 @@
 """Derive estimates of parameters of gamma distributions fit to daily precip and water budget (pr - pet) data for use in SPI and SPEI indices. Accepts a variable name argument for which dataset to process, either spi or spei.
 
 Usage: 
-    python process_calibration_params.py -v spi
-    python process_calibration_params.py -v spei
+    python process_calibration_params.py -i spi
+    python process_calibration_params.py -i spei
 Note: this script is designed to be run from within the parent directory of the daily pr and pet from the climatology period. 
 """
 
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     print(f"done, {round((time.perf_counter() - tic) / 60)}m", flush=True)
     
     # intervals (in days) to compute params over:
-    intervals = [30, 60 , 90, 180, 365]
+    intervals = [7, 30, 60 , 90, 180, 365]
     
     if index == "spei":
         # if SPEI, we need PET data

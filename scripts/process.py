@@ -172,7 +172,7 @@ if __name__ == "__main__":
     
     # define some globals that will be used by all of the functions for computing indices
     ds = ds.sel(time=slice(start_time, end_time))
-    intervals = [30, 60, 90, 180, 365]
+    intervals = [7, 30, 60, 90, 180, 365]
     times = ds.time.values
     
     # process indices
