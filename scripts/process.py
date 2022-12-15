@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import xclim.indices as xci
+from scipy.ndimage import gaussian_filter
 from config import DOWNLOAD_DIR, INPUT_DIR, indices_dir
 import luts
 import indices as ic
@@ -94,6 +95,16 @@ def process_total_precip_pon():
 def process_swe():
     index = "swe"
     indices[index] = {}
+    # special case for SWE - 1 day
+    # copy dataarray structure for spot to put data that will result from smoothing
+    temp_da = ds["sd"].copy(deep=True) 
+    # smooth with gaussian, returns same array shape but smooths
+    #  0 axis only (because sigma set to 0 for other two dimensions)
+    temp_da.data = gaussian_filter(temp_da, sigma=(2, 0, 0))
+    # and take the most recent day
+    indices[index][1] = temp_da.sel(time=ds.time.values[-1]).drop_vars("time") * 100
+    indices[index][1].name = "swe"
+    
     for i in intervals:
         indices[index][i] = ds["sd"].sel(
             time=slice(times[-(i)], times[-1])
@@ -150,6 +161,19 @@ def process_spei():
     return
 
 
+def fill_1day_nan():
+    """This function simply creates dataarrays of NaNs for all indices for which we are not interested in 1day values. This helps with usability / intercompatability of resulting netCDF files
+    """
+    for index in ["tp", "pntp", "pnswe", "spi", "spei"]:
+        # copy a dataarray structure
+        indices[index][1] = indices["swe"][1].copy(deep=True)
+        # fill it with NaNs
+        indices[index][1].data[:] = np.nan
+        indices[index][1].name = index
+        
+    return
+
+
 if __name__ == "__main__":
     # start timer
     tic = time.perf_counter()
@@ -177,6 +201,7 @@ if __name__ == "__main__":
     
     # process indices
     # create dict for writing results
+    # this is consumed and passed to all functions below
     indices = {}
     # total precip
     logging.info("Processing total precip")
@@ -198,13 +223,16 @@ if __name__ == "__main__":
     process_spei()
     # TO-DO: SMD
     
+    # add 1day NaN arrays, not ideal but simple
+    fill_1day_nan()
+    
     
     # combine and save
     logging.info("Combining and saving as whole dataset")
     # write a single file for each interval
-    for i in intervals:
+    for i in [1] + intervals:
         out_ds = xr.merge([indices[varname][i] for varname in indices])
         out_ds.to_netcdf(indices_dir.joinpath(f"nws_drought_indices_{i}day.nc"))
-
+        
     logging.info(f"Pipeline completed in {round((time.perf_counter() - tic) / 60)}m")
     
