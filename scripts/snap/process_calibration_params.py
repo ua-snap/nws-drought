@@ -87,7 +87,8 @@ if __name__ == "__main__":
         
         # Gamma is bounded by zero: Water budget must be shifted, only positive values
         # are allowed. See xclim code, 1mm is used, 0.001 in m units
-        wb += 0.001
+        # Tried 0.001 but some values for 180 and 365 were still negative, bumped to 2mm
+        wb += 0.002
         wb.name = "wb"
         
         args = [(wb, window) for window in intervals]

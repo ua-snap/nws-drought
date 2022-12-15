@@ -153,7 +153,7 @@ def process_spei():
     indices[index] = {}
     with xr.open_dataset(INPUT_DIR.joinpath("spei_gamma_parameters.nc")) as spei_ds:
         # add 1mm offset consistent with precomputed gammas
-        wb = (ds["tp"] + ds["pev"]) + 0.001
+        wb = (ds["tp"] + ds["pev"]) + 0.002
         for i in intervals:
             indices[index][i] = ic.spi(wb, spei_ds["params"], i)
             indices[index][i].name = index
@@ -232,6 +232,7 @@ if __name__ == "__main__":
     # write a single file for each interval
     for i in [1] + intervals:
         out_ds = xr.merge([indices[varname][i] for varname in indices])
+        out_ds.attrs["date"] = str(end_time)
         out_ds.to_netcdf(indices_dir.joinpath(f"nws_drought_indices_{i}day.nc"))
         
     logging.info(f"Pipeline completed in {round((time.perf_counter() - tic) / 60)}m")
