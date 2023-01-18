@@ -195,7 +195,7 @@ def process_smd():
         clim_swvl = swvl_clim_ds["swvl"].sel(
             time=ds.time.dt.dayofyear.values[-1]
         )
-        indices[index][1] = np.round((swvl_1d / clim_swvl) * 100, 1)
+        indices[index][1] = np.round(((clim_swvl - swvl_1d) / clim_swvl) * 100, 1)
         indices[index][1].name = index
         
         
@@ -208,7 +208,7 @@ def process_smd():
             end_doy = pd.Timestamp(times[-1]).dayofyear
             clim_swvl = subset_clim_interval(swvl_clim_ds, start_doy, end_doy).mean(dim="time")
             
-            indices[index][i] = np.round((swvl / clim_swvl["swvl"]) * 100, 1)
+            indices[index][i] = np.round(((clim_swvl["swvl"] - swvl) / clim_swvl["swvl"]) * 100, 1)
             indices[index][i].name = index
         
     return
@@ -284,6 +284,12 @@ if __name__ == "__main__":
     # write a single file for each interval
     for i in [1] + intervals:
         out_ds = xr.merge([indices[varname][i] for varname in indices])
+        
+        # merging the datasets is causing inversion along latitude dim for some reason!
+        #  Flip it if it's upside down (increasing lat)
+        if np.all(out_ds.latitude.values != ds.latitude.values):
+            out_ds = out_ds.reindex(latitude=list(reversed(out_ds.latitude)))
+        
         out_ds.attrs["date"] = str(end_time)
         out_ds.to_netcdf(indices_dir.joinpath(f"nws_drought_indices_{i}day.nc"))
         
