@@ -43,6 +43,6 @@ def download_swvl_data(download_dir):
     
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    download_dir = Path(f"era5_hourly_smvl_1981_2020")
+    download_dir = Path(f"era5_hourly_swvl_1981_2020")
     download_dir.mkdir(exist_ok=True)
     download_swvl_data(download_dir)
