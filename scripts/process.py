@@ -13,7 +13,9 @@ import luts
 import indices as ic
 
 
-def assemble_dataset(input_dir, varname):
+def assemble_hourly_dataset(input_dir, varname):
+    """Assemble the three components of a yearly dataset into one"""
+    logging.info(f"Assembling hourly dataset of {varname} data")
     varname_prefix = luts.varname_prefix_lu[varname]
     prior_year = xr.open_dataset(input_dir.joinpath(f"{varname_prefix}_previous_year.nc"))
     current_year = xr.open_dataset(input_dir.joinpath(f"{varname_prefix}_current_year.nc"))
@@ -41,13 +43,29 @@ def assemble_dataset(input_dir, varname):
         current_year_fix,
         current_month,
     ])
-    # resample ohurly to daily
-    if varname in ["tp", "pev"]:
-        # total precip should be summed
-        daily_ds = hourly_ds.resample(time="1D").sum()
-    elif varname in ["sd", "swvl1", "swvl2"]:
-        # TO DO : check how the daily values of these variables should be calculated from hourly
-        daily_ds = hourly_ds.resample(time="1D").mean()
+    
+    return hourly_ds
+
+
+def assemble_dataset(input_dir, varname):
+    """Assemble a dataset by variable name"""
+    
+    if varname in ["tp", "pev", "sd"]:
+        hourly_ds = assemble_hourly_dataset(input_dir, varname)
+           
+        if varname in ["tp", "pev"]:
+            daily_ds = hourly_ds.resample(time="1D").sum()
+        else:
+            daily_ds = hourly_ds.resample(time="1D").mean()
+    else:
+        swvl1 = assemble_hourly_dataset(input_dir, "swvl1")
+        swvl2 = assemble_hourly_dataset(input_dir, "swvl2")
+
+        daily_da = ((swvl1["swvl1"] * 0.25) + (swvl2["swvl2"] * 0.75)).resample(
+            time="1D"
+        ).mean()
+        daily_da.name = "swvl"
+        daily_ds = daily_da.to_dataset()
         
     return daily_ds
 
@@ -103,7 +121,7 @@ def process_swe():
     temp_da.data = gaussian_filter(temp_da, sigma=(2, 0, 0))
     # and take the most recent day
     indices[index][1] = temp_da.sel(time=ds.time.values[-1]).drop_vars("time") * 100
-    indices[index][1].name = "swe"
+    indices[index][1].name = index
     
     for i in intervals:
         indices[index][i] = ds["sd"].sel(
@@ -161,6 +179,41 @@ def process_spei():
     return
 
 
+def process_smd():
+    index = "smd"
+    indices[index] = {}
+    # special case for SMD - 1 day
+    # copy dataarray structure for spot to put data that will result from smoothing
+    temp_da = ds["swvl"].copy(deep=True) 
+    # smooth with gaussian, returns same array shape but smooths
+    #  0 axis only (because sigma set to 0 for other two dimensions)
+    temp_da.data = gaussian_filter(temp_da, sigma=(2, 0, 0))
+    
+    with xr.open_dataset(INPUT_DIR.joinpath("era5_daily_swvl_1981_2020.nc")) as swvl_clim_ds:
+        # take the most recent day for the 1-day interval
+        swvl_1d = temp_da.sel(time=ds.time.values[-1])
+        clim_swvl = swvl_clim_ds["swvl"].sel(
+            time=ds.time.dt.dayofyear.values[-1]
+        )
+        indices[index][1] = np.round((swvl_1d / clim_swvl) * 100, 1)
+        indices[index][1].name = index
+        
+        
+        for i in intervals:
+            swvl = ds["swvl"].sel(
+                time=slice(times[-(i)], times[-1])
+            ).mean(dim="time")
+            
+            start_doy = pd.Timestamp(times[-i]).dayofyear
+            end_doy = pd.Timestamp(times[-1]).dayofyear
+            clim_swvl = subset_clim_interval(swvl_clim_ds, start_doy, end_doy).mean(dim="time")
+            
+            indices[index][i] = np.round((swvl / clim_swvl["swvl"]) * 100, 1)
+            indices[index][i].name = index
+        
+    return
+
+
 def fill_1day_nan():
     """This function simply creates dataarrays of NaNs for all indices for which we are not interested in 1day values. This helps with usability / intercompatability of resulting netCDF files
     """
@@ -183,10 +236,8 @@ if __name__ == "__main__":
     logging.info("Processing drought indices")
     logging.info("Assembling daily ERA5 datasets from downloaded hourly data")
     input_dir = DOWNLOAD_DIR.joinpath("inputs")
-    ds = xr.combine_by_coords(
-        [assemble_dataset(input_dir, varname) for varname in ["tp", "sd", "pev"]], 
-        combine_attrs="drop_conflicts"
-    )
+    datasets = [assemble_dataset(input_dir, varname) for varname in ["tp", "sd", "pev", "swvl"]]
+    ds = xr.combine_by_coords(datasets, combine_attrs="drop_conflicts")
     ds.to_netcdf(DOWNLOAD_DIR.joinpath("inputs/combined_daily_era5_vars.nc"))
     
     end_time = ds.time[-1]
@@ -221,11 +272,12 @@ if __name__ == "__main__":
     # SPEI
     logging.info("Processing SPEI")
     process_spei()
-    # TO-DO: SMD
+    # SMD
+    logging.info("Processing SMD")
+    process_smd()
     
     # add 1day NaN arrays, not ideal but simple
     fill_1day_nan()
-    
     
     # combine and save
     logging.info("Combining and saving as whole dataset")
