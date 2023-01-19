@@ -120,7 +120,9 @@ def process_swe():
     #  0 axis only (because sigma set to 0 for other two dimensions)
     temp_da.data = gaussian_filter(temp_da, sigma=(2, 0, 0))
     # and take the most recent day
-    indices[index][1] = temp_da.sel(time=ds.time.values[-1]).drop_vars("time") * 100
+    indices[index][1] = temp_da.sel(
+        time=ds.time.values[-1]
+    ).drop_vars("time") * 100
     indices[index][1].name = index
     
     for i in intervals:
@@ -191,13 +193,12 @@ def process_smd():
     
     with xr.open_dataset(INPUT_DIR.joinpath("era5_daily_swvl_1981_2020.nc")) as swvl_clim_ds:
         # take the most recent day for the 1-day interval
-        swvl_1d = temp_da.sel(time=ds.time.values[-1])
+        swvl_1d = temp_da.sel(time=ds.time.values[-1]).drop_vars("time")
         clim_swvl = swvl_clim_ds["swvl"].sel(
             time=ds.time.dt.dayofyear.values[-1]
-        )
+        ).drop_vars("time")
         indices[index][1] = np.round(((clim_swvl - swvl_1d) / clim_swvl) * 100, 1)
         indices[index][1].name = index
-        
         
         for i in intervals:
             swvl = ds["swvl"].sel(
@@ -287,7 +288,7 @@ if __name__ == "__main__":
         
         # merging the datasets is causing inversion along latitude dim for some reason!
         #  Flip it if it's upside down (increasing lat)
-        if np.all(out_ds.latitude.values != ds.latitude.values):
+        if out_ds.latitude[1] > out_ds.latitude[0]:
             out_ds = out_ds.reindex(latitude=list(reversed(out_ds.latitude)))
         
         out_ds.attrs["date"] = str(end_time)
