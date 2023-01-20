@@ -148,7 +148,10 @@ def process_swe_pon():
             start_doy = pd.Timestamp(times[-i]).dayofyear
             end_doy = pd.Timestamp(times[-1]).dayofyear
             clim_swe = subset_clim_interval(swe_clim_ds, start_doy, end_doy).mean(dim="time")
-            indices[index][i] = (indices["swe"][i] / clim_swe["swe"]) * 100
+            # don't need to multiply by 100 because swe index is in cm,
+            #  so conversion of clim swe to cm would cancel with conversion of result to percentage
+            #  e.g. (swe_in_cm / (clim_swe_in_m * 100)) * 100 == swe_in_cm / clim_swe_in_m
+            indices[index][i] = (indices["swe"][i] / clim_swe["swe"])
             # over the water, SWE will always be zero. This comes out as NaN in the results (the only NaNs)
             #  For now just treat this area as 100% of normal.
             indices[index][i].values[np.isnan(indices[index][i])] = 100
