@@ -8,7 +8,7 @@ import pandas as pd
 import xarray as xr
 import xclim.indices as xci
 from scipy.ndimage import gaussian_filter
-from config import DOWNLOAD_DIR, INPUT_DIR, indices_dir
+from config import DOWNLOAD_DIR, CLIM_DIR, INDICES_DIR
 import luts
 import indices as ic
 
@@ -97,7 +97,7 @@ def process_total_precip():
 def process_total_precip_pon():
     index = "pntp"
     indices[index] = {}
-    with xr.open_dataset(INPUT_DIR.joinpath("era5_daily_tp_climatology_1981_2020_leap.nc")) as tp_clim_ds:
+    with xr.open_dataset(CLIM_DIR.joinpath("era5_daily_tp_climatology_1981_2020_leap.nc")) as tp_clim_ds:
         # need to remap longitude coordinates from [180, 360] to [-180, 0]
         tp_clim_ds = tp_clim_ds.assign_coords(longitude=(tp_clim_ds.longitude.values) - 360)
         for i in intervals:
@@ -137,7 +137,7 @@ def process_swe():
 def process_swe_pon():
     index = "pnswe"
     indices[index] = {}
-    with xr.open_dataset(INPUT_DIR.joinpath("era5_swe_climo_81-20.nc")) as swe_clim_ds:
+    with xr.open_dataset(CLIM_DIR.joinpath("era5_swe_climo_81-20.nc")) as swe_clim_ds:
         # need to remap longitude coordinates from [180, 360] to [-180, 0]
         swe_clim_ds = swe_clim_ds.assign_coords(
             longitude=(swe_clim_ds.longitude.values) - 360,
@@ -160,7 +160,7 @@ def process_swe_pon():
 def process_spi():
     index = "spi"
     indices[index] = {}
-    with xr.open_dataset(INPUT_DIR.joinpath("spi_gamma_parameters.nc")) as spi_ds:
+    with xr.open_dataset(CLIM_DIR.joinpath("spi_gamma_parameters.nc")) as spi_ds:
         for i in intervals:
             indices[index][i] = ic.spi(ds["tp"], spi_ds["params"], i)
             indices[index][i].name = index
@@ -171,7 +171,7 @@ def process_spi():
 def process_spei():
     index = "spei"
     indices[index] = {}
-    with xr.open_dataset(INPUT_DIR.joinpath("spei_gamma_parameters.nc")) as spei_ds:
+    with xr.open_dataset(CLIM_DIR.joinpath("spei_gamma_parameters.nc")) as spei_ds:
         # add 1mm offset consistent with precomputed gammas
         wb = (ds["tp"] + ds["pev"]) + 0.002
         for i in intervals:
@@ -191,7 +191,7 @@ def process_smd():
     #  0 axis only (because sigma set to 0 for other two dimensions)
     temp_da.data = gaussian_filter(temp_da, sigma=(2, 0, 0))
     
-    with xr.open_dataset(INPUT_DIR.joinpath("era5_daily_swvl_1981_2020.nc")) as swvl_clim_ds:
+    with xr.open_dataset(CLIM_DIR.joinpath("era5_daily_swvl_1981_2020.nc")) as swvl_clim_ds:
         # take the most recent day for the 1-day interval
         swvl_1d = temp_da.sel(time=ds.time.values[-1]).drop_vars("time")
         clim_swvl = swvl_clim_ds["swvl"].sel(
@@ -236,10 +236,9 @@ if __name__ == "__main__":
     
     logging.info("Processing drought indices")
     logging.info("Assembling daily ERA5 datasets from downloaded hourly data")
-    input_dir = DOWNLOAD_DIR.joinpath("inputs")
-    datasets = [assemble_dataset(input_dir, varname) for varname in ["tp", "sd", "pev", "swvl"]]
+    datasets = [assemble_dataset(DOWNLOAD_DIR, varname) for varname in ["tp", "sd", "pev", "swvl"]]
     ds = xr.combine_by_coords(datasets, combine_attrs="drop_conflicts")
-    ds.to_netcdf(DOWNLOAD_DIR.joinpath("inputs/combined_daily_era5_vars.nc"))
+    ds.to_netcdf(DOWNLOAD_DIR.joinpath("combined_daily_era5_vars.nc"))
     
     end_time = ds.time[-1]
     start_time = ds.time[-365]
@@ -292,7 +291,7 @@ if __name__ == "__main__":
             out_ds = out_ds.reindex(latitude=list(reversed(out_ds.latitude)))
         
         out_ds.attrs["date"] = str(end_time)
-        out_ds.to_netcdf(indices_dir.joinpath(f"nws_drought_indices_{i}day.nc"))
+        out_ds.to_netcdf(INDICES_DIR.joinpath(f"nws_drought_indices_{i}day.nc"))
         
     logging.info(f"Pipeline completed in {round((time.perf_counter() - tic) / 60)}m")
     

@@ -13,7 +13,6 @@ import xarray as xr
 from dask.diagnostics import ProgressBar
 from dask.distributed import Client
 import dask
-dask.config.set({'temporary_directory': '/atlas_scratch/kmredilla/dask'})
 
 
 if __name__ == "__main__":

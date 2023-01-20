@@ -3,20 +3,20 @@ from pathlib import Path
 
 debug = os.getenv("NWS_DROUGHT_DEBUG", False)
 DEBUG_MODE = False if (debug is False or debug == "False") else True
-dl_loc = os.getenv("NWS_DROUGHT_DOWNLOAD_DIR", False)
 
-DOWNLOAD_DIR = Path(dl_loc if dl_loc is not False else "/tmp/nws_drought/")
-DOWNLOAD_DIR.mkdir(exist_ok=True, parents=True)
-input_loc = os.getenv("NWS_DROUGHT_INPUTS_DIR", False)
-INPUT_DIR = Path(
-    input_loc
-    if input_loc is not False
-    else "/workspace/Shared/Tech_Projects/NWS_Drought_Indicators/project_data/climatologies"
-)
+DATA_DIR = Path(os.getenv("NWS_DROUGHT_DATA_DIR") or "/tmp/nws_drought/")
+DATA_DIR.mkdir(exist_ok=True, parents=True)
+
+# directory containing climatologies and SPI/SPEI parameters
+CLIM_DIR = Path(os.getenv("NWS_DROUGHT_CLIM_DIR"))
+
+# directory for ERA5 downloads
+DOWNLOAD_DIR = DATA_DIR.joinpath("inputs")
+DOWNLOAD_DIR.mkdir(exist_ok=True)
 
 # final output dataset (NetCDF) of indices summarized over key intervals
-indices_dir = DOWNLOAD_DIR.joinpath("outputs")
-indices_dir.mkdir(exist_ok=True)
+INDICES_DIR = DATA_DIR.joinpath("outputs")
+INDICES_DIR.mkdir(exist_ok=True)
 
 DATA_LAG_TIME_DAYS = 8
 DL_BBOX = [
