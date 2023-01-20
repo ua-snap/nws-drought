@@ -90,6 +90,7 @@ def process_total_precip():
             time=slice(times[-(i)], times[-1])
         # convert from m to cm to match climatology
         ).sum(dim="time") * 100
+        indices[index][i] = np.round(indices[index][i], 1)
     
     return
 
@@ -130,6 +131,9 @@ def process_swe():
             time=slice(times[-(i)], times[-1])
         ).mean(dim="time") * 100 # converts from m to cm
         indices[index][i].name = index
+    # round
+    for i in intervals + [1]:
+        indices[index][i] = np.round(indices[index][i], 1)
         
     return
 
@@ -151,7 +155,7 @@ def process_swe_pon():
             # don't need to multiply by 100 because swe index is in cm,
             #  so conversion of clim swe to cm would cancel with conversion of result to percentage
             #  e.g. (swe_in_cm / (clim_swe_in_m * 100)) * 100 == swe_in_cm / clim_swe_in_m
-            indices[index][i] = (indices["swe"][i] / clim_swe["swe"])
+            indices[index][i] = np.round(indices["swe"][i] / clim_swe["swe"], 1)
             # over the water, SWE will always be zero. This comes out as NaN in the results (the only NaNs)
             #  For now just treat this area as 100% of normal.
             indices[index][i].values[np.isnan(indices[index][i])] = 100
@@ -167,6 +171,7 @@ def process_spi():
         for i in intervals:
             indices[index][i] = ic.spi(ds["tp"], spi_ds["params"], i)
             indices[index][i].name = index
+            indices[index][i] = np.round(indices[index][i], 1)
     
     return
 
@@ -180,6 +185,7 @@ def process_spei():
         for i in intervals:
             indices[index][i] = ic.spi(wb, spei_ds["params"], i)
             indices[index][i].name = index
+            indices[index][i] = np.round(indices[index][i], 1)
             
     return
 
