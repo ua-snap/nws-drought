@@ -14,7 +14,10 @@ def spi(pr, params, interval):
     Args:
         pr (xarray.DataArray): recent precip data
         params (xarray.DataArray): gamma parameters fit to precip data from 1981-2020, with intervals as a dimension
-
+        interval (int): interval length
+        
+    Returns:
+        spi (xarray.DataArray): the standardized precipitation (evapotranspiration) index
     """
     # subset params to the most recent doy and interval
     recent_doy = pr.time.dt.dayofyear[-1]
