@@ -12,7 +12,6 @@ from pathlib import Path
 import xarray as xr
 from dask.diagnostics import ProgressBar
 from dask.distributed import Client
-import dask
 
 
 if __name__ == "__main__":
