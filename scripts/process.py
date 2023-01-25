@@ -169,10 +169,11 @@ def process_spi():
     indices[index] = {}
     with xr.open_dataset(CLIM_DIR.joinpath("spi_gamma_parameters.nc")) as spi_ds:
         for i in intervals:
+            i = 30
             indices[index][i] = ic.spi(ds["tp"], spi_ds["params"], i)
             indices[index][i].name = index
             indices[index][i] = np.round(indices[index][i], 1)
-    
+            break
     return
 
 
@@ -186,7 +187,7 @@ def process_spei():
             indices[index][i] = ic.spi(wb, spei_ds["params"], i)
             indices[index][i].name = index
             indices[index][i] = np.round(indices[index][i], 1)
-            
+        
     return
 
 
@@ -299,7 +300,7 @@ if __name__ == "__main__":
         if out_ds.latitude[1] > out_ds.latitude[0]:
             out_ds = out_ds.reindex(latitude=list(reversed(out_ds.latitude)))
         
-        out_ds.attrs["date"] = str(end_time)
+        out_ds.attrs["reference_date"] = pd.to_datetime(end_time.values).strftime("%Y-%m-%d")
         out_ds.to_netcdf(INDICES_DIR.joinpath(f"nws_drought_indices_{i}day.nc"))
         
     logging.info(f"Pipeline completed in {round((time.perf_counter() - tic) / 60)}m")
