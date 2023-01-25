@@ -3,7 +3,7 @@
 """
 
 import xarray as xr
-from xclim.indices.stats import dist_method, fit
+from xclim.indices.stats import dist_method
 
 
 def spi(pr, params, interval):
