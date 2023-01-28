@@ -169,11 +169,10 @@ def process_spi():
     indices[index] = {}
     with xr.open_dataset(CLIM_DIR.joinpath("spi_gamma_parameters.nc")) as spi_ds:
         for i in intervals:
-            i = 30
             indices[index][i] = ic.spi(ds["tp"], spi_ds["params"], i)
             indices[index][i].name = index
             indices[index][i] = np.round(indices[index][i], 1)
-            break
+            
     return
 
 
@@ -238,20 +237,35 @@ def fill_1day_nan():
     return
 
 
+def mask_land_vars():
+    """For some variables, there should not be any for pixels over the ocean. This is evidenced by unresonably large or small values. Use the provided ERA5 land sea mask to apply NaN to ocean pixels of swe, pnswe, and smd."""
+    lsm_fp = CLIM_DIR.joinpath("land_sea_mask.nc")
+    with xr.open_dataset(lsm_fp) as lsm_ds:
+        # using 50% or more land to identify land pixel
+        seamask = (lsm_ds["lsm"] > 0.5).isel(time=0).drop("time")
+    # seamask is masking off nonland (i.e. False over seas
+    for index in ["swe", "pnswe", "smd"]:
+        for interval in indices[index].keys():
+            indices[index][interval] = indices[index][interval].where(seamask)
+
+    return
+
+
 if __name__ == "__main__":
     # start timer
     tic = time.perf_counter()
     # Log to STDOUT (+ STDERR)
     logging.basicConfig(level=logging.INFO)
-    
     logging.info("Processing drought indices")
+    
     logging.info("Assembling daily ERA5 datasets from downloaded hourly data")
     datasets = [assemble_dataset(DOWNLOAD_DIR, varname) for varname in ["tp", "sd", "pev", "swvl"]]
     ds = xr.combine_by_coords(datasets, combine_attrs="drop_conflicts")
-    ds.to_netcdf(DOWNLOAD_DIR.joinpath("combined_daily_era5_vars.nc"))
-    
     end_time = ds.time[-1]
+    ref_date = pd.to_datetime(end_time.values)
     start_time = ds.time[-365]
+    ds.to_netcdf(DOWNLOAD_DIR.joinpath(f"combined_daily_era5_vars_{ref_date.strftime('%Y%m%d')}.nc"))
+    
     # ensure that this is indeed 365 days (time diff is nanoseconds)
     assert (end_time - start_time) / 86400E9
     
@@ -288,19 +302,21 @@ if __name__ == "__main__":
     
     # add 1day NaN arrays, not ideal but simple
     fill_1day_nan()
+    # mask ocean for land vars
+    mask_land_vars()
     
     # combine and save
     logging.info("Combining and saving as whole dataset")
     # write a single file for each interval
     for i in [1] + intervals:
         out_ds = xr.merge([indices[varname][i] for varname in indices])
-        
+
         # merging the datasets is causing inversion along latitude dim for some reason!
         #  Flip it if it's upside down (increasing lat)
         if out_ds.latitude[1] > out_ds.latitude[0]:
             out_ds = out_ds.reindex(latitude=list(reversed(out_ds.latitude)))
         
-        out_ds.attrs["reference_date"] = pd.to_datetime(end_time.values).strftime("%Y-%m-%d")
+        out_ds.attrs["reference_date"] = ref_date.strftime("%Y-%m-%d")
         out_ds.to_netcdf(INDICES_DIR.joinpath(f"nws_drought_indices_{i}day.nc"))
         
     logging.info(f"Pipeline completed in {round((time.perf_counter() - tic) / 60)}m")
