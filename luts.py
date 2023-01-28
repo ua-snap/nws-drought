@@ -15,4 +15,5 @@ index_lu = {
     "pnswe": "Snow water equivalent % of Normal",
     "spi": "Standardized Precipitation Index",
     "spei": "Standardized Precipitation Evapotranspiration Index",
+    "smd": "Soil Moisture Deficit"
 }

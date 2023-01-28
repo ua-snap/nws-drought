@@ -28,7 +28,7 @@ If needed, edit `./config.py` to...
  
 ### Input data
 
-Unzip the `nws_data.zip` archive file somewhere and make note of this path. This folder contains some data that is necessary for computing the indices.
+Unzip the `nws_data.zip` archive file somewhere and make note of this path. This folder contains some data (climatologies) that is necessary for computing the indices.
 
 ## Usage
 
@@ -38,29 +38,34 @@ The follwing environment variables need to be set/modified prior to running any 
 
 Add the project directory to the `PYTHONPATH`, i.e. `export PYTHONPATH=$PYTHONPATH:$(pwd)`
 
-Setup the download directory by setting a path variable:
+Setup the directory for data work (downloads, outputs, etc) by setting a path variable:
 
-`export NWS_DROUGHT_DOWNLOAD_DIR=/path/to/writable/location`
+`export NWS_DROUGHT_DATA_DIR=/path/to/writable/location`
 
 This path must be writable by the user executing the script.  If no path is specified, the tool defaults to `/tmp/nws_drought/`.  Downloads are removed before each run.
 
-Store the directory created from extracting the `nws_data.zip` file above in `NWS_DROUGHT_INPUTS_DIR`:
+Store the directory created from extracting the `nws_data.zip` file above in `NWS_DROUGHT_CLIM_DIR`:
 
-`export NWS_DROUGHT_INPUTS_DIR=/path/to/climatologies_and_inputs`
-
-Note - if not set, the project config will assume the climatology datasets are available at the path where they reside on Poseidon/Atlas (`/workspace/Shared/Tech_Projects/NWS_Drought_Indicators/project_data/climatologies`).
+`export NWS_DROUGHT_CLIM_DIR=/path/to/climatologies_and_inputs`
 
 ### Download Data
 
-`cd scripts`
+You may now start downloading the hourly ERA5 data that will be used for computing the indices over the recent intervals of time. Simply run the download script:
 
-`python download.py`
+```
+cd scripts
+python download.py
+```
+
+Downloads will be placed in `NWS_DROUGHT_DATA_DIR/inputs`.
 
 ### Run the processing script
 
+Now simply run the processing script to generate the indices dataset:
+
 `python process.py`
 
-The new datasets - one for each interval, containing results across the grid for all indices - will be written to the `$NWS_DROUGHT_INPUTS_DIR/outputs` directory, with files named as such: `nws_drought_indices_<interval>day.nc`
+The new datasets - one for each interval, containing results across the grid for all indices - will be written to the `$NWS_DROUGHT_DATA_DIR/outputs` directory, with files named as such: `nws_drought_indices_<interval>day.nc`
 
 ## Data sources
 
@@ -68,38 +73,3 @@ Data is sourced from the Climate Data Store.
 
 The ERA5 hourly and monthly data are delayed by three months, so the [ERA5T near-real-time preliminary dataset](https://confluence.ecmwf.int/display/CUSF/ERA5+CDS+requests+which+return+a+mixture+of+ERA5+and+ERA5T+data) is used to fill in data up until five days from the current date.
 
-## Testing + Development
-
-*TBD pending finalizing the environment default install* You may want to install `jupyter` within the Conda environment to use the files in the `notebooks/` directory for interactive work with these scripts.  To do so, `conda install jupyter notebook`.
-
-Set the PYTHONPATH to include the root project, i.e. `export PYTHONPATH=$PYTHONPATH:/full/path/to/this/directory`
-
-Set the application debug mode with `export NWS_DROUGHT_DEBUG=True` (or disable it with `unset NWS_DROUGHT_DEBUG` or use `export NWS_DROUGHT_DEBUG=False`).  Debug mode bypasses the downloads.
-
-If you are testing the download functionality, consider constraining the `area` like so:
-
-```
- "area": [
-    45,
-    -180,
-    44,
-    -179,
- ]
-```
-
-The full bounding box is 
-
-```
- "area": [
-    76,
-    -180,
-    44,
-    -125,
- ]
-```
-
-### Updating dependencies
-
-Development note: if you need to add a package to the environment, refresh the `environment.yml` file this way:
-
-`conda env export --no-builds | grep -v "^prefix: " > environment.yml`
