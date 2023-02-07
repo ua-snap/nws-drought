@@ -18,32 +18,33 @@ def assemble_hourly_dataset(input_dir, varname):
     logging.info(f"Assembling hourly dataset of {varname} data")
     varname_prefix = luts.varname_prefix_lu[varname]
     prior_year = xr.open_dataset(input_dir.joinpath(f"{varname_prefix}_previous_year.nc"))
-    current_year = xr.open_dataset(input_dir.joinpath(f"{varname_prefix}_current_year.nc"))
     current_month = xr.open_dataset(input_dir.joinpath(f"{varname_prefix}_current_month.nc"))
+
+    try:
+        # The majority of analysis date cases (not january)
+        current_year = xr.open_dataset(input_dir.joinpath(f"{varname_prefix}_current_year.nc"))
+
+        # Validate assumption that data with expver values of 1 or 5 are mutually exclusive and exhaustive
+        assert np.all(
+            np.isnan(current_year[varname].sel(expver=5)) == ~np.isnan(current_year[varname].sel(expver=1))
+        )
+        assert np.all(
+            ~np.isnan(current_year[varname].sel(expver=5)) == np.isnan(current_year[varname].sel(expver=1))
+        )
+        # Select the data for each expver value and combine to get a complete continuous set of data:
+        current_year_fix = xr.merge([
+            current_year[varname].sel(expver=1).drop("expver"),
+            current_year[varname].sel(expver=5).drop("expver")
+        ])
+        assert ~np.any(np.isnan(current_year_fix[varname]).values)
+        data_to_merge = [prior_year, current_year_fix, current_month]
+    except:
+        # The minority of analysis date cases (in january)
+        data_to_merge = [prior_year, current_month]
+        # current_month data should all have the same expver
     
-    # Just want to make sure our assumption that data with expver values of 1 and 5 are
-    #  mutually exclusive and exhaustive
-    assert np.all(
-        np.isnan(current_year[varname].sel(expver=5)) == ~np.isnan(current_year[varname].sel(expver=1))
-    )
-    assert np.all(
-        ~np.isnan(current_year[varname].sel(expver=5)) == np.isnan(current_year[varname].sel(expver=1))
-    )
-    
-    # Select the data for each expver value and combine to get a complete continuous set of data:
-    current_year_fix = xr.merge([
-        current_year[varname].sel(expver=1).drop("expver"),
-        current_year[varname].sel(expver=5).drop("expver")
-    ])
-    assert ~np.any(np.isnan(current_year_fix[varname]).values)
-    
-    # merge with other dataset since they all share the same coordinate variables now
-    hourly_ds = xr.merge([
-        prior_year,
-        current_year_fix,
-        current_month,
-    ])
-    
+    # merge datasets since they all share the same coordinate variables now
+    hourly_ds = xr.merge(data_to_merge)
     return hourly_ds
 
 
