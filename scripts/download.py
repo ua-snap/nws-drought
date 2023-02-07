@@ -153,7 +153,7 @@ def run_all_downloads(data_variable):
     download_data(*get_current_month_dates(), data_variable, "current_month")
     download_data(*get_all_previous_year_dates(), data_variable, "previous_year")
 
-    if analysis_date_not_in_january:
+    if analysis_date_not_in_january():
         download_data(*get_rest_of_current_year_dates(), data_variable, "current_year")
 
 
