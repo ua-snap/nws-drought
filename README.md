@@ -57,7 +57,7 @@ Unzip the `nws_data.zip` archive file somewhere and make note of this path. This
 
 ### Environment variables
 
-The follwing environment variables need to be set/modified prior to running any of the code herein, such as starting a Jupyter server or running any scripts:
+The following environment variables need to be set/modified prior to running any of the code herein, such as starting a Jupyter server or running any scripts:
 
 Add the project directory to the `PYTHONPATH`, i.e. `export PYTHONPATH=$PYTHONPATH:$(pwd)`
 
