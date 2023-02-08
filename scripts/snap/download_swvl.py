@@ -1,4 +1,4 @@
-"""This is the script that was used to download the hourly ERA5 soil moisture data for computing a climatology. A combined version of the downloaded data will be provided alongside the other climatoglogies. This is provided here for reference and should not be needed by NWS/NOAA.
+"""This is the script that was used to download the hourly ERA5 soil moisture data for computing a climatology. A combined version of the downloaded data will be provided alongside the other climatologies. This is provided here for reference and should not be needed by NWS/NOAA.
 
 Usage: 
     python download_swvl.py
