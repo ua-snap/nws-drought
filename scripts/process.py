@@ -40,15 +40,12 @@ def assemble_hourly_dataset(input_dir, varname):
         data_to_merge = [prior_year, current_year_fix, current_month]
     except:
         # The minority of analysis date cases (in january)
-        if varname in ["sd", "swvl1", "swvl2"]:
-            prior_year_fix = xr.merge([
-            prior_year[varname].sel(expver=1).drop("expver"),
-            prior_year[varname].sel(expver=5).drop("expver")
-            ])
-            assert ~np.any(np.isnan(prior_year_fix[varname]).values)
-            data_to_merge = [prior_year_fix, current_month]
-        else:
-            data_to_merge = [prior_year, current_month]
+        prior_year_fix = xr.merge([
+        prior_year[varname].sel(expver=1).drop("expver"),
+        prior_year[varname].sel(expver=5).drop("expver")
+        ])
+        assert ~np.any(np.isnan(prior_year_fix[varname]).values)
+        data_to_merge = [prior_year_fix, current_month]
     
     # merge datasets since they all share the same coordinate variables now
     hourly_ds = xr.merge(data_to_merge)
