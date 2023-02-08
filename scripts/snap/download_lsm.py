@@ -15,8 +15,8 @@ from config import (
 api_credentials_check()
 
 
-def download_swvl_data():
-    """Download volumetric soil water layers 1 and 2 in yearly files for the climatology period of 1981-2020"""
+def download_land_sea_mask():
+    """Download the ERA5 land-sea mask file."""
 
     lsm_fp = "land_sea_mask.nc"
     logging.info(f"Downloading land sea mask to {lsm_fp}")
@@ -41,4 +41,4 @@ def download_swvl_data():
     
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    download_swvl_data()
+   download_land_sea_mask()
