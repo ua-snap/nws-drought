@@ -21,7 +21,7 @@ def assemble_hourly_dataset(input_dir, varname):
     current_month = xr.open_dataset(input_dir.joinpath(f"{varname_prefix}_current_month.nc"))
 
     try:
-        # The majority of analysis date cases (not january)
+        # The majority of analysis date cases (not falling in january)
         current_year = xr.open_dataset(input_dir.joinpath(f"{varname_prefix}_current_year.nc"))
 
         # Validate assumption that data with expver values of 1 or 5 are mutually exclusive and exhaustive
@@ -40,8 +40,15 @@ def assemble_hourly_dataset(input_dir, varname):
         data_to_merge = [prior_year, current_year_fix, current_month]
     except:
         # The minority of analysis date cases (in january)
-        data_to_merge = [prior_year, current_month]
-        # current_month data should all have the same expver
+        if varname in ["sd", "swvl1", "swvl2"]:
+            prior_year_fix = xr.merge([
+            prior_year[varname].sel(expver=1).drop("expver"),
+            prior_year[varname].sel(expver=5).drop("expver")
+            ])
+            assert ~np.any(np.isnan(prior_year_fix[varname]).values)
+            data_to_merge = [prior_year_fix, current_month]
+        else:
+            data_to_merge = [prior_year, current_month]
     
     # merge datasets since they all share the same coordinate variables now
     hourly_ds = xr.merge(data_to_merge)
@@ -115,9 +122,9 @@ def process_total_precip_pon():
 def process_swe():
     index = "swe"
     indices[index] = {}
-    # special case for SWE - 1 day
-    # copy dataarray structure for spot to put data that will result from smoothing
-    temp_da = ds["sd"].copy(deep=True) 
+    # special case for SWE: 1 day
+    # copy DataArray structure for spot to put data that will result from smoothing
+    temp_da = ds["sd"].copy(deep=True)
     # smooth with gaussian, returns same array shape but smooths
     #  0 axis only (because sigma set to 0 for other two dimensions)
     temp_da.data = gaussian_filter(temp_da, sigma=(2, 0, 0))
