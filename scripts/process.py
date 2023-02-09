@@ -96,6 +96,7 @@ def process_total_precip():
         # convert from m to cm to match climatology
         ).sum(dim="time") * 100
         indices[index][i] = np.round(indices[index][i], 1)
+        indices[index][i].attrs["units"] = "cm"
     
     return
 
@@ -112,6 +113,7 @@ def process_total_precip_pon():
             clim_tp = subset_clim_interval(tp_clim_ds, start_doy, end_doy).sum(dim="time")
             indices[index][i] = np.round((indices["tp"][i] / clim_tp["tp"]) * 100, 1)
             indices[index][i].name = index
+            indices[index][i].attrs["units"] = "percent"
     
     return
 
@@ -130,12 +132,14 @@ def process_swe():
         time=ds.time.values[-1]
     ).drop_vars("time") * 100
     indices[index][1].name = index
+    indices[index][1].attrs["units"] = "cm"
     
     for i in intervals:
         indices[index][i] = ds["sd"].sel(
             time=slice(times[-(i)], times[-1])
         ).mean(dim="time") * 100 # converts from m to cm
         indices[index][i].name = index
+        indices[index][i].attrs["units"] = "cm"
     # round
     for i in intervals + [1]:
         indices[index][i] = np.round(indices[index][i], 1)
@@ -165,6 +169,7 @@ def process_swe_pon():
             #  For now just treat this area as 100% of normal.
             indices[index][i].values[np.isnan(indices[index][i])] = 100
             indices[index][i].name = index
+            indices[index][i].attrs["units"] = "percent"
             
     return
             
@@ -177,6 +182,7 @@ def process_spi():
             indices[index][i] = ic.spi(ds["tp"], spi_ds["params"], i)
             indices[index][i].name = index
             indices[index][i] = np.round(indices[index][i], 1)
+            indices[index][i].attrs["units"] = ""
             
     return
 
@@ -191,6 +197,7 @@ def process_spei():
             indices[index][i] = ic.spi(wb, spei_ds["params"], i)
             indices[index][i].name = index
             indices[index][i] = np.round(indices[index][i], 1)
+            indices[index][i].attrs["units"] = ""
         
     return
 
@@ -213,6 +220,7 @@ def process_smd():
         ).drop_vars("time")
         indices[index][1] = np.round(((clim_swvl - swvl_1d) / clim_swvl) * 100, 1)
         indices[index][1].name = index
+        indices[index][1].attrs["units"] = "percent"
         
         for i in intervals:
             swvl = ds["swvl"].sel(
@@ -225,6 +233,7 @@ def process_smd():
             
             indices[index][i] = np.round(((clim_swvl["swvl"] - swvl) / clim_swvl["swvl"]) * 100, 1)
             indices[index][i].name = index
+            indices[index][i].attrs["units"] = "percent"
         
     return
 
