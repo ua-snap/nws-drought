@@ -13,42 +13,59 @@ import luts
 import indices as ic
 
 
+def drop_expver(ds):
+    """In the case that there is an expvar variable, we want to flatten it along that dimension, because we don't care if it's from ERA5 or ERA5T
+    
+    Args:
+        ds (xarray.Dataset): Dataset *with* expver dimension
+        
+    Returns:
+        fix_ds (xarray.Dataset): Dataset without expver dimension
+    """
+    if "expver" in ds.dims:
+        # Validate assumption that data with expver values of 1 or 5 are mutually exclusive and exhaustive
+        assert np.all(
+            np.isnan(ds.sel(expver=5)) == ~np.isnan(ds.sel(expver=1))
+        )
+        assert np.all(
+            ~np.isnan(ds.sel(expver=5)) == np.isnan(ds.sel(expver=1))
+        )
+
+        fix_ds = xr.merge([
+            ds.sel(expver=1).drop("expver"),
+            ds.sel(expver=5).drop("expver")
+        ])
+        # should be no NaNs
+        varname = list(ds.data_vars)[0]
+        assert ~np.any(np.isnan(fix_ds[varname]).values)
+    else:
+        # i.e., do nothing to the dataset
+        fix_ds = ds
+    
+    return fix_ds
+
+
 def assemble_hourly_dataset(input_dir, varname):
     """Assemble the three components of a yearly dataset into one"""
     logging.info(f"Assembling hourly dataset of {varname} data")
     varname_prefix = luts.varname_prefix_lu[varname]
     prior_year = xr.open_dataset(input_dir.joinpath(f"{varname_prefix}_previous_year.nc"))
+    # prior year dataset could have expver to drop
+    prior_year_fix = drop_expver(prior_year)
     current_month = xr.open_dataset(input_dir.joinpath(f"{varname_prefix}_current_month.nc"))
-
+    
     try:
         # The majority of analysis date cases (not falling in january)
         current_year = xr.open_dataset(input_dir.joinpath(f"{varname_prefix}_current_year.nc"))
-
-        # Validate assumption that data with expver values of 1 or 5 are mutually exclusive and exhaustive
-        assert np.all(
-            np.isnan(current_year[varname].sel(expver=5)) == ~np.isnan(current_year[varname].sel(expver=1))
-        )
-        assert np.all(
-            ~np.isnan(current_year[varname].sel(expver=5)) == np.isnan(current_year[varname].sel(expver=1))
-        )
-        # Select the data for each expver value and combine to get a complete continuous set of data:
-        current_year_fix = xr.merge([
-            current_year[varname].sel(expver=1).drop("expver"),
-            current_year[varname].sel(expver=5).drop("expver")
-        ])
-        assert ~np.any(np.isnan(current_year_fix[varname]).values)
-        data_to_merge = [prior_year, current_year_fix, current_month]
-    except:
-        # The minority of analysis date cases (in january)
-        prior_year_fix = xr.merge([
-        prior_year[varname].sel(expver=1).drop("expver"),
-        prior_year[varname].sel(expver=5).drop("expver")
-        ])
-        assert ~np.any(np.isnan(prior_year_fix[varname]).values)
+        current_year_fix = drop_expver(current_year)
+        data_to_merge = [prior_year_fix, current_year_fix, current_month]
+    except FileNotFoundError:
+        # should only happen if current month is Jan
         data_to_merge = [prior_year_fix, current_month]
-    
+
     # merge datasets since they all share the same coordinate variables now
     hourly_ds = xr.merge(data_to_merge)
+    
     return hourly_ds
 
 
@@ -331,6 +348,8 @@ if __name__ == "__main__":
             out_ds = out_ds.reindex(latitude=list(reversed(out_ds.latitude)))
         
         out_ds.attrs["reference_date"] = ref_date.strftime("%Y-%m-%d")
+        # remove units attr brought from.. first of merged dataArrays?
+        del out_ds.attrs["units"]
         out_ds.to_netcdf(INDICES_DIR.joinpath(f"nws_drought_indices_{i}day.nc"))
         
     logging.info(f"Pipeline completed in {round((time.perf_counter() - tic) / 60)}m")
