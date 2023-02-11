@@ -20,7 +20,7 @@ INDICES_DIR.mkdir(exist_ok=True)
 
 # control lag between current date and first date of ERA5 data fetched by the CDS API
 # daily updates are available within ~5 days of real time, so 5 is likely the minimum and 8 is a conservative choice
-DATA_LAG_TIME_DAYS = 8
+DATA_LAG_TIME_DAYS = int(os.getenv("DATA_LAG_TIME_DAYS") or 8)
 DL_BBOX = [
     76,
     -180,
