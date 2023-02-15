@@ -138,6 +138,7 @@ def process_total_precip_pon():
 def process_swe():
     index = "swe"
     indices[index] = {}
+    
     # special case for SWE: 1 day
     # copy DataArray structure for spot to put data that will result from smoothing
     temp_da = ds["sd"].copy(deep=True)
@@ -174,6 +175,14 @@ def process_swe_pon():
             # just convert time dim to DOY days for consistency with tp
             time=np.arange(swe_clim_ds.time.shape[0]) + 1
         )
+        
+        # special case for SWE % of normal: 1 day
+        end_doy = pd.Timestamp(times[-1]).dayofyear
+        clim_swe = swe_clim_ds["swe"].sel(time=end_doy)
+        indices[index][1] = np.round(indices["swe"][1] / clim_swe, 1)
+        indices[index][1].name = index
+        indices[index][1].attrs["units"] = "cm"
+        
         for i in intervals:
             start_doy = pd.Timestamp(times[-i]).dayofyear
             end_doy = pd.Timestamp(times[-1]).dayofyear
@@ -258,7 +267,7 @@ def process_smd():
 def fill_1day_nan():
     """This function simply creates dataarrays of NaNs for all indices for which we are not interested in 1day values. This helps with usability / intercompatability of resulting netCDF files
     """
-    for index in ["tp", "pntp", "pnswe", "spi", "spei"]:
+    for index in ["tp", "pntp", "spi", "spei"]:
         # copy a dataarray structure
         indices[index][1] = indices["swe"][1].copy(deep=True)
         # fill it with NaNs
