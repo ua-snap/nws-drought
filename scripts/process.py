@@ -50,18 +50,20 @@ def assemble_hourly_dataset(input_dir, varname):
     logging.info(f"Assembling hourly dataset of {varname} data")
     varname_prefix = luts.varname_prefix_lu[varname]
     prior_year = xr.open_dataset(input_dir.joinpath(f"{varname_prefix}_previous_year.nc"))
-    # prior year dataset could have expver to drop
-    prior_year_fix = drop_expver(prior_year)
     current_month = xr.open_dataset(input_dir.joinpath(f"{varname_prefix}_current_month.nc"))
+    # prior year could have expver to drop if ref date is in Jan or Feb of current year
+    prior_year_fix = drop_expver(prior_year)
+    # current month could have expver if lag time in days is larger
+    current_month_fix = drop_expver(current_month)
     
     try:
         # The majority of analysis date cases (not falling in january)
         current_year = xr.open_dataset(input_dir.joinpath(f"{varname_prefix}_current_year.nc"))
         current_year_fix = drop_expver(current_year)
-        data_to_merge = [prior_year_fix, current_year_fix, current_month]
+        data_to_merge = [prior_year_fix, current_year_fix, current_month_fix]
     except FileNotFoundError:
         # should only happen if current month is Jan
-        data_to_merge = [prior_year_fix, current_month]
+        data_to_merge = [prior_year_fix, current_month_fix]
 
     # merge datasets since they all share the same coordinate variables now
     hourly_ds = xr.merge(data_to_merge)
