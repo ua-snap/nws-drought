@@ -88,6 +88,8 @@ cd scripts
 python download.py
 ```
 
+This will download as much as approximately 5 GB (depending on the time of year), and will likely only be as fast as approximately 30 minutes with a fast connection, given SNAP experience observing the speed at which the CDS API can query and prepare the download. 
+
 Downloads will be placed in `NWS_DROUGHT_DATA_DIR/inputs`.
 
 A debug mode can be used for the download script by assigning any value to the `NWS_DROUGHT_DEBUG` variable, e.g. `export NWS_DROUGHT_DEBUG=yes`.
