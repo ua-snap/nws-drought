@@ -90,6 +90,8 @@ python download.py
 
 Downloads will be placed in `NWS_DROUGHT_DATA_DIR/inputs`.
 
+A debug mode can be used for the download script by assigning any value to the `NWS_DROUGHT_DEBUG` variable, e.g. `export NWS_DROUGHT_DEBUG=yes`.
+
 ### Run the processing script
 
 Now simply run the processing script to generate the indices dataset:

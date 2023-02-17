@@ -284,7 +284,11 @@ if __name__ == "__main__":
     # start timer
     tic = time.perf_counter()
     # Log to STDOUT (+ STDERR)
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)-8s %(message)s",
+        level=logging.INFO,
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
     logging.info("Processing drought indices")
     
     logging.info("Assembling daily ERA5 datasets from downloaded hourly data")

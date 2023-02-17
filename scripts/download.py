@@ -161,7 +161,9 @@ if __name__ == "__main__":
 
     # Log to STDOUT (+ STDERR)
     logging.basicConfig(
+        format="%(asctime)s %(levelname)-8s %(message)s",
         level=logging.DEBUG if DEBUG_MODE else logging.INFO,
+        datefmt="%Y-%m-%d %H:%M:%S"
     )
     logging.info("Running in %s mode", "DEBUG" if DEBUG_MODE else "production")
 
