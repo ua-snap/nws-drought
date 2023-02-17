@@ -266,19 +266,6 @@ def process_smd():
     return
 
 
-def fill_1day_nan():
-    """This function simply creates dataarrays of NaNs for all indices for which we are not interested in 1day values. This helps with usability / intercompatability of resulting netCDF files
-    """
-    for index in ["tp", "pntp", "spi", "spei"]:
-        # copy a dataarray structure
-        indices[index][1] = indices["swe"][1].copy(deep=True)
-        # fill it with NaNs
-        indices[index][1].data[:] = np.nan
-        indices[index][1].name = index
-        
-    return
-
-
 def mask_land_vars():
     """For some variables, there should not be any for pixels over the ocean. This is evidenced by unresonably large or small values. Use the provided ERA5 land sea mask to apply NaN to ocean pixels of swe, pnswe, and smd."""
     lsm_fp = CLIM_DIR.joinpath("land_sea_mask.nc")
@@ -341,9 +328,7 @@ if __name__ == "__main__":
     # SMD
     logging.info("Processing SMD")
     process_smd()
-    
-    # add 1day NaN arrays, not ideal but simple
-    fill_1day_nan()
+
     # mask ocean for land vars
     mask_land_vars()
     
@@ -351,7 +336,11 @@ if __name__ == "__main__":
     logging.info("Combining and saving as whole dataset")
     # write a single file for each interval
     for i in [1] + intervals:
-        out_ds = xr.merge([indices[varname][i] for varname in indices])
+        if i == 1:
+            out_ds = xr.merge([indices[varname][i] for varname in ["swe", "pnswe", "smd"]])
+            out_ds = out_ds.drop("time")
+        else:
+            out_ds = xr.merge([indices[varname][i] for varname in indices])
 
         # merging the datasets is causing inversion along latitude dim for some reason!
         #  Flip it if it's upside down (increasing lat)
