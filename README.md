@@ -88,7 +88,11 @@ cd scripts
 python download.py
 ```
 
+This will download as much as approximately 5 GB (depending on the time of year), and will likely only be as fast as approximately 30 minutes with a fast connection, given SNAP experience observing the speed at which the CDS API can query and prepare the download. 
+
 Downloads will be placed in `NWS_DROUGHT_DATA_DIR/inputs`.
+
+A debug mode can be used for the download script by assigning any value to the `NWS_DROUGHT_DEBUG` variable, e.g. `export NWS_DROUGHT_DEBUG=yes`.
 
 ### Run the processing script
 
@@ -97,6 +101,10 @@ Now simply run the processing script to generate the indices dataset:
 `python process.py`
 
 The new datasets - one for each interval, containing results across the grid for all indices - will be written to the `$NWS_DROUGHT_DATA_DIR/outputs` directory, with files named as such: `nws_drought_indices_<interval>day.nc`
+
+### Visualization
+
+We have provided a minimal notebook, `notebooks/explore_indices.ipynb` for visualizing the output indices dataset using an interactive plotting library called [`hvplot`](https://hvplot.holoviz.org/). Functionality is not gauranteed, and certain elements (i.e. explanatory text, color scales, etc.) are likely not as useful as they could be, but we decided to leave this as a framework than can be built on by NWS or future collaborators.
 
 ## Data sources
 
