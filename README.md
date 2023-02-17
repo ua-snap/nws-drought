@@ -102,6 +102,10 @@ Now simply run the processing script to generate the indices dataset:
 
 The new datasets - one for each interval, containing results across the grid for all indices - will be written to the `$NWS_DROUGHT_DATA_DIR/outputs` directory, with files named as such: `nws_drought_indices_<interval>day.nc`
 
+### Visualization
+
+We have provided a minimal notebook, `notebooks/explore_indices.ipynb` for visualizing the output indices dataset using an interactive plotting library called [`hvplot`](https://hvplot.holoviz.org/). Functionality is not gauranteed, and certain elements (i.e. explanatory text, color scales, etc.) are likely not as useful as they could be, but we decided to leave this as a framework than can be built on by NWS or future collaborators.
+
 ## Data sources
 
 Data is sourced from the Climate Data Store.
