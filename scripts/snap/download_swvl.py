@@ -1,6 +1,6 @@
-"""This is the script that was used to download the hourly ERA5 soil moisture data for computing a climatology. A combined version of the downloaded data will be provided alongside the other climatologies. This is provided here for reference and should not be needed by NWS/NOAA.
+"""Download the hourly ERA5-Land soil moisture data for computing a climatology.
 
-Usage: 
+Usage:
     python download_swvl.py
 """
 
@@ -16,31 +16,105 @@ api_credentials_check()
 
 
 def download_swvl_data(download_dir):
-    """Download volumetric soil water layers 1 and 2 in yearly files for the climatology period of 1981-2020"""
+    """Download ERA5-Land volumetric soil water layers 1 and 2 for the climatology period of 1981-2020"""
+    client = cdsapi.Client()
     for year in range(1981, 2021):
-        logging.info(f"Downloading hourly ERA5 swvl data for {year} to {download_dir}")
-        c = cdsapi.Client()
-        c.retrieve(
-            "reanalysis-era5-single-levels",
-            {
-                "product_type": "reanalysis",
-                "format": "netcdf",
-                "variable": ["volumetric_soil_water_layer_1", "volumetric_soil_water_layer_2"],
-                "year": str(year),
-                "month": [str(month).zfill(2) for month in range(1, 13)],
-                "day": [str(day).zfill(2) for day in range(1, 32)],
-                "time": [
-                    "0" + str(x) + ":00" if x <= 9 else str(x) + ":00"
-                    for x in range(0, 24)
-                ],
-                "area": DL_BBOX,
-            },
-            download_dir.joinpath(f"volumetric_soil_water_hourly_{year}.nc"),
-        )
-    
+        logging.info(f"Downloading ERA5-Land swvl data for {year} to {download_dir}")
+
+        request = {
+            "variable": "volumetric_soil_water_layer_1",
+            "year": str(year),
+            "month": [str(month).zfill(2) for month in range(1, 13)],
+            "day": [str(day).zfill(2) for day in range(1, 32)],
+            "time": [
+                "00:00",
+                "01:00",
+                "02:00",
+                "03:00",
+                "04:00",
+                "05:00",
+                "06:00",
+                "07:00",
+                "08:00",
+                "09:00",
+                "10:00",
+                "11:00",
+                "12:00",
+                "13:00",
+                "14:00",
+                "15:00",
+                "16:00",
+                "17:00",
+                "18:00",
+                "19:00",
+                "20:00",
+                "21:00",
+                "22:00",
+                "23:00",
+            ],
+            "data_format": "grib",
+            "download_format": "unarchived",
+            "area": DL_BBOX,
+        }
+        dst = download_dir.joinpath(f"volumetric_soil_water_hourly_{year}.grib")
+        client.retrieve("reanalysis-era5-land", request, target=dst)
     return
 
-    
+
+# def download_swvl_data(download_dir):
+#     """Download ERA5-Land volumetric soil water layers 1 and 2 for the climatology period of 1981-2020"""
+#     client = cdsapi.Client()
+#     for year in range(1981, 1982):  # 2021):
+#         for month in [str(month).zfill(2) for month in range(1, 13)]:
+#             logging.info(
+#                 f"Downloading ERA5-Land swvl data for {year} to {download_dir}"
+#             )
+
+#             request = {
+#                 "variable": [
+#                     "volumetric_soil_water_layer_1",
+#                     "volumetric_soil_water_layer_2",
+#                 ],
+#                 "year": str(year),
+#                 "month": month,
+#                 "day": [str(day).zfill(2) for day in range(1, 32)],
+#                 "time": [
+#                     "00:00",
+#                     "01:00",
+#                     "02:00",
+#                     "03:00",
+#                     "04:00",
+#                     "05:00",
+#                     "06:00",
+#                     "07:00",
+#                     "08:00",
+#                     "09:00",
+#                     "10:00",
+#                     "11:00",
+#                     "12:00",
+#                     "13:00",
+#                     "14:00",
+#                     "15:00",
+#                     "16:00",
+#                     "17:00",
+#                     "18:00",
+#                     "19:00",
+#                     "20:00",
+#                     "21:00",
+#                     "22:00",
+#                     "23:00",
+#                 ],
+#                 "data_format": "grib",
+#                 "download_format": "unarchived",
+#                 "area": DL_BBOX,
+#             }
+#             dst = download_dir.joinpath(
+#                 f"volumetric_soil_water_hourly_{year}_{month}.grib"
+#             )
+#             client.retrieve("reanalysis-era5-land", request, target=dst)
+#     return
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     download_dir = Path(f"era5_hourly_swvl_1981_2020")
