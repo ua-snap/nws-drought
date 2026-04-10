@@ -266,20 +266,6 @@ def process_smd():
     return
 
 
-def mask_land_vars():
-    """For some variables, there should not be any for pixels over the ocean. This is evidenced by unresonably large or small values. Use the provided ERA5 land sea mask to apply NaN to ocean pixels of swe, pnswe, and smd."""
-    lsm_fp = CLIM_DIR.joinpath("land_sea_mask.nc")
-    with xr.open_dataset(lsm_fp) as lsm_ds:
-        # using 50% or more land to identify land pixel
-        seamask = (lsm_ds["lsm"] > 0.5).isel(time=0).drop("time")
-    # seamask is masking off nonland (i.e. False over seas
-    for index in ["swe", "pnswe", "smd"]:
-        for interval in indices[index].keys():
-            indices[index][interval] = indices[index][interval].where(seamask)
-
-    return
-
-
 if __name__ == "__main__":
     # start timer
     tic = time.perf_counter()
@@ -333,9 +319,7 @@ if __name__ == "__main__":
     logging.info("Processing SMD")
     process_smd()
 
-    # mask ocean for land vars
-    mask_land_vars()
-    
+   
     # combine and save
     logging.info("Combining and saving as whole dataset")
     # write a single file for each interval
