@@ -1,8 +1,10 @@
 # ignore source files in ./input
 inputs/
+downloaded_data/
 
 # log files
 *.log 
+logs/
 
 # netcdf data
 *.netcdf
