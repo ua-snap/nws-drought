@@ -14,7 +14,7 @@ It generates a dataset of seven indicators computed over retrospective intervals
   $$spi_{ij} = F_{norm}^{-1}(F_{X_{ij}}(p_{ij0}))$$
   * Where $F_{norm}^{-1}$ is the probability point function (a.k.a. quantile function) for the standard normal distribution and $p_{ij0}$ is the total precipitation for the summary interval of interest.
 
-* `spei`: Standarized precipitation evapotranspiration index. Same as `spi`, but using water budget instead of total precipitation, which is computed as total precipitation minus total evapotranspiration (Note, in ERA5, this variable is just called potential evaporation).
+* `spei`: Standarized precipitation evapotranspiration index. Same as `spi`, but using water budget instead of total precipitation, which is computed as total precipitation minus total evapotranspiration (Note, in ERA5-Land, this variable is just called potential evaporation).
 * `smd`: Soil moisture deficit. $\frac{\frac{1}{n}\sum swvlclim_j - \frac{1}{n}\sum swvl_j}{\frac{1}{n}\sum swvlclim_j} * 100$ for all days-of-year $j$ in the summary interval, where $swvl$ is the volumetric soil water content for the reference year, and $swvlclim$ is the climatological mean. Note, $swvl$ and $swvlclim$ are computed as a weighted average of the top two soil layers based on depth, so $swvl = (swvl_1 * 0.25) + (swvl_2 * 0.75)$.
 
 
@@ -22,17 +22,17 @@ It generates a dataset of seven indicators computed over retrospective intervals
 
 ### Python Environment
 
-We'll use `conda` as the umbrella environment for Python. To create the Python environment for the first time, run the following command after cloning this repository:
+We'll use `micromamba` as the umbrella environment for Python. To create the Python environment for the first time, run the following command after cloning this repository:
 
-```
+```sh
 cd /path/to/this/repository
-conda env create -f environment.yml
-conda activate drought-indicators
+micromamba env create -f environment.yml
+micromamba activate drought-indicators
 ```
 
 ### Climate Data Store (CDS) API Credentials
 
-Complete the following items to set up permissions for downloading ERA5 data.
+Complete the following items to set up permissions for downloading ERA5-Land data.
 
  - Register for the [Climate Data Store API](https://cds.climate.copernicus.eu/api-how-to).
  - Copy your credentials from the black box in the link above to a file called `.cdsapirc` in your `$HOME` directory.
@@ -54,34 +54,10 @@ Unzip the `drought_clim_data.zip` archive file somewhere and make note of this p
 
 The following environment variables need to be set/modified prior to running any of the code herein, such as starting a Jupyter server or running any scripts:
 
-Add the project directory (i.e., the path to this repository) to the `PYTHONPATH`. So, run `export PYTHONPATH=$PYTHONPATH:$(pwd)`, and ensure you are in the correct directory by checking that the `tree` command gives output like this:
-
-```
-$ tree -L 1
-.
-├── config.py
-├── environment.yml
-├── indices.py
-├── LICENSE.md
-├── luts.py
-├── notebooks
-├── README.md
-└── scripts
-```
-
-Setup the directory for data work (downloads, outputs, etc.) by setting a path variable:
-
-`export NWS_DROUGHT_DATA_DIR=/path/to/writable/location`
-
-This path must be writable by the user executing the script.  If no path is specified, the tool defaults to `/tmp/nws_drought/`.  Downloads are removed before each run.
-
-Store the directory created from extracting the `drought_clim_data.zip` file above in `NWS_DROUGHT_CLIM_DIR`:
-
-`export NWS_DROUGHT_CLIM_DIR=/path/to/drought_clim_data`
 
 ### Download Data
 
-You may now start downloading the hourly ERA5 data that will be used for computing the indices over the recent intervals of time. Simply run the download script:
+You may now start downloading the hourly ERA5-Land data that will be used for computing the indices over the recent intervals of time. Simply run the download script:
 
 ```
 cd scripts
@@ -101,14 +77,3 @@ Now simply run the processing script to generate the indices dataset:
 `python process.py`
 
 The new datasets - one for each interval, containing results across the grid for all indices - will be written to the `$NWS_DROUGHT_DATA_DIR/outputs` directory, with files named as such: `nws_drought_indices_<interval>day.nc`
-
-### Visualization
-
-We have provided a minimal notebook, `notebooks/explore_indices.ipynb` for visualizing the output indices dataset using an interactive plotting library called [`hvplot`](https://hvplot.holoviz.org/). Functionality is not gauranteed, and certain elements (i.e. explanatory text, color scales, etc.) are likely not as useful as they could be, but we decided to leave this as a framework than can be built on by NWS or future collaborators.
-
-## Data sources
-
-Data is sourced from the Climate Data Store.
-
-The ERA5 hourly and monthly data are delayed by three months, so the [ERA5T near-real-time preliminary dataset](https://confluence.ecmwf.int/display/CUSF/ERA5+CDS+requests+which+return+a+mixture+of+ERA5+and+ERA5T+data) is used to fill in data up until five days from the current date.
-
