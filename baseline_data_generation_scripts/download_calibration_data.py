@@ -23,7 +23,7 @@ def download_calibration_data(long_name, download_dir):
     """Download ERA5-Land for the climatology period of 1981-2020"""
     client = cdsapi.Client()
     for year in range(1981, 2021):
-        logging.info(f"Downloading ERA5-Land {long_name_lu[long_name]} data for {year} to {download_dir}")
+        logging.info(f"Downloading ERA5-Land data for {year} to {download_dir}")
 
         request = {
             "variable": long_name,

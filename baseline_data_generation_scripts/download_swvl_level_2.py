@@ -1,4 +1,4 @@
-"""Download hourly ERA5-Land soil moisture data for computing a climatology.
+"""Download hourly ERA5-Land soil moisture layer 2 data for computing a climatology.
 
 Usage:
     python download_swvl_level_2.py
@@ -19,7 +19,9 @@ def download_swvl_data(download_dir):
     """Download ERA5-Land volumetric soil water layer 2 for the climatology period of 1981-2020"""
     client = cdsapi.Client()
     for year in range(1981, 2021):
-        logging.info(f"Downloading ERA5-Land swvl level 2 data for {year} to {download_dir}")
+        logging.info(
+            f"Downloading ERA5-Land swvl level 2 data for {year} to {download_dir}"
+        )
 
         request = {
             "variable": "volumetric_soil_water_layer_2",
