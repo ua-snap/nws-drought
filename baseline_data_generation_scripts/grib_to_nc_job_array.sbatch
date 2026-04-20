@@ -5,7 +5,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
-#SBATCH --time=00:00:10
+#SBATCH --time=00:10:00
 #SBATCH --output=logs/grib2nc_%A_%a.out
 #SBATCH --error=logs/grib2nc_%A_%a.err
 
