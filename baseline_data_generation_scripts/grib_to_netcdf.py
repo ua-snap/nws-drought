@@ -4,10 +4,10 @@
 Examples
 --------
 Serial conversion of a whole directory:
-    python grib_dir_to_netcdf.py --input-dir /path/to/pr
+    python grib_to_netcdf.py --input-dir /path/to/pr
 
 Process only one indexed file (useful for SLURM array jobs):
-    python grib_dir_to_netcdf.py --input-dir /path/to/pr --index 7
+    python grib_to_netcdf.py --input-dir /path/to/pr --index 7
 """
 
 import argparse
@@ -75,9 +75,7 @@ def discover_grib_files(input_dir: Path) -> list[Path]:
         raise NotADirectoryError(f"Input path is not a directory: {input_dir}")
 
     files = sorted(
-        p
-        for p in input_dir.iterdir()
-        if p.is_file() and p.suffix.lower() == ".grib"
+        p for p in input_dir.iterdir() if p.is_file() and p.suffix.lower() == ".grib"
     )
 
     if not files:
