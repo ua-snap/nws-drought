@@ -12,22 +12,20 @@
 
 set -euo pipefail
 
+REPO_DIR="/beegfs/CMIP6/cparr4/repos/nws-drought"
+cd "${REPO_DIR}"
+
 mkdir -p logs
 
-MAMBA_EXE="/import/home/cparr4/bin/micromamba"
-
-export PYTHONPATH=/beegfs/CMIP6/cparr4/repos/nws-drought
 export NWS_DROUGHT_DATA_DIR=/beegfs/CMIP6/cparr4/repos/drought_data
 export NWS_DROUGHT_CLIM_DIR=/beegfs/CMIP6/cparr4/repos/nws-drought/input_climos/drought_clim_data
 
 echo "Host: $(hostname)"
 echo "Start: $(date)"
-
-echo "PYTHONPATH=$PYTHONPATH"
 echo "NWS_DROUGHT_DATA_DIR=$NWS_DROUGHT_DATA_DIR"
 echo "NWS_DROUGHT_CLIM_DIR=$NWS_DROUGHT_CLIM_DIR"
 
-"$MAMBA_EXE" run -n drought-indicators python --version
-"$MAMBA_EXE" run -n drought-indicators python /beegfs/CMIP6/cparr4/repos/nws-drought/scripts/snap/download_calibration_data.py -v pev
+uv run --frozen python -m baseline_data_generation_scripts.download_calibration_data -v pev
+
 
 echo "End: $(date)"
