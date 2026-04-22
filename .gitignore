@@ -9,6 +9,7 @@ logs/
 # netcdf data
 *.netcdf
 *.nc
+*.grib
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
