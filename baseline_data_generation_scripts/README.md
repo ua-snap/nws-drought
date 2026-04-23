@@ -44,7 +44,7 @@ sbatch --dependency=afterok:${ARRAY_JOB_ID} \
   baseline_data_generation_scripts/daily_swvl1_by_year_1981_2020 drought_climatology_baselines/swvl1_daily_utc_minus9_combined.nc swvl1
 ```
 
-## Volumetric Soil Water, Layer 1
+## Volumetric Soil Water, Layer 2
 ```sh
 ARRAY_JOB_ID=$(sbatch --parsable --array=0-39 \
   baseline_data_generation_scripts/hour_2_daily.sbatch \
@@ -53,4 +53,18 @@ ARRAY_JOB_ID=$(sbatch --parsable --array=0-39 \
 sbatch --dependency=afterok:${ARRAY_JOB_ID} \
   baseline_data_generation_scripts/hour_2_daily_combine.sbatch \
   baseline_data_generation_scripts/daily_swvl2_by_year_1981_2020 drought_climatology_baselines/swvl2_daily_utc_minus9_combined.nc swvl2
+```
+
+## Weighted soil moisture climatology (swvl)
+After both combined layer files exist, build the day-of-year climatology used by the SMD index (``era5_daily_swvl_1981_2020.nc``):
+
+```sh
+uv run --frozen python baseline_data_generation_scripts/combine_soil_moisture_layers.py \
+  --swvl1-file drought_climatology_baselines/swvl1_daily_utc_minus9_combined.nc \
+  --swvl2-file drought_climatology_baselines/swvl2_daily_utc_minus9_combined.nc \
+  --output-file drought_climatology_baselines/era5_daily_swvl_1981_2020.nc
+```
+the above incantation is pre-baked into this SLURM submission script:
+```sh
+sbatch baseline_data_generation_scripts/combine_soil_moisture_layers.sbatch
 ```
