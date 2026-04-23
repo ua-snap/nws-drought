@@ -18,18 +18,6 @@ It generates a dataset of seven indicators computed over retrospective intervals
 * `smd`: Soil moisture deficit. $\frac{\frac{1}{n}\sum swvlclim_j - \frac{1}{n}\sum swvl_j}{\frac{1}{n}\sum swvlclim_j} * 100$ for all days-of-year $j$ in the summary interval, where $swvl$ is the volumetric soil water content for the reference year, and $swvlclim$ is the climatological mean. Note, $swvl$ and $swvlclim$ are computed as a weighted average of the top two soil layers based on depth, so $swvl = (swvl_1 * 0.25) + (swvl_2 * 0.75)$.
 
 
-## Set Up
-
-### Python Environment
-
-We'll use `micromamba` as the umbrella environment for Python. To create the Python environment for the first time, run the following command after cloning this repository:
-
-```sh
-cd /path/to/this/repository
-micromamba env create -f environment.yml
-micromamba activate drought-indicators
-```
-
 ### Climate Data Store (CDS) API Credentials
 
 Complete the following items to set up permissions for downloading ERA5-Land data.
@@ -54,21 +42,6 @@ Unzip the `drought_clim_data.zip` archive file somewhere and make note of this p
 
 The following environment variables need to be set/modified prior to running any of the code herein, such as starting a Jupyter server or running any scripts:
 
-
-### Download Data
-
-You may now start downloading the hourly ERA5-Land data that will be used for computing the indices over the recent intervals of time. Simply run the download script:
-
-```
-cd scripts
-python download.py
-```
-
-This will download as much as approximately 5 GB (depending on the time of year), and will likely only be as fast as approximately 30 minutes with a fast connection, given SNAP experience observing the speed at which the CDS API can query and prepare the download. 
-
-Downloads will be placed in `NWS_DROUGHT_DATA_DIR/inputs`.
-
-A debug mode can be used for the download script by assigning any value to the `NWS_DROUGHT_DEBUG` variable, e.g. `export NWS_DROUGHT_DEBUG=yes`.
 
 ### Run the processing script
 

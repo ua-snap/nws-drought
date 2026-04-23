@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=pev_era5_land_climo_download
+#SBATCH --job-name=era5_land_climo_dl
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --partition=t2small
@@ -9,8 +9,17 @@
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 #SBATCH --signal=B:TERM@300
+#
+# Submit with a variable key, for example:
+#   VARIABLE=tp sbatch baseline_data_generation_scripts/download_scripts/download_era5_land_climo.sbatch
+# Optional distinct job names in the queue:
+#   VARIABLE=pev sbatch --job-name=pev_era5_climo baseline_data_generation_scripts/download_scripts/download_era5_land_climo.sbatch
+#
+# Allowed VARIABLE values: tp, pev, swe, swvl1, swvl2
 
 set -euo pipefail
+
+: "${VARIABLE:?Set VARIABLE to one of: tp, pev, swe, swvl1, swvl2}"
 
 REPO_DIR="/beegfs/CMIP6/cparr4/repos/nws-drought"
 cd "${REPO_DIR}"
@@ -22,10 +31,10 @@ export NWS_DROUGHT_CLIM_DIR=/beegfs/CMIP6/cparr4/repos/nws-drought/input_climos/
 
 echo "Host: $(hostname)"
 echo "Start: $(date)"
+echo "VARIABLE=${VARIABLE}"
 echo "NWS_DROUGHT_DATA_DIR=$NWS_DROUGHT_DATA_DIR"
 echo "NWS_DROUGHT_CLIM_DIR=$NWS_DROUGHT_CLIM_DIR"
 
-uv run --frozen python -m baseline_data_generation_scripts.download_calibration_data -v pev
-
+uv run --frozen python -m baseline_data_generation_scripts.download_scripts.download_era5_land_climo -v "${VARIABLE}"
 
 echo "End: $(date)"

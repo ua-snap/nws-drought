@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Build UTC-9 daily annual NetCDF files from yearly ERA5-Land GRIB.
+"""Build UTC-9 daily annual NetCDF files from hourly ERA5-Land GRIB.
 
 This script expects a flat directory of yearly GRIB files, one per year.
 
-Supported variables and daily reductions:
+Variables and daily reductions:
 - tp     : daily total (sum, forecast accumulated)
 - pev    : daily total (sum, forecast accumulated)
 - swe    : daily mean
@@ -18,8 +18,6 @@ Input filenames are variable-specific:
     swvl1  -> volumetric_soil_water_level_1_hourly_YYYY.grib
     swvl2  -> volumetric_soil_water_level_2_hourly_YYYY.grib
 
-for example ``total_precipitation_hourly_1993.grib``.
-
 It computes daily values for the UTC-9 local-day window:
     [09:00 UTC on day D, 09:00 UTC on day D+1)
 
@@ -29,6 +27,17 @@ so a local day labeled 1982-01-01 becomes:
 
 Notes
 -----
+This script has two different daily-construction paths:
+
+1. Forecast accumulated variables (`tp`, `pev`)
+   ERA5-Land stores these as cumulative totals since 00 UTC, so daily sums for
+   a non-UTC timezone must be reconstructed from specific forecast hours.
+
+2. Instantaneous/state variables (`swe`, `swvl1`, `swvl2`)
+   These are valid-at-time hourly values, so daily means are computed by
+   assigning each hourly timestamp to its UTC-9 local day and averaging over
+   complete 24-hour windows.
+
 For forecast-style accumulated variables (tp, pev):
     local_total(D) = utc_day_total(D) - cum_00_to_09(D) + cum_00_to_09(D+1)
 
@@ -64,9 +73,27 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-WINDOW_START_UTC_HOUR = 9  # UTC-9 local midnight expressed in UTC
+# We want daily windows in UTC-9 local time.
+# Local midnight in UTC-9 occurs at 09:00 UTC, so each local day is represented
+# by the half-open UTC interval [09:00 UTC on day D, 09:00 UTC on day D+1).
+WINDOW_START_UTC_HOUR = 9
+# GRIB year used only to pad the trailing UTC-9 local day of the prior year (e.g.
+# 2020-12-31 needs 2021-01-01 00/09 UTC). No annual NetCDF is written for this year.
+BOUNDARY_PADDING_YEAR = 2021
 NETCDF_ENGINE = "h5netcdf"
 _INPUT_NAME_SUFFIX = ".grib"
+# Central variable registry:
+# - input_prefix: filename prefix used to discover yearly GRIB files
+# - source_var: shortName exposed by cfgrib inside the GRIB file
+# - daily_op: how the daily statistic should be constructed
+#   * "sum"  -> ERA5-Land forecast accumulations (tp, pev)
+#   * "mean" -> ERA5-Land instantaneous/state variables (swe, swvl1, swvl2)
+# - long_name: output metadata for the daily NetCDF
+#
+# This split matters because ERA5-Land stores accumulated variables very
+# differently from state variables:
+# - accumulations are forecast-style cumulative totals since 00 UTC
+# - state variables are instantaneous values valid at each hour
 VAR_CONFIG = {
     "tp": {
         "input_prefix": "total_precipitation_hourly_",
@@ -152,12 +179,13 @@ def setup_logging() -> None:
 
 def _year_from_input_filename(name: str, *, prefix: str) -> int:
     """Parse calendar year from ``<prefix>YYYY.grib``."""
+    # CP note: finding that defensive coding is useful when submitting via SLURM
     if not (name.startswith(prefix) and name.endswith(_INPUT_NAME_SUFFIX)):
         raise ValueError(f"Expected filename like {prefix}1993.grib, got {name!r}")
-    y = name[len(prefix) : -len(_INPUT_NAME_SUFFIX)]
-    if len(y) != 4 or not y.isdecimal():
+    year = name[len(prefix) : -len(_INPUT_NAME_SUFFIX)]
+    if len(year) != 4 or not year.isdecimal():
         raise ValueError(f"Expected filename like {prefix}1993.grib, got {name!r}")
-    return int(y)
+    return int(year)
 
 
 def discover_year_files(input_dir: Path, *, varname: str) -> dict[int, Path]:
@@ -188,14 +216,22 @@ def discover_year_files(input_dir: Path, *, varname: str) -> dict[int, Path]:
 
 
 def open_hourly_dataset(path: Path, *, varname: str) -> xr.Dataset:
-    """Open one ERA5-Land GRIB file with a 1D valid_time axis."""
+    """Open one ERA5-Land GRIB file with a 1D valid_time axis.
+
+    Args:
+        path: Path to the GRIB file.
+        varname: The variable name to open.
+
+    Returns:
+        A xr.Dataset with the variable name as the data variable.
+    """
     ds = xr.open_dataset(
         path,
         engine="cfgrib",
         backend_kwargs={
             "time_dims": ["valid_time"],
             "coords_as_attributes": ["surface", "number"],
-            "indexpath": "",
+            "indexpath": "",  # grib will make some auxiliary files that we don't need
         },
     )
 
@@ -208,6 +244,9 @@ def open_hourly_dataset(path: Path, *, varname: str) -> xr.Dataset:
             f"found {list(ds.data_vars)}"
         )
 
+    # cfgrib exposes ERA5-Land variables using GRIB shortNames (for example, SWE
+    # is "sd" in the file, not "swe"). Rename here so the rest of the pipeline
+    # can use the swe variable name consistently.
     out = ds[[source_var]].rename({source_var: varname}).sortby("valid_time")
 
     # Remove attrs that are noisy or backend-specific.
@@ -217,7 +256,16 @@ def open_hourly_dataset(path: Path, *, varname: str) -> xr.Dataset:
 
 
 def subset_hour(ds: xr.Dataset, hour: int) -> xr.Dataset:
-    """Subset a valid_time-indexed dataset to a specific UTC hour."""
+    """Subset a valid_time-indexed dataset to a specific UTC hour.
+
+    For ERA5-Land accumulated forecast variables we only need two validity times:
+    - 00 UTC: contains the full accumulation from the previous UTC day
+    - local midnight expressed in UTC (09 UTC for UTC-9): used to split that
+      UTC-day accumulation into the requested local-day window
+
+    That is why the accumulation workflow samples only 00 UTC and 09 UTC rather
+    than summing all 24 hourly forecast records.
+    """
     return ds.where(ds.valid_time.dt.hour == hour, drop=True)
 
 
@@ -229,6 +277,11 @@ def relabel_to_local_date(ds: xr.Dataset, day_offset: int) -> xr.Dataset:
     For valid_time = 1982-01-02 00:00 and day_offset = -1,
     local_date becomes 1982-01-01.
     """
+    # We relabel by "local_date" rather than keeping the original valid_time
+    # because the arithmetic is easier to reason about in local-day space. For
+    # example, the accumulation valid at 1982-01-02 00 UTC belongs to the UTC
+    # day 1982-01-01, which in turn contributes to the local day labeled
+    # 1982-01-01.
     local_dates = ds.valid_time.values.astype("datetime64[D]") + np.timedelta64(
         day_offset, "D"
     )
@@ -238,7 +291,15 @@ def relabel_to_local_date(ds: xr.Dataset, day_offset: int) -> xr.Dataset:
 
 
 def first_hour_record(ds: xr.Dataset, hour: int) -> xr.Dataset:
-    """Return the first available record for a given UTC hour."""
+    """Return the first available record for a given UTC hour.
+
+    Args:
+        ds: The xr.Dataset to subset.
+        hour: The UTC hour to subset.
+
+    Returns:
+        A xr.Dataset with the first available record for the given UTC hour.
+    """
     hour_ds = subset_hour(ds, hour)
     if hour_ds.sizes.get("valid_time", 0) == 0:
         raise ValueError(f"No valid_time values found for UTC hour {hour}")
@@ -246,7 +307,14 @@ def first_hour_record(ds: xr.Dataset, hour: int) -> xr.Dataset:
 
 
 def intersect_dates(*arrays: np.ndarray) -> np.ndarray:
-    """Return the sorted intersection of multiple datetime64[D] arrays."""
+    """Return the sorted intersection of multiple datetime64[D] arrays.
+
+    Args:
+        *arrays: The datetime64[D] arrays to intersect.
+
+    Returns:
+        A numpy array of the sorted intersection of the input arrays.
+    """
     if not arrays:
         raise ValueError("At least one date array is required.")
     common = arrays[0]
@@ -256,7 +324,14 @@ def intersect_dates(*arrays: np.ndarray) -> np.ndarray:
 
 
 def _target_dates_for_year(year: int) -> np.ndarray:
-    """Return contiguous calendar dates for a target year."""
+    """Return contiguous calendar dates for a target year.
+
+    Args:
+        year: The year to return the contiguous calendar dates for.
+
+    Returns:
+        A numpy array of the contiguous calendar dates for the target year.
+    """
     return np.arange(
         np.datetime64(f"{year}-01-01"),
         np.datetime64(f"{year + 1}-01-01"),
@@ -271,6 +346,10 @@ def _finalize_daily_dataset(
     common_dates: np.ndarray,
 ) -> xr.Dataset:
     """Attach standardized coordinates and metadata for daily outputs."""
+    # We keep output timestamps in UTC, but we label each record by the UTC
+    # start of the local-day window. For UTC-9, the local day "1982-01-01"
+    # starts at 1982-01-01 09:00 UTC, so that becomes the output time
+    # coordinate.
     utc_start_times = common_dates + np.timedelta64(WINDOW_START_UTC_HOUR, "h")
     daily = daily.assign_coords(time=("local_date", utc_start_times))
     daily = daily.swap_dims({"local_date": "time"}).sortby("time")
@@ -310,14 +389,44 @@ def compute_one_year_sum(
         logging.info("Opening current year: %s", current_path.name)
         current_ds = open_hourly_dataset(current_path, varname=varname)
 
+        # ERA5-Land accumulated variables are not stored as "one independent
+        # value per hour". Instead, each forecast hour contains the running
+        # total since 00 UTC.
+        #
+        # Here, D means the local calendar day we want to compute. For example,
+        # if we are building the UTC-9 local day labeled 1982-01-01, then
+        # D = 1982-01-01.
+        #
+        # For that local day, we need three pieces:
+        # - D+1 00 UTC: the full accumulation over UTC day D
+        # - D 09 UTC: the running total from D 00 UTC to D 09 UTC
+        # - D+1 09 UTC: the running total from D+1 00 UTC to D+1 09 UTC
+        #
+        # We start with the full UTC-day total for D, remove the early hours
+        # before local midnight on D, then add the early hours after local
+        # midnight on D+1. This is why we sample only 00 UTC and 09 UTC rather
+        # than summing all 24 hourly forecast records.
         current_00 = subset_hour(current_ds, 0)
         current_09 = subset_hour(current_ds, WINDOW_START_UTC_HOUR)
 
+        # After relabeling:
+        # - utc_day_total(local_date=D)   = accumulation over UTC day D
+        # - cum_00_to_09(local_date=D)    = accumulation from D 00 UTC to D 09 UTC
+        # - next_00_to_09(local_date=D)   = accumulation from D+1 00 UTC to
+        #                                   D+1 09 UTC
+        #
+        # Then local_day_total(D) = utc_day_total(D) - cum_00_to_09(D)
+        #                         + next_00_to_09(D)
         utc_day_total = relabel_to_local_date(current_00, day_offset=-1)
         cum_00_to_09 = relabel_to_local_date(current_09, day_offset=0)
         next_00_to_09 = relabel_to_local_date(current_09, day_offset=-1)
 
         if next_path is not None:
+            # The final local day of a year extends into the next calendar year
+            # because the UTC-9 day ends at 09:00 UTC on January 1 of the
+            # following year. We therefore need the first 00 UTC and 09 UTC
+            # records from year+1 to finish the trailing edge of the last local
+            # day.
             logging.info("Opening next year for boundary padding: %s", next_path.name)
             next_ds = open_hourly_dataset(next_path, varname=varname)
 
@@ -333,6 +442,9 @@ def compute_one_year_sum(
             next_00_to_09 = xr.concat([next_00_to_09, next_09_first], dim="local_date")
 
         target_dates = _target_dates_for_year(year)
+        # Only keep dates for which all required pieces exist. This prevents us
+        # from constructing a local-day accumulation from incomplete boundary
+        # information.
         common_dates = intersect_dates(
             target_dates,
             utc_day_total.local_date.values,
@@ -352,6 +464,14 @@ def compute_one_year_sum(
                 missing_days,
             )
 
+        # This is the key ERA5-Land non-UTC accumulation formula:
+        #   local_total(D) = utc_day_total(D) - cum_00_to_09(D) + next_00_to_09(D)
+        #
+        # Intuition:
+        # - start with the full UTC day D total
+        # - remove the part before local midnight (00->09 UTC on D)
+        # - add the part after 24:00 local time that lives in the next UTC day
+        #   (00->09 UTC on D+1)
         daily = (
             utc_day_total.sel(local_date=common_dates)
             - cum_00_to_09.sel(local_date=common_dates)
@@ -375,17 +495,28 @@ def compute_one_year_mean(
     current_path: Path,
     next_path: Path | None,
 ) -> xr.Dataset:
-    """Compute one year of UTC-9 daily means for hourly state variables."""
+    """Compute one year of UTC-9 daily means for hourly state variables.
+
+    Only complete 24-hour UTC-9 local days are retained.
+    """
     current_ds: xr.Dataset | None = None
     next_ds: xr.Dataset | None = None
     merged: xr.Dataset | None = None
 
     try:
         logging.info("Opening current year: %s", current_path.name)
+        # State variables are instantaneous values, not forecast accumulations.
+        # For these variables the correct daily statistic is a mean of the
+        # hourly values falling inside the UTC-9 local-day window
+        # [09:00 UTC, 09:00 UTC next day). Unlike tp/pev, no
+        # cumulative-forecast arithmetic is needed.
         current_ds = open_hourly_dataset(current_path, varname=varname)
         merged = current_ds
 
         if next_path is not None:
+            # We append only the early hours of the next year so the final local
+            # day of the current year can include its full trailing edge through
+            # 09:00 UTC on Jan 1 of the next year.
             logging.info("Opening next year for boundary padding: %s", next_path.name)
             next_ds = open_hourly_dataset(next_path, varname=varname)
             next_cutoff = np.datetime64(f"{year + 1}-01-01T09:00:00")
@@ -395,6 +526,14 @@ def compute_one_year_mean(
                     "valid_time"
                 )
 
+        # Convert each UTC validity time into the local day it belongs to by
+        # shifting the clock back by the UTC offset of local midnight. For UTC-9:
+        # - 1982-01-01 09 UTC -> local_date 1982-01-01
+        # - 1982-01-02 08 UTC -> local_date 1982-01-01
+        # - 1982-01-02 09 UTC -> local_date 1982-01-02
+        #
+        # This is the instantaneous/state-variable analogue of ECMWF's
+        # "time_shift" daily statistics logic.
         shifted_dates = (
             merged.valid_time.values - np.timedelta64(WINDOW_START_UTC_HOUR, "h")
         ).astype("datetime64[D]")
@@ -402,6 +541,26 @@ def compute_one_year_mean(
 
         target_dates = _target_dates_for_year(year)
         merged = merged.where(merged.local_date.isin(target_dates), drop=True)
+        # ECMWF's daily-statistics workflow removes partial periods. We do the
+        # same here: only retain local days with all 24 hourly values, so a
+        # daily mean is never computed from an incomplete sample.
+        counts = merged[varname].groupby("local_date").count(dim="valid_time")
+        # Counts are per (local_date, ...) and include latitude/longitude for
+        # gridded fields. xarray counts non-NaN values; all-NaN cells (e.g. ocean
+        # on SWE) have count 0 and must not veto the day. Partial days (1–23) do.
+        per_cell_complete = (counts == 24) | (counts == 0)
+        spatial_dims = tuple(d for d in counts.dims if d != "local_date")
+        if spatial_dims:
+            day_complete = per_cell_complete.all(dim=spatial_dims)
+        else:
+            day_complete = per_cell_complete
+        complete_dates = day_complete.where(
+            day_complete, drop=True
+        ).local_date.values.astype("datetime64[D]")
+        merged = merged.where(merged.local_date.isin(complete_dates), drop=True)
+        # Once each hourly value has been assigned to its local day, the daily
+        # mean is just the arithmetic mean over the 24 hourly samples in that
+        # UTC-9 day window.
         daily = merged.groupby("local_date").mean(dim="valid_time")
         common_dates = daily.local_date.values.astype("datetime64[D]")
 
@@ -413,7 +572,8 @@ def compute_one_year_mean(
             missing_days = expected_days - common_dates.size
             logging.warning(
                 "Year %s is missing %d day(s). This usually means the next year's "
-                "file is not available for trailing-edge padding.",
+                "file is not available for trailing-edge padding or one or more "
+                "hourly timesteps are missing.",
                 year,
                 missing_days,
             )
@@ -498,6 +658,12 @@ def main() -> int:
     )
 
     if args.year is not None:
+        if args.year == BOUNDARY_PADDING_YEAR:
+            raise ValueError(
+                f"Year {BOUNDARY_PADDING_YEAR} is only used as boundary padding for "
+                f"{BOUNDARY_PADDING_YEAR - 1}; no annual NetCDF is produced. "
+                f"Use --year {BOUNDARY_PADDING_YEAR - 1} or omit --year."
+            )
         if args.year not in year_to_path:
             raise ValueError(
                 f"Requested --year {args.year} but no matching input file was found."
@@ -505,8 +671,11 @@ def main() -> int:
         years_to_process = [args.year]
         logging.info("Processing single requested year: %s", args.year)
     else:
-        years_to_process = discovered_years
-        logging.info("Processing all discovered years.")
+        years_to_process = [y for y in discovered_years if y != BOUNDARY_PADDING_YEAR]
+        logging.info(
+            "Processing all discovered years (excluding boundary-only %s).",
+            BOUNDARY_PADDING_YEAR,
+        )
 
     for year in years_to_process:
         current_path = year_to_path[year]

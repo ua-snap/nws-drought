@@ -73,7 +73,9 @@ for path in input_dir.glob(f"{prefix}*.grib"):
     if m:
         years.append(int(m.group(1)))
 for year in sorted(set(years)):
-    print(year)
+    # 2021 GRIB exists only to pad the last UTC-9 day of 2020; do not run annual build.
+    if year != 2021:
+        print(year)
 PY
 )
 

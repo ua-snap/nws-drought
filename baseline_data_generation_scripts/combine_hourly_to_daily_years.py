@@ -34,6 +34,8 @@ import xarray as xr
 
 NETCDF_ENGINE = "h5netcdf"
 SUPPORTED_VARS = {"tp", "pev", "swe", "swvl1", "swvl2"}
+# Annual file for this year must not appear in the long combined series (boundary-only GRIB year).
+_EXCLUDE_FROM_COMBINE_YEARS = {2021}
 
 
 def parse_args() -> argparse.Namespace:
@@ -114,6 +116,13 @@ def discover_annual_files(annual_dir: Path, *, varname: str) -> dict[int, Path]:
                 f"Multiple annual files mapped to {year}: "
                 f"{year_to_path[year].name}, {path.name}"
             )
+        if year in _EXCLUDE_FROM_COMBINE_YEARS:
+            logging.info(
+                "Skipping boundary-only year %s (not part of combined series): %s",
+                year,
+                path.name,
+            )
+            continue
         year_to_path[year] = path
 
     if not year_to_path:
