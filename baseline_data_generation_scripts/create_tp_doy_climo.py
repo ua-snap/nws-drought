@@ -4,9 +4,9 @@
 import argparse
 import logging
 import sys
-from pathlib import Path
 
 import xarray as xr
+from config import baseline_climo_file, daily_combined_file_for_var
 
 NETCDF_ENGINE = "h5netcdf"
 
@@ -19,18 +19,6 @@ def parse_args() -> argparse.Namespace:
             "a day-of-year climatology (dimension time = DOY 1-366)"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    parser.add_argument(
-        "--tp-file",
-        type=Path,
-        required=True,
-        help="Combined daily NetCDF for Total Precipitation (variable name tp).",
-    )
-    parser.add_argument(
-        "--output-file",
-        type=Path,
-        required=True,
-        help="Output NetCDF path (e.g. era5_tp_climo_1981-2020.nc).",
     )
     return parser.parse_args()
 
@@ -66,7 +54,10 @@ def main() -> int:
     args = parse_args()
     setup_logging()
 
-    out_path = args.output_file
+    tp_file = daily_combined_file_for_var("tp")
+    out_path = baseline_climo_file("tp")
+    logging.info("Resolved tp input file: %s", tp_file)
+    logging.info("Resolved output file: %s", out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     if out_path.exists():
@@ -75,15 +66,13 @@ def main() -> int:
 
     ds: xr.Dataset | None = None
     try:
-        if not args.tp_file.is_file():
-            raise FileNotFoundError(
-                f"Total Precipitation file not found: {args.tp_file}"
-            )
+        if not tp_file.is_file():
+            raise FileNotFoundError(f"Total Precipitation file not found: {tp_file}")
 
-        ds = xr.open_dataset(args.tp_file, engine=NETCDF_ENGINE)
+        ds = xr.open_dataset(tp_file, engine=NETCDF_ENGINE)
         if "tp" not in ds.data_vars:
             raise ValueError(
-                f"Expected data variable 'tp' in {args.tp_file}, "
+                f"Expected data variable 'tp' in {tp_file}, "
                 f"found {list(ds.data_vars)}"
             )
 

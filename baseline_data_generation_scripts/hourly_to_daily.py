@@ -52,14 +52,10 @@ over available hourly values.
 Examples
 --------
 python hourly_to_daily.py \
-    --input-dir /path/to/grib_tp \
-    --output-dir /path/to/output \
     --var tp \
     --year 1982
 
 python hourly_to_daily.py \
-    --input-dir /path/to/grib_tp \
-    --output-dir /path/to/output \
     --var pev
 """
 
@@ -72,6 +68,7 @@ from pathlib import Path
 
 import numpy as np
 import xarray as xr
+from config import daily_year_dir_for_var, hourly_dir_for_var
 
 # We want daily windows in UTC-9 local time.
 # Local midnight in UTC-9 occurs at 09:00 UTC, so each local day is represented
@@ -132,18 +129,6 @@ SUPPORTED_VARS = set(VAR_CONFIG)
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--input-dir",
-        type=Path,
-        required=True,
-        help="Flat directory containing yearly GRIB files.",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        required=True,
-        help="Directory for annual NetCDF outputs.",
-    )
     parser.add_argument(
         "--var",
         type=str,
@@ -642,9 +627,13 @@ def main() -> int:
     args = parse_args()
     setup_logging()
 
-    args.output_dir.mkdir(parents=True, exist_ok=True)
+    input_dir = hourly_dir_for_var(args.var)
+    output_dir = daily_year_dir_for_var(args.var)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    logging.info("Resolved input directory: %s", input_dir)
+    logging.info("Resolved output directory: %s", output_dir)
 
-    year_to_path = discover_year_files(args.input_dir, varname=args.var)
+    year_to_path = discover_year_files(input_dir, varname=args.var)
     discovered_years = sorted(year_to_path)
 
     if not discovered_years:
@@ -688,7 +677,7 @@ def main() -> int:
             next_path=next_path,
         )
 
-        annual_path = args.output_dir / f"{args.var}_daily_utc_minus9_{year}.nc"
+        annual_path = output_dir / f"{args.var}_daily_utc_minus9_{year}.nc"
         write_annual_file(
             ds=ds_year,
             output_path=annual_path,

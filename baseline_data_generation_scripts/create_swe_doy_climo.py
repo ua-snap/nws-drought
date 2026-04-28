@@ -4,9 +4,9 @@
 import argparse
 import logging
 import sys
-from pathlib import Path
 
 import xarray as xr
+from config import baseline_climo_file, daily_combined_file_for_var
 
 NETCDF_ENGINE = "h5netcdf"
 
@@ -19,18 +19,6 @@ def parse_args() -> argparse.Namespace:
             "a day-of-year climatology (dimension time = DOY 1-366)"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    parser.add_argument(
-        "--swe-file",
-        type=Path,
-        required=True,
-        help="Combined daily NetCDF for SWE (variable name swe).",
-    )
-    parser.add_argument(
-        "--output-file",
-        type=Path,
-        required=True,
-        help="Output NetCDF path (e.g. era5_swe_climo_1981_2020.nc).",
     )
     return parser.parse_args()
 
@@ -66,7 +54,10 @@ def main() -> int:
     args = parse_args()
     setup_logging()
 
-    out_path = args.output_file
+    swe_file = daily_combined_file_for_var("swe")
+    out_path = baseline_climo_file("swe")
+    logging.info("Resolved swe input file: %s", swe_file)
+    logging.info("Resolved output file: %s", out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     if out_path.exists():
@@ -75,13 +66,13 @@ def main() -> int:
 
     ds: xr.Dataset | None = None
     try:
-        if not args.swe_file.is_file():
-            raise FileNotFoundError(f"SWE file not found: {args.swe_file}")
+        if not swe_file.is_file():
+            raise FileNotFoundError(f"SWE file not found: {swe_file}")
 
-        ds = xr.open_dataset(args.swe_file, engine=NETCDF_ENGINE)
+        ds = xr.open_dataset(swe_file, engine=NETCDF_ENGINE)
         if "swe" not in ds.data_vars:
             raise ValueError(
-                f"Expected data variable 'swe' in {args.swe_file}, "
+                f"Expected data variable 'swe' in {swe_file}, "
                 f"found {list(ds.data_vars)}"
             )
 

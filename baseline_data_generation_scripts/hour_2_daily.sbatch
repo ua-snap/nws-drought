@@ -11,14 +11,12 @@
 
 set -euo pipefail
 
-USAGE="Usage: sbatch --array=0-N hour_2_daily.sbatch /path/to/input_grib /path/to/output_dir <tp|pev|swe|swvl1|swvl2> [--overwrite]"
+USAGE="Usage: sbatch --array=0-N baseline_data_generation_scripts/hour_2_daily.sbatch <tp|pev|swe|swvl1|swvl2> [--overwrite]"
 
-INPUT_DIR="${1:-}"
-OUTPUT_DIR="${2:-}"
-VARNAME="${3:-}"
-OVERWRITE_FLAG="${4:-}"
+VARNAME="${1:-}"
+OVERWRITE_FLAG="${2:-}"
 
-if [[ -z "${INPUT_DIR}" || -z "${OUTPUT_DIR}" || -z "${VARNAME}" ]]; then
+if [[ -z "${VARNAME}" ]]; then
   echo "${USAGE}" >&2
   exit 2
 fi
@@ -29,15 +27,20 @@ if [[ "${VARNAME}" != "tp" && "${VARNAME}" != "pev" && "${VARNAME}" != "swe" && 
   exit 2
 fi
 
-REPO_DIR="/beegfs/CMIP6/cparr4/repos/nws-drought"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="${REPO_DIR}/logs"
 
-mkdir -p "${LOG_DIR}" "${OUTPUT_DIR}"
+mkdir -p "${LOG_DIR}"
+export HDF5_USE_FILE_LOCKING=FALSE
 cd "${REPO_DIR}"
 
-export NWS_DROUGHT_DATA_DIR=/beegfs/CMIP6/cparr4/repos/drought_data
-export NWS_DROUGHT_CLIM_DIR=/beegfs/CMIP6/cparr4/repos/nws-drought/input_climos/drought_clim_data
-export HDF5_USE_FILE_LOCKING=FALSE
+INPUT_DIR="$(
+  uv run --frozen python -c "from config import hourly_dir_for_var; print(hourly_dir_for_var('${VARNAME}'))"
+)"
+OUTPUT_DIR="$(
+  uv run --frozen python -c "from config import daily_year_dir_for_var; print(daily_year_dir_for_var('${VARNAME}'))"
+)"
+mkdir -p "${OUTPUT_DIR}"
 
 TASK_ID="${SLURM_ARRAY_TASK_ID:?SLURM_ARRAY_TASK_ID is required for array jobs}"
 case "${VARNAME}" in
@@ -100,8 +103,6 @@ echo "Output dir: ${OUTPUT_DIR}"
 
 CMD=(
   uv run --frozen python -m baseline_data_generation_scripts.hourly_to_daily
-  --input-dir "${INPUT_DIR}"
-  --output-dir "${OUTPUT_DIR}"
   --var "${VARNAME}"
   --year "${YEAR}"
 )

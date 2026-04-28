@@ -13,6 +13,11 @@ import time
 from pathlib import Path
 
 import xarray as xr
+from config import (
+    daily_combined_file_for_var,
+    gamma_output_file_for_index,
+    gamma_partial_dir_for_index,
+)
 from xclim.indices.stats import fit
 
 INTERVALS = [7, 30, 60, 90, 180, 365]
@@ -48,19 +53,17 @@ def estimate_params(da: xr.DataArray, window: int) -> xr.DataArray:
     return params
 
 
-def load_calibration_array(index: str, daily_dir: Path) -> xr.DataArray:
+def load_calibration_array(index: str) -> xr.DataArray:
     """Load daily calibration data for the requested drought index.
 
     Args:
         index: Drought index name, either "spi" or "spei".
-        daily_dir: Directory containing the daily input NetCDF files.
-
     Returns:
         Daily precip or shifted water-budget values for the calibration period.
     """
     logging.info("Reading in precip data")
     tic = time.perf_counter()
-    tp_cal_ds = xr.load_dataset(daily_dir / "tp_daily_utc_minus9_combined.nc")
+    tp_cal_ds = xr.load_dataset(daily_combined_file_for_var("tp"))
     logging.info(
         "done reading precip data, %.1fm",
         (time.perf_counter() - tic) / 60,
@@ -71,7 +74,7 @@ def load_calibration_array(index: str, daily_dir: Path) -> xr.DataArray:
 
     logging.info("Reading in PET data")
     tic = time.perf_counter()
-    pev_cal_ds = xr.load_dataset(daily_dir / "pev_daily_utc_minus9_combined.nc")
+    pev_cal_ds = xr.load_dataset(daily_combined_file_for_var("pev"))
     logging.info(
         "done reading PET data, %.1fm",
         (time.perf_counter() - tic) / 60,
@@ -92,7 +95,6 @@ def load_calibration_array(index: str, daily_dir: Path) -> xr.DataArray:
 
 def compute_interval(
     index: str,
-    daily_dir: Path,
     interval: int,
     output: Path,
 ) -> Path:
@@ -103,7 +105,7 @@ def compute_interval(
         )
 
     main_tic = time.perf_counter()
-    da = load_calibration_array(index, daily_dir)
+    da = load_calibration_array(index)
 
     logging.info("Estimating parameters for interval=%s", interval)
     tic = time.perf_counter()
@@ -178,25 +180,11 @@ def parse_args() -> argparse.Namespace:
         help="Index name.",
     )
     compute.add_argument(
-        "-d",
-        "--daily-dir",
-        type=Path,
-        required=True,
-        help="Directory containing daily calibration files.",
-    )
-    compute.add_argument(
         "--interval",
         type=int,
         choices=INTERVALS,
         required=True,
         help="Accumulation interval to process.",
-    )
-    compute.add_argument(
-        "-o",
-        "--output",
-        type=Path,
-        required=True,
-        help="Path for the interval NetCDF output file.",
     )
 
     merge = subparsers.add_parser("merge", help="Merge interval files")
@@ -207,20 +195,6 @@ def parse_args() -> argparse.Namespace:
         required=True,
         help="Index name.",
     )
-    merge.add_argument(
-        "--partial-dir",
-        type=Path,
-        required=True,
-        help="Directory containing interval NetCDF files.",
-    )
-    merge.add_argument(
-        "-o",
-        "--output",
-        type=Path,
-        required=True,
-        help="Path for the merged NetCDF output file.",
-    )
-
     return parser.parse_args()
 
 
@@ -230,9 +204,16 @@ def main() -> int:
     args = parse_args()
 
     if args.command == "compute":
-        compute_interval(args.index, args.daily_dir, args.interval, args.output)
+        partial_dir = gamma_partial_dir_for_index(args.index)
+        output = partial_path(partial_dir, args.index, args.interval)
+        logging.info("Resolved interval output path: %s", output)
+        compute_interval(args.index, args.interval, output)
     elif args.command == "merge":
-        merge_intervals(args.index, args.partial_dir, args.output)
+        partial_dir = gamma_partial_dir_for_index(args.index)
+        output = gamma_output_file_for_index(args.index)
+        logging.info("Resolved partial directory: %s", partial_dir)
+        logging.info("Resolved merged output path: %s", output)
+        merge_intervals(args.index, partial_dir, output)
     else:
         raise ValueError(f"Unsupported command: {args.command}")
 

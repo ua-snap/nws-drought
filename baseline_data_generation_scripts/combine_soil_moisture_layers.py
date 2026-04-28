@@ -4,9 +4,9 @@
 import argparse
 import logging
 import sys
-from pathlib import Path
 
 import xarray as xr
+from config import baseline_climo_file, daily_combined_file_for_var
 
 NETCDF_ENGINE = "h5netcdf"
 WEIGHT_LAYER1 = 0.25
@@ -25,32 +25,9 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Example:\n"
-            "  python combine_soil_moisture_layers.py \\\n"
-            "    --swvl1-file drought_climatology_baselines/"
-            "swvl1_daily_utc_minus9_combined.nc \\\n"
-            "    --swvl2-file drought_climatology_baselines/"
-            "swvl2_daily_utc_minus9_combined.nc \\\n"
-            "    --output-file drought_climatology_baselines/"
-            "era5_daily_swvl_1981_2020.nc"
+            "  python combine_soil_moisture_layers.py\n"
+            "  # Paths are resolved from config.py"
         ),
-    )
-    parser.add_argument(
-        "--swvl1-file",
-        type=Path,
-        required=True,
-        help="Combined daily NetCDF for swvl1 (variable name swvl1).",
-    )
-    parser.add_argument(
-        "--swvl2-file",
-        type=Path,
-        required=True,
-        help="Combined daily NetCDF for swvl2 (variable name swvl2).",
-    )
-    parser.add_argument(
-        "--output-file",
-        type=Path,
-        required=True,
-        help="Output NetCDF path (e.g. era5_daily_swvl_1981_2020.nc).",
     )
     return parser.parse_args()
 
@@ -90,7 +67,12 @@ def main() -> int:
     args = parse_args()
     setup_logging()
 
-    out_path = args.output_file
+    swvl1_file = daily_combined_file_for_var("swvl1")
+    swvl2_file = daily_combined_file_for_var("swvl2")
+    out_path = baseline_climo_file("swvl")
+    logging.info("Resolved swvl1 input file: %s", swvl1_file)
+    logging.info("Resolved swvl2 input file: %s", swvl2_file)
+    logging.info("Resolved output file: %s", out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     if out_path.exists():
@@ -100,21 +82,21 @@ def main() -> int:
     ds1: xr.Dataset | None = None
     ds2: xr.Dataset | None = None
     try:
-        if not args.swvl1_file.is_file():
-            raise FileNotFoundError(f"swvl1 file not found: {args.swvl1_file}")
-        if not args.swvl2_file.is_file():
-            raise FileNotFoundError(f"swvl2 file not found: {args.swvl2_file}")
+        if not swvl1_file.is_file():
+            raise FileNotFoundError(f"swvl1 file not found: {swvl1_file}")
+        if not swvl2_file.is_file():
+            raise FileNotFoundError(f"swvl2 file not found: {swvl2_file}")
 
-        ds1 = xr.open_dataset(args.swvl1_file, engine=NETCDF_ENGINE)
-        ds2 = xr.open_dataset(args.swvl2_file, engine=NETCDF_ENGINE)
+        ds1 = xr.open_dataset(swvl1_file, engine=NETCDF_ENGINE)
+        ds2 = xr.open_dataset(swvl2_file, engine=NETCDF_ENGINE)
         if "swvl1" not in ds1.data_vars:
             raise ValueError(
-                f"Expected data variable 'swvl1' in {args.swvl1_file}, "
+                f"Expected data variable 'swvl1' in {swvl1_file}, "
                 f"found {list(ds1.data_vars)}"
             )
         if "swvl2" not in ds2.data_vars:
             raise ValueError(
-                f"Expected data variable 'swvl2' in {args.swvl2_file}, "
+                f"Expected data variable 'swvl2' in {swvl2_file}, "
                 f"found {list(ds2.data_vars)}"
             )
 

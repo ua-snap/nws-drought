@@ -57,9 +57,7 @@ def main() -> None:
     choices = sorted(VARIABLE_REGISTRY.keys())
     parser = argparse.ArgumentParser(
         description=__doc__,
-        epilog=(
-            "Example: python -m download_scripts.download_era5_land_climo -v tp"
-        ),
+        epilog=("Example: python -m download_scripts.download_era5_land_climo -v tp"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(

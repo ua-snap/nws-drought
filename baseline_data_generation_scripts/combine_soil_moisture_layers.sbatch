@@ -28,32 +28,19 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-REPO_DIR="/beegfs/CMIP6/cparr4/repos/nws-drought"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="${REPO_DIR}/logs"
 
 mkdir -p "${LOG_DIR}"
 cd "${REPO_DIR}"
 
-export NWS_DROUGHT_DATA_DIR=/beegfs/CMIP6/cparr4/repos/drought_data
-export NWS_DROUGHT_CLIM_DIR=/beegfs/CMIP6/cparr4/repos/nws-drought/input_climos/drought_clim_data
 export HDF5_USE_FILE_LOCKING=FALSE
 
 echo "Host: $(hostname)"
 echo "Start: $(date)"
 
-SWVL1_FILE="drought_climatology_baselines/swvl1_daily_utc_minus9_combined.nc"
-SWVL2_FILE="drought_climatology_baselines/swvl2_daily_utc_minus9_combined.nc"
-OUTPUT_FILE="drought_climatology_baselines/era5_daily_swvl_1981_2020.nc"
-
-echo "swvl1: ${SWVL1_FILE}"
-echo "swvl2: ${SWVL2_FILE}"
-echo "output: ${OUTPUT_FILE}"
-
 CMD=(
-  uv run --frozen python baseline_data_generation_scripts/combine_soil_moisture_layers.py
-  --swvl1-file "${SWVL1_FILE}"
-  --swvl2-file "${SWVL2_FILE}"
-  --output-file "${OUTPUT_FILE}"
+  uv run --frozen python -m baseline_data_generation_scripts.combine_soil_moisture_layers
 )
 
 "${CMD[@]}"

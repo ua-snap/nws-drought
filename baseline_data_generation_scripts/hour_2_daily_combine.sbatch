@@ -11,16 +11,14 @@
 
 set -euo pipefail
 
-USAGE="Usage: sbatch hour_2_daily_combine.sbatch /path/to/annual_dir /path/to/output_file <tp|pev|swe|swvl1|swvl2> [--overwrite]"
+USAGE="Usage: sbatch baseline_data_generation_scripts/hour_2_daily_combine.sbatch <tp|pev|swe|swvl1|swvl2> [--overwrite]"
 
-ANNUAL_DIR="${1:-}"
-OUTPUT_FILE="${2:-}"
-VARNAME="${3:-}"
-if [[ -z "${ANNUAL_DIR}" || -z "${OUTPUT_FILE}" || -z "${VARNAME}" ]]; then
+VARNAME="${1:-}"
+if [[ -z "${VARNAME}" ]]; then
   echo "${USAGE}" >&2
   exit 2
 fi
-shift 3
+shift 1
 
 if [[ "${VARNAME}" != "tp" && "${VARNAME}" != "pev" && "${VARNAME}" != "swe" && "${VARNAME}" != "swvl1" && "${VARNAME}" != "swvl2" ]]; then
   echo "VARNAME must be one of: tp, pev, swe, swvl1, swvl2; got '${VARNAME}'." >&2
@@ -43,15 +41,20 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-REPO_DIR="/beegfs/CMIP6/cparr4/repos/nws-drought"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="${REPO_DIR}/logs"
 
 mkdir -p "${LOG_DIR}"
 cd "${REPO_DIR}"
 
-export NWS_DROUGHT_DATA_DIR=/beegfs/CMIP6/cparr4/repos/drought_data
-export NWS_DROUGHT_CLIM_DIR=/beegfs/CMIP6/cparr4/repos/nws-drought/input_climos/drought_clim_data
 export HDF5_USE_FILE_LOCKING=FALSE
+
+ANNUAL_DIR="$(
+  uv run --frozen python -c "from config import daily_year_dir_for_var; print(daily_year_dir_for_var('${VARNAME}'))"
+)"
+OUTPUT_FILE="$(
+  uv run --frozen python -c "from config import daily_combined_file_for_var; print(daily_combined_file_for_var('${VARNAME}'))"
+)"
 
 echo "Host: $(hostname)"
 echo "Start: $(date)"
@@ -61,8 +64,6 @@ echo "Variable: ${VARNAME}"
 
 CMD=(
   uv run --frozen python -m baseline_data_generation_scripts.combine_hourly_to_daily_years
-  --annual-dir "${ANNUAL_DIR}"
-  --output-file "${OUTPUT_FILE}"
   --var "${VARNAME}"
 )
 if [[ "${OVERWRITE}" == "true" ]]; then

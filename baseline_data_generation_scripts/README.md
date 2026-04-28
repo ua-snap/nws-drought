@@ -2,62 +2,62 @@
 
 The bulk of the data downloaded here are used to construct a set of "baseline reference" data: climatoglies and statistical distribution paramters against which current conditions may be compared to understand whether or not drought conditions may be present with respect to climate normals. Constructiing these climatologies / computing these paramters requires a few steps.
 
+### Directory Configuration (three roots only)
+
+These one-off scripts derive all input/output paths from `config.py` using three optional environment variables:
+
+- `NWS_DROUGHT_ERA5_HOURLY_DIR`: root for hourly ERA5-Land GRIB downloads.
+- `NWS_DROUGHT_ERA5_DAILY_DIR`: root for daily intermediate outputs (per-year daily files, combined daily files, and gamma interval partials).
+- `NWS_DROUGHT_BASELINE_REF_DIR`: root for final baseline reference artifacts only.
+
+When unset, defaults in `config.py` are used.
+
 ### Hourly to Daily Resample
-First, the hourly ERA5-Land data (GRIB format) must be converted to daily summaries (netCDF) format. To accomplish that, submit the following SLURM jobs that process each year's worth of data individually, and then merge the each year of daily data to construct a single netCDF that encapsulates the entire time series at a daily frequency:
+First, the hourly ERA5-Land data (GRIB format) must be converted to daily summaries (netCDF) format. Submit the following SLURM jobs that process each year's worth of data individually, then merge each year of daily data into one combined daily NetCDF.
 
 #### Total Precipitation
 ```sh
 ARRAY_JOB_ID=$(sbatch --parsable --array=0-39 \
-  baseline_data_generation_scripts/hour_2_daily.sbatch \
-  baseline_data_generation_scripts/era5_hourly_tp_1981_2020 baseline_data_generation_scripts/daily_tp_by_year_1981_2020 tp)
+  baseline_data_generation_scripts/hour_2_daily.sbatch tp)
 
 sbatch --dependency=afterok:${ARRAY_JOB_ID} \
-  baseline_data_generation_scripts/hour_2_daily_combine.sbatch \
-  baseline_data_generation_scripts/daily_tp_by_year_1981_2020 drought_climatology_baselines/tp_daily_utc_minus9_combined.nc tp
+  baseline_data_generation_scripts/hour_2_daily_combine.sbatch tp
 ```
 
 #### Total Potential Evaporation
 ```sh
 ARRAY_JOB_ID=$(sbatch --parsable --array=0-39 \
-  baseline_data_generation_scripts/hour_2_daily.sbatch \
-  baseline_data_generation_scripts/era5_hourly_pev_1981_2020 baseline_data_generation_scripts/daily_pev_by_year_1981_2020 pev)
+  baseline_data_generation_scripts/hour_2_daily.sbatch pev)
 
 sbatch --dependency=afterok:${ARRAY_JOB_ID} \
-  baseline_data_generation_scripts/hour_2_daily_combine.sbatch \
-  baseline_data_generation_scripts/daily_pev_by_year_1981_2020 drought_climatology_baselines/pev_daily_utc_minus9_combined.nc pev
+  baseline_data_generation_scripts/hour_2_daily_combine.sbatch pev
 ```
 
 #### Snow Water Equivalent
 ```sh
 ARRAY_JOB_ID=$(sbatch --parsable --array=0-39 \
-  baseline_data_generation_scripts/hour_2_daily.sbatch \
-  baseline_data_generation_scripts/era5_hourly_swe_1981_2020 baseline_data_generation_scripts/daily_swe_by_year_1981_2020 swe)
+  baseline_data_generation_scripts/hour_2_daily.sbatch swe)
 
 sbatch --dependency=afterok:${ARRAY_JOB_ID} \
-  baseline_data_generation_scripts/hour_2_daily_combine.sbatch \
-  baseline_data_generation_scripts/daily_swe_by_year_1981_2020 drought_climatology_baselines/swe_daily_utc_minus9_combined.nc swe
+  baseline_data_generation_scripts/hour_2_daily_combine.sbatch swe
 ```
 
 #### Volumetric Soil Water, Layer 1
 ```sh
 ARRAY_JOB_ID=$(sbatch --parsable --array=0-39 \
-  baseline_data_generation_scripts/hour_2_daily.sbatch \
-  baseline_data_generation_scripts/era5_hourly_swvl_level_1_1981_2020 baseline_data_generation_scripts/daily_swvl1_by_year_1981_2020 swvl1)
+  baseline_data_generation_scripts/hour_2_daily.sbatch swvl1)
 
 sbatch --dependency=afterok:${ARRAY_JOB_ID} \
-  baseline_data_generation_scripts/hour_2_daily_combine.sbatch \
-  baseline_data_generation_scripts/daily_swvl1_by_year_1981_2020 drought_climatology_baselines/swvl1_daily_utc_minus9_combined.nc swvl1
+  baseline_data_generation_scripts/hour_2_daily_combine.sbatch swvl1
 ```
 
 #### Volumetric Soil Water, Layer 2
 ```sh
 ARRAY_JOB_ID=$(sbatch --parsable --array=0-39 \
-  baseline_data_generation_scripts/hour_2_daily.sbatch \
-  baseline_data_generation_scripts/era5_hourly_swvl_level_2_1981_2020 baseline_data_generation_scripts/daily_swvl2_by_year_1981_2020 swvl2)
+  baseline_data_generation_scripts/hour_2_daily.sbatch swvl2)
 
 sbatch --dependency=afterok:${ARRAY_JOB_ID} \
-  baseline_data_generation_scripts/hour_2_daily_combine.sbatch \
-  baseline_data_generation_scripts/daily_swvl2_by_year_1981_2020 drought_climatology_baselines/swvl2_daily_utc_minus9_combined.nc swvl2
+  baseline_data_generation_scripts/hour_2_daily_combine.sbatch swvl2
 ```
 
 Launch these jobs from the root directory of the repo.
@@ -67,10 +67,7 @@ Launch these jobs from the root directory of the repo.
 The soil moisture layers are combined into a single representation of soil moisture that is eventually referenced by the soil moisture deficit (SMD) drought indicator.
 
 ```sh
-uv run --frozen python baseline_data_generation_scripts/combine_soil_moisture_layers.py \
-  --swvl1-file drought_climatology_baselines/swvl1_daily_utc_minus9_combined.nc \
-  --swvl2-file drought_climatology_baselines/swvl2_daily_utc_minus9_combined.nc \
-  --output-file drought_climatology_baselines/era5_daily_swvl_1981_2020.nc
+uv run --frozen python -m baseline_data_generation_scripts.combine_soil_moisture_layers
 ```
 the above incantation is pre-baked into this SLURM submission script:
 ```sh
@@ -83,11 +80,11 @@ These convert the daily time series of data into a DOY climatology.
 
 #### Precipitation
 ```sh
-sbatch baseline_data_generation_scripts/tp_climo.sbatch drought_climatology_baselines/
+sbatch baseline_data_generation_scripts/tp_climo.sbatch
 ```
 #### SWE
 ```sh
-sbatch baseline_data_generation_scripts/swe_climo.sbatch drought_climatology_baselines/
+sbatch baseline_data_generation_scripts/swe_climo.sbatch
 ```
 
 ### Determine Distribution Parameters
@@ -96,16 +93,16 @@ SPEI and SPI require computing reference distribution parameters. For each of th
 
 #### SPI
 ```sh
-ARRAY_JOB_ID=$(sbatch --parsable --array=0-5 baseline_data_generation_scripts/process_calibration_params.sbatch compute spi drought_climatology_baselines)
+ARRAY_JOB_ID=$(sbatch --parsable --array=0-5 baseline_data_generation_scripts/process_calibration_params.sbatch compute spi)
 
-sbatch --dependency=afterok:${ARRAY_JOB_ID} baseline_data_generation_scripts/process_calibration_params.sbatch merge spi drought_climatology_baselines
+sbatch --dependency=afterok:${ARRAY_JOB_ID} baseline_data_generation_scripts/process_calibration_params.sbatch merge spi
 ```
 
 #### SPEI
 ```sh
-ARRAY_JOB_ID=$(sbatch --parsable --array=0-5 baseline_data_generation_scripts/process_calibration_params.sbatch compute spei drought_climatology_baselines)
+ARRAY_JOB_ID=$(sbatch --parsable --array=0-5 baseline_data_generation_scripts/process_calibration_params.sbatch compute spei)
 
-sbatch --dependency=afterok:${ARRAY_JOB_ID} baseline_data_generation_scripts/process_calibration_params.sbatch merge spei drought_climatology_baselines
+sbatch --dependency=afterok:${ARRAY_JOB_ID} baseline_data_generation_scripts/process_calibration_params.sbatch merge spei
 ```
 
 ### Ultimate File Listing for Baseline Reference Data

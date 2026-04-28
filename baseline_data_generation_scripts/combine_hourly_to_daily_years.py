@@ -7,18 +7,12 @@ Expected annual filenames:
 Examples
 --------
 python combine_hourly_to_daily_years.py \
-    --annual-dir /path/to/annual_nc \
-    --output-file /path/to/out/tp_daily_utc_minus9_combined.nc \
     --var tp
 
 python combine_hourly_to_daily_years.py \
-    --annual-dir /path/to/annual_nc \
-    --output-file /path/to/out/pev_daily_utc_minus9_combined.nc \
     --var pev
 
 python combine_hourly_to_daily_years.py \
-    --annual-dir /path/to/annual_nc \
-    --output-file /path/to/out/swvl1_daily_utc_minus9_combined.nc \
     --var swvl1
 """
 
@@ -31,6 +25,7 @@ import sys
 from pathlib import Path
 
 import xarray as xr
+from config import daily_combined_file_for_var, daily_year_dir_for_var
 
 NETCDF_ENGINE = "h5netcdf"
 SUPPORTED_VARS = {"tp", "pev", "swe", "swvl1", "swvl2"}
@@ -41,18 +36,6 @@ _EXCLUDE_FROM_COMBINE_YEARS = {2021}
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--annual-dir",
-        type=Path,
-        required=True,
-        help="Directory containing annual NetCDF files.",
-    )
-    parser.add_argument(
-        "--output-file",
-        type=Path,
-        required=True,
-        help="Combined NetCDF output file path.",
-    )
     parser.add_argument(
         "--var",
         type=str,
@@ -179,7 +162,12 @@ def main() -> int:
     args = parse_args()
     setup_logging()
 
-    year_to_path = discover_annual_files(args.annual_dir, varname=args.var)
+    annual_dir = daily_year_dir_for_var(args.var)
+    output_file = daily_combined_file_for_var(args.var)
+    logging.info("Resolved annual directory: %s", annual_dir)
+    logging.info("Resolved combined output file: %s", output_file)
+
+    year_to_path = discover_annual_files(annual_dir, varname=args.var)
     available_years = sorted(year_to_path)
     logging.info(
         "Discovered %d annual files spanning %s to %s",
@@ -198,7 +186,7 @@ def main() -> int:
     )
     combine_annual_files(
         annual_paths=annual_paths,
-        output_file=args.output_file,
+        output_file=output_file,
         varname=args.var,
         overwrite=args.overwrite,
     )
