@@ -21,20 +21,18 @@ set -euo pipefail
 
 : "${VARIABLE:?Set VARIABLE to one of: tp, pev, swe, swvl1, swvl2}"
 
-REPO_DIR="/beegfs/CMIP6/cparr4/repos/nws-drought"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${REPO_DIR}"
 
 mkdir -p logs
 
-export NWS_DROUGHT_DATA_DIR=/beegfs/CMIP6/cparr4/repos/drought_data
-export NWS_DROUGHT_CLIM_DIR=/beegfs/CMIP6/cparr4/repos/nws-drought/input_climos/drought_clim_data
-
 echo "Host: $(hostname)"
 echo "Start: $(date)"
 echo "VARIABLE=${VARIABLE}"
-echo "NWS_DROUGHT_DATA_DIR=$NWS_DROUGHT_DATA_DIR"
-echo "NWS_DROUGHT_CLIM_DIR=$NWS_DROUGHT_CLIM_DIR"
+echo "NWS_DROUGHT_ERA5_HOURLY_DIR=${NWS_DROUGHT_ERA5_HOURLY_DIR:-<default>}"
+echo "NWS_DROUGHT_ERA5_DAILY_DIR=${NWS_DROUGHT_ERA5_DAILY_DIR:-<default>}"
+echo "NWS_DROUGHT_BASELINE_REF_DIR=${NWS_DROUGHT_BASELINE_REF_DIR:-<default>}"
 
-uv run --frozen python -m baseline_data_generation_scripts.download_scripts.download_era5_land_climo -v "${VARIABLE}"
+uv run --frozen python -m download_scripts.download_era5_land_climo -v "${VARIABLE}"
 
 echo "End: $(date)"

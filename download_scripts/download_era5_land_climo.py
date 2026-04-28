@@ -2,13 +2,12 @@
 
 import argparse
 import logging
-from pathlib import Path
 
 import cdsapi
 
-from config import DL_BBOX, api_credentials_check
+from config import DL_BBOX, api_credentials_check, hourly_dir_for_var
 
-from baseline_data_generation_scripts.download_scripts.era5_land_variable_registry import (
+from download_scripts.era5_land_variable_registry import (
     VARIABLE_REGISTRY,
 )
 
@@ -30,7 +29,6 @@ def _build_year_request(cds_variable: str, year: int) -> dict:
 
 def download_era5_land_climatology(
     variable_key: str,
-    download_root: Path | None = None,
     start_year: int = 1981,
     end_year: int = 2020,
 ) -> None:
@@ -38,13 +36,7 @@ def download_era5_land_climatology(
     meta = VARIABLE_REGISTRY[variable_key]
     cds_variable = meta["cds_variable"]
     hourly_prefix = meta["hourly_prefix"]
-    rel_dir = meta["climatology_dir"]
-
-    if download_root is None:
-        download_dir = Path(rel_dir)
-    else:
-        download_dir = download_root / rel_dir
-
+    download_dir = hourly_dir_for_var(variable_key)
     download_dir.mkdir(parents=True, exist_ok=True)
     client = cdsapi.Client()
 
@@ -66,8 +58,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__,
         epilog=(
-            "Example: python -m baseline_data_generation_scripts.download_scripts."
-            "download_era5_land_climo -v tp"
+            "Example: python -m download_scripts.download_era5_land_climo -v tp"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -80,12 +71,6 @@ def main() -> None:
         choices=choices,
         metavar="VAR",
         help=f"Variable key: {', '.join(choices)}",
-    )
-    parser.add_argument(
-        "--download-root",
-        type=Path,
-        default=None,
-        help="Optional parent directory for climatology folders (default: cwd).",
     )
     parser.add_argument(
         "--start-year",
@@ -105,7 +90,6 @@ def main() -> None:
     api_credentials_check()
     download_era5_land_climatology(
         args.variable,
-        download_root=args.download_root,
         start_year=args.start_year,
         end_year=args.end_year,
     )
