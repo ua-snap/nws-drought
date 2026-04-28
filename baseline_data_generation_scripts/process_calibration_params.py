@@ -1,22 +1,36 @@
-"""Derive estimates of parameters of gamma distributions fit to daily precip and water budget (pr - pet) data for use in SPI and SPEI indices. Accepts a variable name argument for which dataset to process, either spi or spei.
+"""Derive gamma parameters for SPI/SPEI calibration.
 
-Usage:
-    python process_calibration_params.py -i spi -d /workspace/Shared/Tech_Projects/NWS_Drought_Indicators/project_data/calibration
-    python process_calibration_params.py -i spei -d /workspace/Shared/Tech_Projects/NWS_Drought_Indicators/project_data/calibration
-Note: this script is designed to be run from within the parent directory of the daily pr and pet from the climatology period.
+The compute subcommand estimates parameters for one interval. This is intended
+for SLURM array tasks where each task writes one intermediate NetCDF file.
+
+The merge subcommand combines the six intermediate interval files into the
+single output used by the drought pipeline.
 """
 
 import argparse
+import logging
 import time
-from multiprocessing import Pool
 from pathlib import Path
+
 import xarray as xr
-import xclim.indices as xci
 from xclim.indices.stats import fit
 
+INTERVALS = [7, 30, 60, 90, 180, 365]
 
-def estimate_params(da, window):
-    """Run the parameter estimation. Includes summarizing the data to a moving average before estimating the parameters of a gamma distribution along the time axis (year, essentially) for each day of the year.
+
+def setup_logging() -> None:
+    """Configure logging."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+
+def estimate_params(da: xr.DataArray, window: int) -> xr.DataArray:
+    """Run the parameter estimation for one interval.
+
+    Includes summarizing the data to a moving average before estimating the parameters of a gamma distribution along the time axis (year, essentially) for each day of the year.
 
     Args:
         da (xarray.DataArray): daily values, either precip or water budget, for all years in the climatology period.
@@ -34,81 +48,196 @@ def estimate_params(da, window):
     return params
 
 
-def run_estimation(args):
-    """Wrapper for Pool-ing the estimte_params function.
+def load_calibration_array(index: str, daily_dir: Path) -> xr.DataArray:
+    """Load daily calibration data for the requested drought index.
 
     Args:
-        args (list): list of tuples of arguments mathing the args for estimate_params function
+        index: Drought index name, either "spi" or "spei".
+        daily_dir: Directory containing the daily input NetCDF files.
 
     Returns:
-        params_ds (xarray.Dataset): gamma parameter estimates, stored in "params" data variable
+        Daily precip or shifted water-budget values for the calibration period.
     """
-    print(
-        (
-            "Estimating parameters of gamma distributions for"
-            f" all {len(args)} intervals"
-        ),
-        end="...",
-        flush=True,
-    )
+    logging.info("Reading in precip data")
     tic = time.perf_counter()
-    with Pool(5) as pool:
-        out = pool.starmap(estimate_params, args)
-    ds = xr.merge(out)
-    da = ds[list(ds.keys())[0]]
+    tp_cal_ds = xr.load_dataset(daily_dir / "tp_daily_utc_minus9_combined.nc")
+    logging.info(
+        "done reading precip data, %.1fm",
+        (time.perf_counter() - tic) / 60,
+    )
+
+    if index == "spi":
+        return tp_cal_ds["tp"]
+
+    logging.info("Reading in PET data")
+    tic = time.perf_counter()
+    pev_cal_ds = xr.load_dataset(daily_dir / "pev_daily_utc_minus9_combined.nc")
+    logging.info(
+        "done reading PET data, %.1fm",
+        (time.perf_counter() - tic) / 60,
+    )
+
+    # Water balance is pr - pet. PET (pev) in ERA5 is usually negative because
+    # upward fluxes are negative, so adding pev gives the water budget.
+    wb = tp_cal_ds["tp"] + pev_cal_ds["pev"]
+
+    # Gamma is bounded by zero: water budget must be shifted so only positive
+    # values are allowed. See xclim code; 1 mm is used there, but 2 mm avoids
+    # remaining negative values for 180- and 365-day intervals in this dataset.
+    wb += 0.002
+    wb.name = "wb"
+
+    return wb
+
+
+def compute_interval(
+    index: str,
+    daily_dir: Path,
+    interval: int,
+    output: Path,
+) -> Path:
+    """Estimate and write gamma parameters for one interval."""
+    if interval not in INTERVALS:
+        raise ValueError(
+            f"Unsupported interval {interval}; expected one of {INTERVALS}"
+        )
+
+    main_tic = time.perf_counter()
+    da = load_calibration_array(index, daily_dir)
+
+    logging.info("Estimating parameters for interval=%s", interval)
+    tic = time.perf_counter()
+    da = estimate_params(da, interval)
     da.name = "params"
     da = da.astype("float32")
     params_ds = da.to_dataset()
-    print(f"done: {round((time.perf_counter() - tic) / 60)}m")
+    logging.info(
+        "done estimating interval=%s, %.1fm",
+        interval,
+        (time.perf_counter() - tic) / 60,
+    )
 
-    return params_ds
+    output.parent.mkdir(parents=True, exist_ok=True)
+    logging.info("Writing interval output: %s", output)
+    params_ds.to_netcdf(output)
+    logging.info(
+        "All done for interval=%s, total wall time: %.1fm",
+        interval,
+        (time.perf_counter() - main_tic) / 60,
+    )
+
+    return output
+
+
+def partial_path(partial_dir: Path, index: str, interval: int) -> Path:
+    """Build the intermediate output path for one interval."""
+    return partial_dir / f"{index}_gamma_parameters_interval_{interval:03d}.nc"
+
+
+def merge_intervals(index: str, partial_dir: Path, output: Path) -> Path:
+    """Merge per-interval parameter files into the final NetCDF."""
+    paths = [partial_path(partial_dir, index, interval) for interval in INTERVALS]
+    missing = [path for path in paths if not path.exists()]
+
+    if missing:
+        missing_text = "\n".join(str(path) for path in missing)
+        raise FileNotFoundError(f"Missing interval files:\n{missing_text}")
+
+    logging.info("Merging interval files from %s", partial_dir)
+    tic = time.perf_counter()
+    datasets = [xr.load_dataset(path) for path in paths]
+    da = xr.concat(
+        [ds["params"] for ds in datasets],
+        dim="interval",
+    ).sortby("interval")
+    da.name = "params"
+    params_ds = da.astype("float32").to_dataset()
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    logging.info("Writing merged output: %s", output)
+    params_ds.to_netcdf(output)
+    logging.info("done merging interval files, %.1fm", (time.perf_counter() - tic) / 60)
+
+    for dataset in datasets:
+        dataset.close()
+
+    return output
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    compute = subparsers.add_parser("compute", help="Compute one interval")
+    compute.add_argument(
+        "-i",
+        "--index",
+        choices=["spi", "spei"],
+        required=True,
+        help="Index name.",
+    )
+    compute.add_argument(
+        "-d",
+        "--daily-dir",
+        type=Path,
+        required=True,
+        help="Directory containing daily calibration files.",
+    )
+    compute.add_argument(
+        "--interval",
+        type=int,
+        choices=INTERVALS,
+        required=True,
+        help="Accumulation interval to process.",
+    )
+    compute.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        required=True,
+        help="Path for the interval NetCDF output file.",
+    )
+
+    merge = subparsers.add_parser("merge", help="Merge interval files")
+    merge.add_argument(
+        "-i",
+        "--index",
+        choices=["spi", "spei"],
+        required=True,
+        help="Index name.",
+    )
+    merge.add_argument(
+        "--partial-dir",
+        type=Path,
+        required=True,
+        help="Directory containing interval NetCDF files.",
+    )
+    merge.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        required=True,
+        help="Path for the merged NetCDF output file.",
+    )
+
+    return parser.parse_args()
+
+
+def main() -> int:
+    """Run the requested calibration parameter workflow."""
+    setup_logging()
+    args = parse_args()
+
+    if args.command == "compute":
+        compute_interval(args.index, args.daily_dir, args.interval, args.output)
+    elif args.command == "merge":
+        merge_intervals(args.index, args.partial_dir, args.output)
+    else:
+        raise ValueError(f"Unsupported command: {args.command}")
+
+    return 0
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "-i", dest="index", type=str, help="Index name, either 'spi' or 'spei'"
-    )
-    parser.add_argument(
-        "-d",
-        dest="daily_dir",
-        type=str,
-        help="Directory containing daily files generated by process_hourly_calibration_data.py",
-    )
-    args = parser.parse_args()
-    index = args.index
-    daily_dir = Path(args.daily_dir)
-
-    # this one is getting loaded either way
-    print("Reading in precip data", end="...", flush=True)
-    tic = time.perf_counter()
-    tp_cal_ds = xr.load_dataset(daily_dir.joinpath("era5_daily_tp_1981_2020.nc"))
-    print(f"done, {round((time.perf_counter() - tic) / 60)}m", flush=True)
-
-    # intervals (in days) to compute params over:
-    intervals = [7, 30, 60, 90, 180, 365]
-
-    if index == "spei":
-        # if SPEI, we need PET data
-        print("Reading in PET data", end="...", flush=True)
-        tic = time.perf_counter()
-        pev_cal_ds = xr.load_dataset(daily_dir.joinpath("era5_daily_pev_1981_2020.nc"))
-        print(f"done, {round((time.perf_counter() - tic) / 60)}m", flush=True)
-
-        # make water balance DataArray
-        # water balance is pr - pet. pet (pev) in ERA5 is usually negative because upward fluxes are negative. So we add pet.
-        wb = tp_cal_ds["tp"] + pev_cal_ds["pev"]
-
-        # Gamma is bounded by zero: Water budget must be shifted, only positive values
-        # are allowed. See xclim code, 1mm is used, 0.001 in m units
-        # Tried 0.001 but some values for 180 and 365 were still negative, bumped to 2mm
-        wb += 0.002
-        wb.name = "wb"
-
-        args = [(wb, window) for window in intervals]
-    else:
-        args = [(tp_cal_ds["tp"], window) for window in intervals]
-
-    params_ds = run_estimation(args)
-    print("Writing to disk")
-    params_ds.to_netcdf(f"{index}_gamma_parameters.nc")
+    raise SystemExit(main())
