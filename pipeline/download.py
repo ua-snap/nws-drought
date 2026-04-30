@@ -1,20 +1,34 @@
-"""This script downloads daily ERA5 data. The most recent 365 days of available data will be downloaded.
-"""
+"""This script downloads hourly ERA5-Land data for the most recent 365 days for which data is available."""
 
+import datetime
 import logging
 import shutil
-import datetime
+
 import cdsapi
-from pathlib import Path
+import luts
 from config import (
-    api_credentials_check,
-    DEBUG_MODE,
     DATA_LAG_TIME_DAYS,
-    DOWNLOAD_DIR,
+    DEBUG_MODE,
     DL_BBOX,
+    DOWNLOAD_DIR,
+    api_credentials_check,
 )
+from nws_drought.era5_land.registry import VARIABLE_REGISTRY
 
 api_credentials_check()
+
+_HOURLY_TIMES = [f"{hour:02d}:00" for hour in range(24)]
+
+# Maps registry keys to luts.varname_prefix_lu keys (output stems match process.py / luts).
+_REGISTRY_TO_LUT_KEY = {
+    "tp": "tp",
+    "pev": "pev",
+    "swe": "sd",
+    "swvl1": "swvl1",
+    "swvl2": "swvl2",
+}
+
+_PIPELINE_VARIABLE_ORDER = ("tp", "swe", "swvl1", "swvl2", "pev")
 
 
 def set_download_directory():
@@ -22,10 +36,9 @@ def set_download_directory():
     if DEBUG_MODE:
         logging.info("Running in debug mode, no data will be fetched or overwritten.")
     else:
-        # wipe the download directory and make a new one
         try:
             shutil.rmtree(DOWNLOAD_DIR)
-        except:
+        except OSError:
             pass
 
         DOWNLOAD_DIR.mkdir(exist_ok=False, parents=True)
@@ -64,8 +77,8 @@ def get_current_month_dates():
     """
     analysis_date = get_analysis_date()
     year = str(analysis_date.year)
-    month = str(analysis_date.month)
-    days = [str(x) for x in range(1, analysis_date.day + 1)]
+    month = str(analysis_date.month).zfill(2)
+    days = [str(x).zfill(2) for x in range(1, analysis_date.day + 1)]
     logging.info(
         f"Trying to download data for {month}/{year} for {len(days)} days between {days[0]} and {days[-1]}..."
     )
@@ -83,8 +96,8 @@ def get_rest_of_current_year_dates():
     analysis_date = get_analysis_date()
     current_year = str(analysis_date.year)
     current_month = analysis_date.month
-    months = [str(x) for x in range(1, current_month)]
-    days = [str(x) for x in range(1, 32)]
+    months = [str(x).zfill(2) for x in range(1, current_month)]
+    days = [str(x).zfill(2) for x in range(1, 32)]
     logging.info(
         f"Trying to download data for {current_year} for {len(months)} months between {months[0]} and {months[-1]}..."
     )
@@ -101,76 +114,81 @@ def get_all_previous_year_dates():
     """
     analysis_date = get_analysis_date()
     previous_year = str(analysis_date.year - 1)
-    months = [str(x) for x in range(1, 13)]
-    days = [str(x) for x in range(1, 32)]
+    months = [str(x).zfill(2) for x in range(1, 13)]
+    days = [str(x).zfill(2) for x in range(1, 32)]
     logging.info(
         f"Trying to download data for the entire calendar year of {previous_year}..."
     )
     return previous_year, months, days
 
 
-def download_data(year, months, days, data_variable, output_name):
-    """Download ERA5 data via the CDS API client for a single data variable for the provided geographic area and dates. All 24 hours of data are downloaded.
+def download_data(year, months, days, cds_variable, output_stem, output_name):
+    """Download ERA5-Land hourly GRIB via the CDS API for one variable and date selection.
 
     Args:
         year (list or str): YYYY string(s) to download
         months (list or str): MM string(s) to download
         days (list or str): DD string(s) to download
-        data_variable (str): ERA5 data variable to download
-        output_name (str): output name describing the time chunk downloaded
+        cds_variable (str): ERA5-Land CDS variable name
+        output_stem (str): filename stem matching luts.varname_prefix_lu (for process.py)
+        output_name (str): time chunk label (current_month, previous_year, current_year)
     """
-    download_location = DOWNLOAD_DIR.joinpath(f"{data_variable}_{output_name}.nc")
+    download_location = DOWNLOAD_DIR.joinpath(f"{output_stem}_{output_name}.grib")
     logging.info("Downloading data to %s", download_location)
     if not DEBUG_MODE:
-        c = cdsapi.Client()
-        c.retrieve(
-            "reanalysis-era5-single-levels",
+        client = cdsapi.Client()
+        client.retrieve(
+            "reanalysis-era5-land",
             {
-                "product_type": "reanalysis",
-                "format": "netcdf",
-                "variable": data_variable,
+                "variable": cds_variable,
                 "year": year,
                 "month": months,
                 "day": days,
-                "time": [
-                    "0" + str(x) + ":00" if x <= 9 else str(x) + ":00"
-                    for x in range(0, 24)
-                ],
+                "time": list(_HOURLY_TIMES),
+                "data_format": "grib",
+                "download_format": "unarchived",
                 "area": DL_BBOX,
             },
-            download_location,
+            str(download_location),
         )
     else:
         logging.info("CDS API download requests bypassed for debug mode.")
 
 
-def run_all_downloads(data_variable):
-    """A convenience function to download all necessary data for a given variable.
+def run_all_downloads(registry_key: str):
+    """Download all time chunks for one pipeline variable (registry key).
 
     Args:
-        data_variable (str): ERA5 data variable to download
+        registry_key (str): key in VARIABLE_REGISTRY (e.g. tp, swe, swvl1).
     """
-    download_data(*get_current_month_dates(), data_variable, "current_month")
-    download_data(*get_all_previous_year_dates(), data_variable, "previous_year")
+    cds_variable = VARIABLE_REGISTRY[registry_key]["cds_variable"]
+    output_stem = luts.varname_prefix_lu[_REGISTRY_TO_LUT_KEY[registry_key]]
+    download_data(
+        *get_current_month_dates(), cds_variable, output_stem, "current_month"
+    )
+    download_data(
+        *get_all_previous_year_dates(), cds_variable, output_stem, "previous_year"
+    )
 
     if analysis_date_not_in_january():
-        download_data(*get_rest_of_current_year_dates(), data_variable, "current_year")
+        download_data(
+            *get_rest_of_current_year_dates(),
+            cds_variable,
+            output_stem,
+            "current_year",
+        )
 
 
 if __name__ == "__main__":
 
-    # Log to STDOUT (+ STDERR)
     logging.basicConfig(
         format="%(asctime)s %(levelname)-8s %(message)s",
         level=logging.DEBUG if DEBUG_MODE else logging.INFO,
-        datefmt="%Y-%m-%d %H:%M:%S"
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
     logging.info("Running in %s mode", "DEBUG" if DEBUG_MODE else "production")
 
     set_download_directory()
-    run_all_downloads("total_precipitation")
-    run_all_downloads("snow_depth")
-    run_all_downloads("volumetric_soil_water_layer_1")
-    run_all_downloads("volumetric_soil_water_layer_2")
-    run_all_downloads("potential_evaporation")
+    for _key in _PIPELINE_VARIABLE_ORDER:
+        run_all_downloads(_key)
     logging.info("Download script completed.")

@@ -5,6 +5,7 @@ downloaded_data/
 # log files
 *.log 
 logs/
+docs/
 
 # netcdf data
 *.netcdf
