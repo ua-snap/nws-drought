@@ -6,9 +6,11 @@ import logging
 import sys
 
 import xarray as xr
-from config import baseline_climo_file, daily_combined_file_for_var
 
-NETCDF_ENGINE = "h5netcdf"
+from config import climo_file_for_var, daily_combined_file_for_var
+from file_helpers import NETCDF_ENGINE, setup_logging
+
+# Weights prescribed during initial dev work phase by Brian B
 WEIGHT_LAYER1 = 0.25
 WEIGHT_LAYER2 = 0.75
 
@@ -17,28 +19,14 @@ def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description=(
-            "Read UTC-9 daily combined swvl1 and swvl2 NetCDFs, form "
-            "swvl = swvl1*WEIGHT_LAYER1 + swvl2*WEIGHT_LAYER2, then write "
-            "a day-of-year climatology (dimension time = DOY 1-366) for "
-            "pipeline.process.process_smd."
+            "Read daily combined swvl1 and swvl2 NetCDFs, "
+            "compute swvl = swvl1*WEIGHT_LAYER1 + swvl2*WEIGHT_LAYER2,"
+            "write a day-of-year climatology for soil moisture."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=(
-            "Example:\n"
-            "  python combine_soil_moisture_layers.py\n"
-            "  # Paths are resolved from config.py"
-        ),
+        epilog=("Example:\n  python combine_soil_moisture_layers.py"),
     )
     return parser.parse_args()
-
-
-def setup_logging() -> None:
-    """Configure logging."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
 
 
 def weighted_swvl_climatology(
@@ -49,7 +37,7 @@ def weighted_swvl_climatology(
     swvl1_a, swvl2_a = xr.align(swvl1, swvl2, join="inner")
     swvl = (swvl1_a * WEIGHT_LAYER1 + swvl2_a * WEIGHT_LAYER2).astype("float32")
     swvl.name = "swvl"
-    clim = swvl.groupby("time.dayofyear").mean(dim="time")
+    clim = swvl.groupby("valid_time.dayofyear").mean(dim="valid_time")
     clim = clim.rename({"dayofyear": "time"})
     clim.name = "swvl"
     clim.attrs.setdefault(
@@ -69,7 +57,7 @@ def main() -> int:
 
     swvl1_file = daily_combined_file_for_var("swvl1")
     swvl2_file = daily_combined_file_for_var("swvl2")
-    out_path = baseline_climo_file("swvl")
+    out_path = climo_file_for_var("swvl")
     logging.info("Resolved swvl1 input file: %s", swvl1_file)
     logging.info("Resolved swvl2 input file: %s", swvl2_file)
     logging.info("Resolved output file: %s", out_path)
@@ -102,15 +90,10 @@ def main() -> int:
 
         swvl1 = ds1["swvl1"]
         swvl2 = ds2["swvl2"]
-        logging.info(
-            "Aligning swvl1 time (%s steps) with swvl2 (%s steps) (inner join)",
-            swvl1.sizes.get("time", 0),
-            swvl2.sizes.get("time", 0),
-        )
         clim_da = weighted_swvl_climatology(swvl1, swvl2)
         out_ds = clim_da.to_dataset()
         out_ds.attrs["source"] = (
-            "Weighted combination of swvl1 and swvl2 UTC-9 daily means; "
+            "Weighted combination of swvl1 and swvl2 UTC daily means; "
             "day-of-year climatology (mean over time)."
         )
 

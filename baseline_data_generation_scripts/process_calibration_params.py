@@ -1,55 +1,46 @@
-"""Derive gamma parameters for SPI/SPEI calibration.
+"""Derive gamma parameters for SPI or SPEI calibration.
 
 The compute subcommand estimates parameters for one interval. This is intended
-for SLURM array tasks where each task writes one intermediate NetCDF file.
+for SLURM array tasks where each task writes one intermediate NetCDF file per interval.
 
-The merge subcommand combines the six intermediate interval files into the
+The merge subcommand combines the intermediate interval files into the
 single output used by the drought pipeline.
 """
 
 import argparse
 import logging
-import time
 from pathlib import Path
 
 import xarray as xr
+from xclim.indices.stats import fit
+
 from config import (
+    INTERVALS,
     daily_combined_file_for_var,
     gamma_output_file_for_index,
     gamma_partial_dir_for_index,
 )
-from xclim.indices.stats import fit
-
-INTERVALS = [7, 30, 60, 90, 180, 365]
-
-
-def setup_logging() -> None:
-    """Configure logging."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+from file_helpers import NETCDF_ENGINE, setup_logging
 
 
 def estimate_params(da: xr.DataArray, window: int) -> xr.DataArray:
     """Run the parameter estimation for one interval.
 
-    Includes summarizing the data to a moving average before estimating the parameters of a gamma distribution along the time axis (year, essentially) for each day of the year.
+    Includes summarizing the data to a moving average before estimating the parameters
+    of a gamma distribution along the time axis (year, essentially) for each day of the year.
 
     Args:
         da (xarray.DataArray): daily values, either precip or water budget, for all years in the climatology period.
-        window (int): number of days over which to compute moving averages, i.e. the "time scale" of SPI algorithm.
+        window (int): number of days over which to compute moving averages, i.e. the "time scale" of the algorithm.
 
     Returns:
-        params (xarray.DataArray): parameter estimates computed over the time dimension for each day of the year in da
+        params (xarray.DataArray): parameter estimates computed over the time dimension for each day of the year
     """
     # computing rolling means
     roll_da = da.rolling(time=window).mean(skipna=False, keep_attrs=True)
     # estimate parameters of gamma distribution fit to yearly values for each day of the year
     params = roll_da.groupby("time.dayofyear").map(lambda x: fit(x, "gamma", "APP"))
     params = params.assign_coords(interval=window).expand_dims(interval=1)
-
     return params
 
 
@@ -57,28 +48,20 @@ def load_calibration_array(index: str) -> xr.DataArray:
     """Load daily calibration data for the requested drought index.
 
     Args:
-        index: Drought index name, either "spi" or "spei".
+        index: Either "spi" or "spei".
     Returns:
         Daily precip or shifted water-budget values for the calibration period.
     """
-    logging.info("Reading in precip data")
-    tic = time.perf_counter()
+    logging.info("Reading in precipitation data...")
     tp_cal_ds = xr.load_dataset(daily_combined_file_for_var("tp"))
-    logging.info(
-        "done reading precip data, %.1fm",
-        (time.perf_counter() - tic) / 60,
-    )
+    logging.info("Completed precip data read.")
 
     if index == "spi":
         return tp_cal_ds["tp"]
 
-    logging.info("Reading in PET data")
-    tic = time.perf_counter()
+    logging.info("Reading in potential evapotransipiration data...")
     pev_cal_ds = xr.load_dataset(daily_combined_file_for_var("pev"))
-    logging.info(
-        "done reading PET data, %.1fm",
-        (time.perf_counter() - tic) / 60,
-    )
+    logging.info("Completed potential evapotransipiration data read.")
 
     # Water balance is pr - pet. PET (pev) in ERA5 is usually negative because
     # upward fluxes are negative, so adding pev gives the water budget.
@@ -104,29 +87,19 @@ def compute_interval(
             f"Unsupported interval {interval}; expected one of {INTERVALS}"
         )
 
-    main_tic = time.perf_counter()
     da = load_calibration_array(index)
 
-    logging.info("Estimating parameters for interval=%s", interval)
-    tic = time.perf_counter()
+    logging.info(f"Estimating parameters for interval {interval}...")
     da = estimate_params(da, interval)
     da.name = "params"
     da = da.astype("float32")
     params_ds = da.to_dataset()
-    logging.info(
-        "done estimating interval=%s, %.1fm",
-        interval,
-        (time.perf_counter() - tic) / 60,
-    )
+    logging.info(f"Estimating parameters for interval {interval} complete.")
 
     output.parent.mkdir(parents=True, exist_ok=True)
-    logging.info("Writing interval output: %s", output)
-    params_ds.to_netcdf(output)
-    logging.info(
-        "All done for interval=%s, total wall time: %.1fm",
-        interval,
-        (time.perf_counter() - main_tic) / 60,
-    )
+    logging.info(f"Writing interval output: {output}")
+    params_ds.to_netcdf(output, engine=NETCDF_ENGINE)
+    logging.info(f"All done for interval {interval}")
 
     return output
 
@@ -145,8 +118,8 @@ def merge_intervals(index: str, partial_dir: Path, output: Path) -> Path:
         missing_text = "\n".join(str(path) for path in missing)
         raise FileNotFoundError(f"Missing interval files:\n{missing_text}")
 
-    logging.info("Merging interval files from %s", partial_dir)
-    tic = time.perf_counter()
+    logging.info(f"Merging interval files from {partial_dir}...")
+
     datasets = [xr.load_dataset(path) for path in paths]
     da = xr.concat(
         [ds["params"] for ds in datasets],
@@ -156,13 +129,13 @@ def merge_intervals(index: str, partial_dir: Path, output: Path) -> Path:
     params_ds = da.astype("float32").to_dataset()
 
     output.parent.mkdir(parents=True, exist_ok=True)
-    logging.info("Writing merged output: %s", output)
-    params_ds.to_netcdf(output)
-    logging.info("done merging interval files, %.1fm", (time.perf_counter() - tic) / 60)
+    logging.info(f"Writing merged output: {output}...")
+    params_ds.to_netcdf(output, engine=NETCDF_ENGINE)
+    logging.info("Done writing merged interval file.")
 
     for dataset in datasets:
         dataset.close()
-
+    params_ds.close()
     return output
 
 

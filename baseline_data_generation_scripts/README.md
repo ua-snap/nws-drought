@@ -1,66 +1,30 @@
 ## Baseline Reference Data
 
-The bulk of the data downloaded here are used to construct a set of "baseline reference" data: climatoglies and statistical distribution paramters against which current conditions may be compared to understand whether or not drought conditions may be present with respect to climate normals. Constructiing these climatologies / computing these paramters requires a few steps.
+The bulk of the data downloaded here are used to construct a set of "baseline reference" data: climatologies and statistical distribution parameters against which the recent conditions may be compared to understand whether or not drought conditions are present with respect to climate normals, i.e. baselines. Constructing these climatologies / computing these parameters requires a few steps.
 
-### Directory Configuration (three roots only)
-
-These one-off scripts derive all input/output paths from `config.py` using three optional environment variables:
-
-- `NWS_DROUGHT_ERA5_HOURLY_DIR`: root for hourly ERA5-Land GRIB downloads.
-- `NWS_DROUGHT_ERA5_DAILY_DIR`: root for daily intermediate outputs (per-year daily files, combined daily files, and gamma interval partials).
-- `NWS_DROUGHT_BASELINE_REF_DIR`: root for final baseline reference artifacts only.
-
-When unset, defaults in `config.py` are used.
-
-### Hourly to Daily Resample
-First, the hourly ERA5-Land data (GRIB format) must be converted to daily summaries (netCDF) format. Submit the following SLURM jobs that process each year's worth of data individually, then merge each year of daily data into one combined daily NetCDF.
+### Construct Single Daily File
+Merge each year of daily data into one combined daily NetCDF. Launch these jobs from the root directory of the repo.
 
 #### Total Precipitation
 ```sh
-ARRAY_JOB_ID=$(sbatch --parsable --array=0-39 \
-  baseline_data_generation_scripts/hour_2_daily.sbatch tp)
-
-sbatch --dependency=afterok:${ARRAY_JOB_ID} \
-  baseline_data_generation_scripts/hour_2_daily_combine.sbatch tp
+sbatch baseline_data_generation_scripts/combine_annual.sbatch tp
 ```
-
 #### Total Potential Evaporation
 ```sh
-ARRAY_JOB_ID=$(sbatch --parsable --array=0-39 \
-  baseline_data_generation_scripts/hour_2_daily.sbatch pev)
-
-sbatch --dependency=afterok:${ARRAY_JOB_ID} \
-  baseline_data_generation_scripts/hour_2_daily_combine.sbatch pev
+sbatch baseline_data_generation_scripts/combine_annual.sbatch pev
 ```
-
 #### Snow Water Equivalent
 ```sh
-ARRAY_JOB_ID=$(sbatch --parsable --array=0-39 \
-  baseline_data_generation_scripts/hour_2_daily.sbatch swe)
-
-sbatch --dependency=afterok:${ARRAY_JOB_ID} \
-  baseline_data_generation_scripts/hour_2_daily_combine.sbatch swe
+sbatch baseline_data_generation_scripts/combine_annual.sbatch swe
 ```
-
 #### Volumetric Soil Water, Layer 1
 ```sh
-ARRAY_JOB_ID=$(sbatch --parsable --array=0-39 \
-  baseline_data_generation_scripts/hour_2_daily.sbatch swvl1)
-
-sbatch --dependency=afterok:${ARRAY_JOB_ID} \
-  baseline_data_generation_scripts/hour_2_daily_combine.sbatch swvl1
+sbatch baseline_data_generation_scripts/combine_annual.sbatch swvl1
 ```
-
 #### Volumetric Soil Water, Layer 2
 ```sh
-ARRAY_JOB_ID=$(sbatch --parsable --array=0-39 \
-  baseline_data_generation_scripts/hour_2_daily.sbatch swvl2)
-
-sbatch --dependency=afterok:${ARRAY_JOB_ID} \
-  baseline_data_generation_scripts/hour_2_daily_combine.sbatch swvl2
+sbatch baseline_data_generation_scripts/combine_annual.sbatch swvl2
 ```
-
-Launch these jobs from the root directory of the repo.
 
 ### Combine the Soil Moisture Layers and Construct the Day-of-Year climatology.
 
