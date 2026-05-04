@@ -48,15 +48,30 @@ def combine_annual_files(
         output_file.unlink()
 
     ds: xr.Dataset | None = None
+
     try:
-        ds = xr.open_mfdataset(
-            annual_paths,
-            combine="by_coords",
-            engine=NETCDF_ENGINE,
-            data_vars="minimal",
-            coords="minimal",
-            compat="override",
-        ).sortby("valid_time")
+        if VARIABLE_REGISTRY[variable_key]["suffix"] == ".grib":
+            ds = xr.open_mfdataset(
+                annual_paths,
+                engine="cfgrib",
+                data_vars="minimal",
+                coords="minimal",
+                compat="override",
+                backend_kwargs={
+                    "time_dims": ["valid_time"],
+                    "coords_as_attributes": ["surface", "number"],
+                    "indexpath": "",  # grib can spew auxillary .idx files, this halts that behavior
+                },
+            )
+        else:
+            ds = xr.open_mfdataset(
+                annual_paths,
+                combine="by_coords",
+                engine=NETCDF_ENGINE,
+                data_vars="minimal",
+                coords="minimal",
+                compat="override",
+            ).sortby("valid_time")
 
         ds.to_netcdf(
             output_file,
