@@ -6,9 +6,10 @@ import logging
 import sys
 
 import xarray as xr
-from config import daily_combined_file_for_var, climo_file_for_var
-from era5_land_variable_registry import VARIABLE_REGISTRY
-from file_helpers import setup_logging, NETCDF_ENGINE
+
+from config import climo_file_for_var, daily_combined_file_for_var
+from era5_land_variable_registry import SUPPORTED_VARS, VARIABLE_REGISTRY
+from file_helpers import NETCDF_ENGINE, setup_logging
 
 
 def parse_args() -> argparse.Namespace:
@@ -18,7 +19,7 @@ def parse_args() -> argparse.Namespace:
         "--var",
         type=str,
         required=True,
-        choices=sorted(VARIABLE_REGISTRY.keys()),
+        choices=SUPPORTED_VARS,
         help="Variable name for which to construct the climatology.",
     )
     parser.add_argument(
@@ -49,7 +50,7 @@ def construct_climatology(
 
 
 def main() -> int:
-    """Run climatology workflow."""
+    """Run the climatology construction."""
     args = parse_args()
     variable_key = args.var
 
@@ -57,15 +58,17 @@ def main() -> int:
 
     combined_file = daily_combined_file_for_var(variable_key)
     out_path = climo_file_for_var(variable_key)
-    logging.info("Resolved input file: %s", combined_file)
-    logging.info("Resolved output file: %s", out_path)
+    logging.info(f"Resolved input file: {combined_file}")
+    logging.info(f"Resolved output file: {out_path}")
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     if out_path.exists():
-        logging.info("Output already exists: %s", out_path)
+        logging.info(f"Output already exists: {out_path}")
         return 0
 
-    ds: xr.Dataset | None = None
+    ds: xr.Dataset | None = (
+        None  # initialize so the finally block can safely close ds only if it was opened
+    )
     try:
         if not combined_file.is_file():
             raise FileNotFoundError(f"Combined file not found: {combined_file}")
@@ -87,9 +90,7 @@ def main() -> int:
                 VARIABLE_REGISTRY[variable_key]["short_name"]: {"dtype": "float32"}
             },
         )
-        logging.info(
-            "Wrote %s (%s day-of-year steps)", out_path, clim_da.sizes.get("time", 0)
-        )
+        logging.info(f"Wrote {out_path}")
     finally:
         if ds is not None:
             ds.close()
