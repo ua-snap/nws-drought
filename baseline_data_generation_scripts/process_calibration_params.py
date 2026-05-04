@@ -1,10 +1,10 @@
 """Derive gamma parameters for SPI or SPEI calibration.
 
-The compute subcommand estimates parameters for one interval. This is intended
+The compute subcommand estimates parameters for one summary interval. Intended
 for SLURM array tasks where each task writes one intermediate NetCDF file per interval.
 
 The merge subcommand combines the intermediate interval files into the
-single output used by the drought pipeline.
+single output used by the drought indicator pipeline.
 """
 
 import argparse
@@ -37,9 +37,11 @@ def estimate_params(da: xr.DataArray, window: int) -> xr.DataArray:
         params (xarray.DataArray): parameter estimates computed over the time dimension for each day of the year
     """
     # computing rolling means
-    roll_da = da.rolling(time=window).mean(skipna=False, keep_attrs=True)
+    roll_da = da.rolling(valid_time=window).mean(skipna=False, keep_attrs=True)
     # estimate parameters of gamma distribution fit to yearly values for each day of the year
-    params = roll_da.groupby("time.dayofyear").map(lambda x: fit(x, "gamma", "APP"))
+    params = roll_da.groupby("valid_time.dayofyear").map(
+        lambda x: fit(x, "gamma", "APP", dim="valid_time")
+    )
     params = params.assign_coords(interval=window).expand_dims(interval=1)
     return params
 
@@ -81,7 +83,7 @@ def compute_interval(
     interval: int,
     output: Path,
 ) -> Path:
-    """Estimate and write gamma parameters for one interval."""
+    """Estimate and write gamma parameters for one summary interval."""
     if interval not in INTERVALS:
         raise ValueError(
             f"Unsupported interval {interval}; expected one of {INTERVALS}"
@@ -131,7 +133,7 @@ def merge_intervals(index: str, partial_dir: Path, output: Path) -> Path:
     output.parent.mkdir(parents=True, exist_ok=True)
     logging.info(f"Writing merged output: {output}...")
     params_ds.to_netcdf(output, engine=NETCDF_ENGINE)
-    logging.info("Done writing merged interval file.")
+    logging.info(f"Done writing merged {index} file.")
 
     for dataset in datasets:
         dataset.close()
@@ -157,7 +159,7 @@ def parse_args() -> argparse.Namespace:
         type=int,
         choices=INTERVALS,
         required=True,
-        help="Accumulation interval to process.",
+        help="Summary interval to process.",
     )
 
     merge = subparsers.add_parser("merge", help="Merge interval files")
@@ -179,13 +181,13 @@ def main() -> int:
     if args.command == "compute":
         partial_dir = gamma_partial_dir_for_index(args.index)
         output = partial_path(partial_dir, args.index, args.interval)
-        logging.info("Resolved interval output path: %s", output)
+        logging.info(f"Resolved interval output path {output}")
         compute_interval(args.index, args.interval, output)
     elif args.command == "merge":
         partial_dir = gamma_partial_dir_for_index(args.index)
         output = gamma_output_file_for_index(args.index)
-        logging.info("Resolved partial directory: %s", partial_dir)
-        logging.info("Resolved merged output path: %s", output)
+        logging.info(f"Resolved partial directory: {partial_dir}")
+        logging.info(f"Resolved merged output path: {output}")
         merge_intervals(args.index, partial_dir, output)
     else:
         raise ValueError(f"Unsupported command: {args.command}")
