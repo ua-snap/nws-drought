@@ -9,6 +9,7 @@ docs/
 *.netcdf
 *.nc
 *.grib
+tmp/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

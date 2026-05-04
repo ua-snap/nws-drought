@@ -22,15 +22,16 @@ It generates a dataset of seven indicators computed over retrospective intervals
 
 Complete the following items to set up permissions for downloading ERA5-Land data.
 
- - Register for the [Climate Data Store API](https://cds.climate.copernicus.eu/api-how-to).
- - Copy your credentials from the black box in the link above to a file called `.cdsapirc` in your `$HOME` directory.
- - Make sure you have accepted the [Terms and Conditions](https://cds.climate.copernicus.eu/cdsapp/#!/terms/licence-to-use-copernicus-products).
+ - Register for the ECWMF CDS API.
+ - Store API credentials in a file called `.cdsapirc` in your `$HOME` directory.
+ - Accept the Terms and Conditions of the CDS API
 
 ### Configuration
 
 If needed, edit `./config.py` to...
 
  - Control the lag between the present date and the first date of data fetched by the CDS API
+ - Modify the geographic bounding box
  
 ### Input data
 
