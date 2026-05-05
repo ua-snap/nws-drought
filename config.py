@@ -11,11 +11,20 @@ BASELINE_DATA_ROOT = Path(
 )
 BASELINE_DATA_ROOT.mkdir(exist_ok=True, parents=True)
 
+# directory containing climatologies and SPI/SPEI parameters
+# for production runs, this var is likely set to a static dir on the file system
+CLIM_DIR = Path(os.getenv("NWS_DROUGHT_CLIM_DIR") or BASELINE_DATA_ROOT)
+CLIM_DIR.mkdir(exist_ok=True, parents=True)
+
 # Destination to which the pipeline data is downloaded
 RECENT_DATA_ROOT = Path(
     os.getenv("NWS_DROUGHT_BASELINE_ROOT") or REPO_ROOT.joinpath("recent_data")
 )
 RECENT_DATA_ROOT.mkdir(exist_ok=True, parents=True)
+
+# results directory for all drought indices for all summaryy intervals
+INDICES_DIR = REPO_ROOT.joinpath("drought_outputs")
+INDICES_DIR.mkdir(exist_ok=True)
 
 #######
 # control lag between current date and first date of ERA5 data fetched by the CDS API
@@ -61,15 +70,6 @@ def gamma_partial_dir_for_index(index: str) -> Path:
 def gamma_output_file_for_index(index: str) -> Path:
     _require_supported_index(index)
     return BASELINE_DATA_ROOT.joinpath(f"{index}_gamma_parameters.nc")
-
-
-# directory containing climatologies and SPI/SPEI parameters
-CLIM_DIR = Path(os.getenv("NWS_DROUGHT_CLIM_DIR") or BASELINE_DATA_ROOT)
-CLIM_DIR.mkdir(exist_ok=True, parents=True)
-
-# final output dataset (NetCDF) of indices summarized over key intervals
-INDICES_DIR = REPO_ROOT.joinpath("drought_outputs")
-INDICES_DIR.mkdir(exist_ok=True)
 
 
 # validators
