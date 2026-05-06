@@ -49,7 +49,7 @@ def combine_annual_files(
 
     ds: xr.Dataset | None = None
 
-    try:
+    try:  # TODO import this from file_helpers
         if VARIABLE_REGISTRY[variable_key]["suffix"] == ".grib":
             ds = xr.open_mfdataset(
                 annual_paths,

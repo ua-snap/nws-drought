@@ -239,5 +239,5 @@ def download_recurring_era5_land_pipeline(
             cds_variable, year, months, days
         )
 
-    dst = download_dir / f"{prefix}_{time_chunk_tag}{suffix}"
+    dst = download_dir / f"{prefix}{time_chunk_tag}{suffix}"
     client.retrieve(cds_endpoint, request, target=dst)

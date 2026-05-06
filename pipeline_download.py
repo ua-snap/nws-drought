@@ -1,4 +1,4 @@
-"""This script downloads the necessary recent ERA5-Land data for drought indicator computation."""
+"""Download the necessary recent ERA5-Land data for drought indicator computation."""
 
 import logging
 import shutil
@@ -11,7 +11,7 @@ from download_helpers import (
     get_current_month_dates,
     get_rest_of_current_year_dates,
 )
-from era5_land_variable_registry import VARIABLE_REGISTRY
+from era5_land_variable_registry import SUPPORTED_VARS
 from file_helpers import setup_logging
 
 
@@ -24,7 +24,7 @@ def wipe_pipeline_directory():
 
 
 def run_all_downloads(variable_key: str):
-    """Download all time chunks for one pipeline variable.
+    """Download all time chunks for one variable.
 
     Args:
         variable_key (str): key in VARIABLE_REGISTRY (e.g. tp, swe, swvl1).
@@ -46,7 +46,6 @@ def run_all_downloads(variable_key: str):
 
 if __name__ == "__main__":
     setup_logging()
-
-    for variable_key in VARIABLE_REGISTRY.keys():
+    for variable_key in SUPPORTED_VARS:
         run_all_downloads(variable_key)
     logging.info("Pipeline download script completed.")
