@@ -21,7 +21,7 @@ fi
 shift 1
 
 if [[ "${VARNAME}" != "tp" && "${VARNAME}" != "swe" ]]; then
-  echo "VARNAME must be one of: tp. swe; other variables processed elsehwere; got '${VARNAME}'." >&2
+  echo "VARNAME must be one of: tp. swe; other variables processed elsewhere; got '${VARNAME}'." >&2
   echo "${USAGE}" >&2
   exit 2
 fi
@@ -53,7 +53,7 @@ echo "Host: $(hostname)"
 echo "Start: $(date)"
 
 CMD=(
-  uv run --frozen python -m baseline_data_generation_scripts.create_climo
+  uv run --frozen python -m baseline_data_generation_scripts.create_doy_climo
   --var "${VARNAME}"
 )
 if [[ "${OVERWRITE}" == "true" ]]; then
