@@ -57,26 +57,30 @@ def discover_year_files(
     return dict(sorted(year_to_path.items()))
 
 
-def polish_daily_dataset(
-    *,
-    variable_key: str,
-    daily_ds: xr.Dataset,
-) -> xr.Dataset:
-    """Attach standardized coordinates and metadata for daily outputs."""
-
-    meta = VARIABLE_REGISTRY[variable_key]
-    daily_ds[variable_key].attrs["long_name"] = meta["long_name"]
-    daily_ds[variable_key].attrs[
-        "aggregation_window"
-    ] = "00:00 UTC to 00:00 UTC next day"
-    daily_ds.attrs["source"] = "ERA5-Land"
-
-    if meta["daily_op"] == "sum":
-        daily_ds.attrs["aggregation_type"] = "daily_total"
+def ds_combination(fps_to_open: list, suffix: str) -> xr.Dataset:
+    if suffix == ".grib":
+        ds = xr.open_mfdataset(
+            fps_to_open,
+            engine="cfgrib",
+            data_vars="minimal",
+            coords="minimal",
+            compat="override",
+            backend_kwargs={
+                "time_dims": ["valid_time"],
+                "coords_as_attributes": ["surface", "number"],
+                "indexpath": "",  # grib can spew auxillary .idx files, this halts that behavior
+            },
+        )
     else:
-        daily_ds.attrs["aggregation_type"] = "daily_mean"
-
-    return daily_ds
+        ds = xr.open_mfdataset(
+            fps_to_open,
+            combine="by_coords",
+            engine=NETCDF_ENGINE,
+            data_vars="minimal",
+            coords="minimal",
+            compat="override",
+        ).sortby("valid_time")
+    return ds
 
 
 # helper function
