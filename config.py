@@ -7,29 +7,31 @@ REPO_ROOT = Path(__file__).resolve().parent
 
 # Destination to which the baseline reference data is downloaded
 BASELINE_DATA_ROOT = Path(
-    os.getenv("NWS_DROUGHT_BASELINE_ROOT") or REPO_ROOT.joinpath("baseline_data")
+    os.getenv("DROUGHT_BASELINE_ROOT") or REPO_ROOT.joinpath("baseline_data")
 )
 BASELINE_DATA_ROOT.mkdir(exist_ok=True, parents=True)
 
 # directory containing climatologies and SPI/SPEI parameters
 # for production runs, this var is likely set to a static dir on the file system
-CLIM_DIR = Path(os.getenv("NWS_DROUGHT_CLIM_DIR") or BASELINE_DATA_ROOT)
+CLIM_DIR = Path(os.getenv("DROUGHT_CLIM_DIR") or BASELINE_DATA_ROOT)
 CLIM_DIR.mkdir(exist_ok=True, parents=True)
 
 # Destination to which the pipeline data is downloaded
 RECENT_DATA_ROOT = Path(
-    os.getenv("NWS_DROUGHT_BASELINE_ROOT") or REPO_ROOT.joinpath("recent_data")
+    os.getenv("DROUGHT_BASELINE_ROOT") or REPO_ROOT.joinpath("recent_data")
 )
 RECENT_DATA_ROOT.mkdir(exist_ok=True, parents=True)
 
-# results directory for all drought indices for all summaryy intervals
+# results directory for all drought indices for all summary intervals
 INDICES_DIR = REPO_ROOT.joinpath("drought_outputs")
 INDICES_DIR.mkdir(exist_ok=True)
 
-#######
-# control lag between current date and first date of ERA5 data fetched by the CDS API
+# lag between current date and first date of ERA5-Land data fetched by the CDS API
 # daily updates are available within ~5 days of real time, so 5 is likely the minimum and 8 is a conservative choice
 DATA_LAG_TIME_DAYS = int(os.getenv("DATA_LAG_TIME_DAYS") or 6)
+# the summary intervals for which to compute the drought indicators
+INTERVALS = [7, 30, 60, 90, 180, 365]
+# the geographic bounding box of the area of interest
 # DL_BBOX = [
 #     76,
 #     -180,
@@ -37,12 +39,11 @@ DATA_LAG_TIME_DAYS = int(os.getenv("DATA_LAG_TIME_DAYS") or 6)
 #     -125,
 # ]
 DL_BBOX = [
-    65.1,
-    -147.1,
-    65,
-    -147,
+    61.7,
+    -150.5,
+    61,
+    -149,
 ]
-INTERVALS = [7, 30, 60, 90, 180, 365]
 
 
 # functions to generate the baseline data directory structures

@@ -73,9 +73,9 @@ sbatch --dependency=afterok:${ARRAY_JOB_ID} baseline_data_generation_scripts/pro
 
 Once all the above processing is complete, the set of files should look like this:
 ```
-247M era5_tp_climo_1981_2020.nc
-247M era5_swe_climo_1981_2020.nc
-247M era5_swvl_climo_1981_2020.nc
-4.3G spei_gamma_parameters.nc
-4.3G spi_gamma_parameters.nc
+era5_tp_climo_1981_2020.nc
+era5_swe_climo_1981_2020.nc
+era5_swvl_climo_1981_2020.nc
+spei_gamma_parameters.nc
+spi_gamma_parameters.nc
 ```
