@@ -10,6 +10,7 @@ docs/
 *.nc
 *.grib
 tmp/
+drought_outputs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
