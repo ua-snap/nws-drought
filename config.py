@@ -44,6 +44,9 @@ DL_BBOX = [
     61,
     -149,
 ]
+# weights for combining soil moisture layers: prescribed during initial dev work by Brian B
+SOIL_MOISTURE_WEIGHT_LAYER1 = 0.25
+SOIL_MOISTURE_WEIGHT_LAYER2 = 0.75
 
 
 # functions to generate the baseline data directory structures

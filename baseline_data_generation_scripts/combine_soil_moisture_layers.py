@@ -7,12 +7,13 @@ import sys
 
 import xarray as xr
 
-from config import climo_file_for_var, daily_combined_file_for_var
+from config import (
+    SOIL_MOISTURE_WEIGHT_LAYER1,
+    SOIL_MOISTURE_WEIGHT_LAYER2,
+    climo_file_for_var,
+    daily_combined_file_for_var,
+)
 from file_helpers import NETCDF_ENGINE, setup_logging
-
-# Weights prescribed during initial dev work phase by Brian B
-WEIGHT_LAYER1 = 0.25
-WEIGHT_LAYER2 = 0.75
 
 
 def parse_args() -> argparse.Namespace:
@@ -20,7 +21,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Read daily combined swvl1 and swvl2 NetCDFs, "
-            "compute swvl = swvl1*WEIGHT_LAYER1 + swvl2*WEIGHT_LAYER2,"
+            "compute swvl = swvl1*SOIL_MOISTURE_WEIGHT_LAYER1 + swvl2*SOIL_MOISTURE_WEIGHT_LAYER2,"
             "write a day-of-year climatology for soil moisture."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -35,7 +36,9 @@ def weighted_swvl_climatology(
 ) -> xr.DataArray:
     """Return day-of-year climatology of weighted soil moisture."""
     swvl1_a, swvl2_a = xr.align(swvl1, swvl2, join="inner")
-    swvl = (swvl1_a * WEIGHT_LAYER1 + swvl2_a * WEIGHT_LAYER2).astype("float32")
+    swvl = (
+        swvl1_a * SOIL_MOISTURE_WEIGHT_LAYER1 + swvl2_a * SOIL_MOISTURE_WEIGHT_LAYER2
+    ).astype("float32")
     swvl.name = "swvl"
     clim = swvl.groupby("valid_time.dayofyear").mean(dim="valid_time")
     clim = clim.rename({"dayofyear": "time"})
@@ -44,7 +47,9 @@ def weighted_swvl_climatology(
         "long_name",
         "Daily climatological mean volumetric soil water (weighted layers 1-2)",
     )
-    clim.attrs["layer_weights"] = f"swvl1*{WEIGHT_LAYER1} + swvl2*{WEIGHT_LAYER2}"
+    clim.attrs["layer_weights"] = (
+        f"swvl1*{SOIL_MOISTURE_WEIGHT_LAYER1} + swvl2*{SOIL_MOISTURE_WEIGHT_LAYER2}"
+    )
     clim["time"].attrs.setdefault("long_name", "day of year")
     clim["time"].attrs.setdefault("description", "calendar day of year (1-366)")
     return clim
