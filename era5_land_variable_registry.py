@@ -39,12 +39,12 @@ VARIABLE_REGISTRY = {
     },
     "swvl2": {
         "cds_variable": "volumetric_soil_water_layer_2",
-        "prefix": "volumetric_soil_water_level_2_hourly_",
+        "prefix": "volumetric_soil_water_level_2_daily_",
         "climatology_dir": "era5_land_daily_swvl2_1981_2020",
         "short_name": "swvl2",
         "daily_op": "mean",
         "suffix": ".nc",
-        "long_name": "Daily (UTC) mean volumetric soil water layer 1",
+        "long_name": "Daily (UTC) mean volumetric soil water layer 2",
     },
 }
 
