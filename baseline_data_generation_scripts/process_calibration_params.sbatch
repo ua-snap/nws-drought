@@ -45,7 +45,7 @@ export NUMEXPR_NUM_THREADS=1
 
 mapfile -t INTERVALS < <(
   uv run --frozen python -c "from config import INTERVALS; print(*INTERVALS, sep='\n')"
-))"
+)
 
 PARTIAL_DIR="$(
   uv run --frozen python -c "from config import gamma_partial_dir_for_index; print(gamma_partial_dir_for_index('${INDEX}'))"
