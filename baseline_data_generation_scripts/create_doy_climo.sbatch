@@ -55,7 +55,6 @@ CMD=(
 if [[ "${OVERWRITE}" == "true" ]]; then
   CMD+=(--overwrite)
 fi
-)
 
 "${CMD[@]}"
 
