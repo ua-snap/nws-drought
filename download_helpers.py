@@ -215,7 +215,7 @@ def download_recurring_era5_land_pipeline(
     cds_variable = variable_meta["cds_variable"]
     prefix = variable_meta["prefix"]
     summary_method = variable_meta["daily_op"]
-    dst_dir = variable_meta["climatology_dir"]
+    dst_dir = variable_meta["recent_dir"]
     suffix = variable_meta["suffix"]
 
     download_dir = RECENT_DATA_ROOT / dst_dir
