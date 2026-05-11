@@ -26,34 +26,22 @@ sbatch baseline_data_generation_scripts/combine_annual.sbatch swvl1
 sbatch baseline_data_generation_scripts/combine_annual.sbatch swvl2
 ```
 
-### Combine the Soil Moisture Layers and Construct the Day-of-Year climatology.
+### Combine the Soil Moisture Layers and Construct the Day-of-Year Climatology.
+The soil moisture layers are combined into a weighted, single representation of soil moisture that is eventually referenced by the soil moisture deficit (SMD) drought indicator.
 
-The soil moisture layers are combined into a single representation of soil moisture that is eventually referenced by the soil moisture deficit (SMD) drought indicator.
-
-```sh
-uv run --frozen python -m baseline_data_generation_scripts.combine_soil_moisture_layers
-```
-the above incantation is pre-baked into this SLURM submission script:
 ```sh
 sbatch baseline_data_generation_scripts/combine_soil_moisture_layers.sbatch
 ```
 
-### Construct Precipitation and SWE Day-of-Year Climatologies 
+### Construct Total Precipitation and SWE Day-of-Year Climatologies
+Convert the daily time series of data into a DOY climatology.
 
-These convert the daily time series of data into a DOY climatology.
-
-#### Precipitation
 ```sh
-sbatch baseline_data_generation_scripts/tp_climo.sbatch
-```
-#### SWE
-```sh
-sbatch baseline_data_generation_scripts/swe_climo.sbatch
+sbatch baseline_data_generation_scripts/create_doy_climo.sbatch <swe|tp>
 ```
 
 ### Determine Distribution Parameters
-
-SPEI and SPI require computing reference distribution parameters. For each of these indicies, the parameters is computed for several intervals (7 day, 30 day, etc.) and then the information for each of those windows is merged into a single file.
+SPEI and SPI require computing reference distribution parameters. For each of these indicies, the parameters are computed for several summary intervals (7 day, 30 day, etc.) and then the data for each of those intervals is merged into a single file.
 
 #### SPI
 ```sh
@@ -73,9 +61,9 @@ sbatch --dependency=afterok:${ARRAY_JOB_ID} baseline_data_generation_scripts/pro
 
 Once all the above processing is complete, the set of files should look like this:
 ```
-era5_tp_climo_1981_2020.nc
-era5_swe_climo_1981_2020.nc
-era5_swvl_climo_1981_2020.nc
+era5_land_tp_climo_1981_2020.nc
+era5_land_swe_climo_1981_2020.nc
+era5_land_swvl_climo_1981_2020.nc
 spei_gamma_parameters.nc
 spi_gamma_parameters.nc
 ```
