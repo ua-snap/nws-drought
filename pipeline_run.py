@@ -8,21 +8,92 @@ import xarray as xr
 from scipy.ndimage import gaussian_filter
 from xclim.indices.stats import dist_method
 
-from config import CLIM_DIR, INDICES_DIR, INTERVALS, RECENT_DATA_ROOT
+from config import (
+    CLIM_DIR,
+    INDICES_DIR,
+    INTERVALS,
+    RECENT_DATA_ROOT,
+    SOIL_MOISTURE_WEIGHT_LAYER1,
+    SOIL_MOISTURE_WEIGHT_LAYER2,
+)
 from era5_land_variable_registry import VARIABLE_REGISTRY
 from file_helpers import NETCDF_ENGINE, ds_combination, setup_logging
 
 
-def assemble_recent_downloads(variable_key):
-    """Assemble the three components of the recently downloaded data into one."""
-
-    logging.info(f"Assembling hourly dataset of {variable_key} data")
-
-    prefix = VARIABLE_REGISTRY[variable_key]["prefix"]
-    recent_data_dir_for_variable = RECENT_DATA_ROOT.joinpath(
-        VARIABLE_REGISTRY[variable_key]["climatology_dir"]
+def combine_swvl():
+    swvl1_prefix = VARIABLE_REGISTRY["swvl1"]["prefix"]
+    recent_swvl1_dir = RECENT_DATA_ROOT.joinpath(
+        VARIABLE_REGISTRY["swvl1"]["recent_dir"]
     )
-    suffix = VARIABLE_REGISTRY[variable_key]["suffix"]
+    recent_swvl1 = {
+        "prev_yr": recent_swvl1_dir.joinpath(f"{swvl1_prefix}previous_year.nc"),
+        "this_month": recent_swvl1_dir.joinpath(f"{swvl1_prefix}current_month.nc"),
+        "this_yr": recent_swvl1_dir.joinpath(f"{swvl1_prefix}current_year.nc"),
+    }
+    swvl2_prefix = VARIABLE_REGISTRY["swvl2"]["prefix"]
+    recent_swvl2_dir = RECENT_DATA_ROOT.joinpath(
+        VARIABLE_REGISTRY["swvl2"]["recent_dir"]
+    )
+    recent_swvl2 = {
+        "prev_yr": recent_swvl2_dir.joinpath(f"{swvl2_prefix}previous_year.nc"),
+        "this_month": recent_swvl2_dir.joinpath(f"{swvl2_prefix}current_month.nc"),
+        "this_yr": recent_swvl2_dir.joinpath(f"{swvl2_prefix}current_year.nc"),
+    }
+    out_dir = RECENT_DATA_ROOT.joinpath("era5_land_daily_swvl")
+    out_dir.mkdir(exist_ok=True)
+    recent_swvl_combined = {
+        "prev_yr": out_dir.joinpath("swvl_previous_year.nc"),
+        "this_month": out_dir.joinpath("swvl_current_month.nc"),
+        "this_yr": out_dir.joinpath("swvl_current_year.nc"),
+    }
+
+    try:
+        # check on data availability
+        for period_of_record in recent_swvl1.keys():
+            ds = xr.open_dataset(recent_swvl1[period_of_record])
+            ds.close()
+            recent_data_to_open = list(recent_swvl1.keys())
+    except FileNotFoundError:
+        # should only happen if current month is January
+        recent_data_to_open = ["prev_yr", "this_month"]
+
+    for period_of_record in recent_data_to_open:
+        swvl1_da = xr.open_dataset(recent_swvl1[period_of_record])["swvl1"]
+        swvl2_da = xr.open_dataset(recent_swvl2[period_of_record])["swvl2"]
+        swvl1_a, swvl2_a = xr.align(swvl1_da, swvl2_da, join="inner")
+        swvl = (
+            swvl1_a * SOIL_MOISTURE_WEIGHT_LAYER1
+            + swvl2_a * SOIL_MOISTURE_WEIGHT_LAYER2
+        ).astype("float32")
+        swvl.name = "swvl"
+        swvl.attrs["source"] = (
+            "Weighted combination of swvl1 and swvl2 UTC daily means."
+        )
+
+        out_path = recent_swvl_combined[period_of_record]
+        swvl.to_netcdf(
+            out_path,
+            engine=NETCDF_ENGINE,
+            encoding={"swvl": {"dtype": "float32"}},
+        )
+        logging.info(f"Wrote combined recent swvl to {out_path}")
+
+
+def assemble_recent_downloads(variable_key):
+    """Assemble the individual components of the recently downloaded data into a single data structure."""
+
+    logging.info(f"Assembling dataset of {variable_key} data")
+
+    if variable_key == "swvl":
+        prefix = "swvl_"
+        recent_data_dir_for_variable = RECENT_DATA_ROOT.joinpath("era5_land_daily_swvl")
+        suffix = ".nc"
+    else:
+        prefix = VARIABLE_REGISTRY[variable_key]["prefix"]
+        recent_data_dir_for_variable = RECENT_DATA_ROOT.joinpath(
+            VARIABLE_REGISTRY[variable_key]["recent_dir"]
+        )
+        suffix = VARIABLE_REGISTRY[variable_key]["suffix"]
 
     recent_data = {
         "prev_yr": recent_data_dir_for_variable.joinpath(
@@ -35,6 +106,7 @@ def assemble_recent_downloads(variable_key):
             f"{prefix}current_year{suffix}"
         ),
     }
+
     try:
         # first, majority (non-January) of analysis date cases
         data_to_merge = [
@@ -45,6 +117,7 @@ def assemble_recent_downloads(variable_key):
         logging.info(
             "Merging recent data for prior year, current year, current month..."
         )
+        recent_data_ds = ds_combination(data_to_merge, suffix)
     except FileNotFoundError:
         # should only happen if current month is January
         data_to_merge = [
@@ -52,8 +125,8 @@ def assemble_recent_downloads(variable_key):
             recent_data["this_month"],
         ]
         logging.info("Merging recent data for prior year and current month...")
+        recent_data_ds = ds_combination(data_to_merge, suffix)
 
-    recent_data_ds = ds_combination(data_to_merge, suffix)
     logging.info("Merging recent data complete.")
     return recent_data_ds
 
@@ -147,8 +220,7 @@ def process_swe_pon():
             # CP note: may not need below
             #            longitude=(swe_clim_ds.longitude.values) - 360,
             # just convert time dim to DOY days for consistency with tp
-            time=np.arange(swe_clim_ds.time.shape[0])
-            + 1,
+            time=np.arange(swe_clim_ds.time.shape[0]) + 1,
         )
 
         # special case for SWE % of normal: 1 day
@@ -247,11 +319,11 @@ def process_spei():
 
 def process_smd():
     indices["smd"] = {}
-    # special case for SMD - 1 day
+    # special case for SMD: a 1-day summary interval
     # copy dataarray structure for spot to put data that will result from smoothing
     temp_da = ds["swvl"].copy(deep=True)
     # smooth with gaussian, returns same array shape but smooths
-    #  0 axis only (because sigma set to 0 for other two dimensions)
+    # 0 axis only (because sigma set to 0 for other two dimensions)
     temp_da.data = gaussian_filter(temp_da, sigma=(2, 0, 0))
 
     with xr.open_dataset(
@@ -265,6 +337,7 @@ def process_smd():
             .drop_vars("time")
         )
         indices["smd"][1] = np.round(((clim_swvl - swvl_1d) / clim_swvl) * 100, 1)
+
         indices["smd"][1].name = "smd"
         indices["smd"][1].attrs["units"] = "percent"
 
@@ -288,15 +361,18 @@ if __name__ == "__main__":
     setup_logging()
     logging.info("Processing drought indices...")
 
-    logging.info("Assembling recent ERA5-Land datasets...")
+    logging.info("Combnining recent soil moisture data")
+    # combine_swvl()
+
+    logging.info("Assembling recent ERA5-Land data...")
     datasets = [
         assemble_recent_downloads(varname)
         for varname in [
             "swe",
-            "swvl1",
+            "swvl",
             "tp",
             "pev",
-        ]  # , "swvl"] # need to proces soil moisture!!!!
+        ]
     ]
 
     ds = xr.combine_by_coords(datasets, combine_attrs="drop_conflicts")
@@ -342,22 +418,15 @@ if __name__ == "__main__":
     logging.info("Processing drought index: SPEI...")
     process_spei()
 
-    # # SMD
-    # logging.info("Processing SMD")
-    # process_smd()
+    logging.info("Processing drought index: SMD...")
+    process_smd()
 
     logging.info("Combining individual drought indicators and summary intervals")
     # write a single file for each interval
     for i in [1] + INTERVALS:
         if i == 1:
             out_ds = xr.merge(
-                [
-                    indices[varname][i]
-                    for varname in [
-                        "swe",
-                        "pnswe",
-                    ]
-                ]  # "smd"]]
+                [indices[varname][i] for varname in ["swe", "pnswe", "smd"]]
             )
             out_ds = out_ds.drop_vars("time")
         else:
