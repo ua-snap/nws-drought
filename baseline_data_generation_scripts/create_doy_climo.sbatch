@@ -41,11 +41,7 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LOG_DIR="${REPO_DIR}/logs"
-
-mkdir -p "${LOG_DIR}"
-cd "${REPO_DIR}"
+mkdir -p logs
 
 export HDF5_USE_FILE_LOCKING=FALSE
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=process_calib_params
+#SBATCH --job-name=calib_params
 #SBATCH --partition=t2small
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -35,10 +35,7 @@ if [[ "${INDEX}" != "spi" && "${INDEX}" != "spei" ]]; then
   exit 2
 fi
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LOG_DIR="${REPO_DIR}/logs"
-
-mkdir -p "${LOG_DIR}"
+mkdir -p logs
 
 export HDF5_USE_FILE_LOCKING=FALSE
 export OMP_NUM_THREADS=1
@@ -46,9 +43,10 @@ export MKL_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 
-cd "${REPO_DIR}"
+INTERVALS="$(
+  uv run --frozen python -c "from config import INTERVALS; print(INTERVALS)"
+)"
 
-INTERVALS=(7 30 60 90 180 365)
 PARTIAL_DIR="$(
   uv run --frozen python -c "from config import gamma_partial_dir_for_index; print(gamma_partial_dir_for_index('${INDEX}'))"
 )"
