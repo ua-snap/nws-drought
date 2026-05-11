@@ -5,9 +5,9 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=144G
-#SBATCH --time=02:00:00
-#SBATCH --output=logs/process_calibration_params_%A_%a.out
-#SBATCH --error=logs/process_calibration_params_%A_%a.err
+#SBATCH --time=03:00:00
+#SBATCH --output=logs/calibration_params_%A_%a.out
+#SBATCH --error=logs/calibration_params_%A_%a.err
 
 set -euo pipefail
 
@@ -43,9 +43,9 @@ export MKL_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 
-INTERVALS="$(
-  uv run --frozen python -c "from config import INTERVALS; print(INTERVALS)"
-)"
+mapfile -t INTERVALS < <(
+  uv run --frozen python -c "from config import INTERVALS; print(*INTERVALS, sep='\n')"
+))"
 
 PARTIAL_DIR="$(
   uv run --frozen python -c "from config import gamma_partial_dir_for_index; print(gamma_partial_dir_for_index('${INDEX}'))"
