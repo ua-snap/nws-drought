@@ -54,6 +54,8 @@ def combine_annual_files(
             ds = xr.open_mfdataset(
                 annual_paths,
                 engine="cfgrib",
+                combine="nested",
+                concat_dim="valid_time",
                 data_vars="minimal",
                 coords="minimal",
                 compat="override",
@@ -62,7 +64,7 @@ def combine_annual_files(
                     "coords_as_attributes": ["surface", "number"],
                     "indexpath": "",  # grib can spew auxillary .idx files, this halts that behavior
                 },
-            )
+            ).sortby("valid_time")
         else:
             ds = xr.open_mfdataset(
                 annual_paths,
@@ -102,14 +104,14 @@ def main() -> int:
     available_years = discover_year_files(
         annual_dir, args.var, VARIABLE_REGISTRY[args.var]["suffix"]
     )
-
-    annual_paths = list(available_years.values())
+    years = sorted(available_years)
+    annual_paths = [available_years[year] for year in years]
 
     logging.info(
         "Combining %d annual files spanning %s to %s",
         len(annual_paths),
-        list(available_years.keys())[0],
-        list(available_years.keys())[-1],
+        years[0],
+        years[-1],
     )
 
     combine_annual_files(
