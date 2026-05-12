@@ -327,13 +327,13 @@ def process_smd():
     temp_da.data = gaussian_filter(temp_da, sigma=(2, 0, 0))
 
     with xr.open_dataset(
-        CLIM_DIR.joinpath("era5_daily_swvl_1981_2020.nc")
+        CLIM_DIR.joinpath("era5_land_swvl_climo_1981_2020.nc")
     ) as swvl_clim_ds:
         # take the most recent day for the 1-day interval
-        swvl_1d = temp_da.sel(valid_time=ds.time.values[-1]).drop_vars("valid_time")
+        swvl_1d = temp_da.sel(valid_time=ds.valid_time.values[-1]).drop_vars("valid_time")
         clim_swvl = (
             swvl_clim_ds["swvl"]
-            .sel(time=ds.time.dt.dayofyear.values[-1])
+            .sel(time=ds.valid_time.dt.dayofyear.values[-1])
             .drop_vars("time")
         )
         indices["smd"][1] = np.round(((clim_swvl - swvl_1d) / clim_swvl) * 100, 1)
@@ -342,7 +342,7 @@ def process_smd():
         indices["smd"][1].attrs["units"] = "percent"
 
         for i in INTERVALS:
-            swvl = ds["swvl"].sel(time=slice(times[-(i)], times[-1])).mean(dim="time")
+            swvl = ds["swvl"].sel(valid_time=slice(times[-(i)], times[-1])).mean(dim="valid_time")
 
             start_doy = pd.Timestamp(times[-i]).dayofyear
             end_doy = pd.Timestamp(times[-1]).dayofyear
@@ -362,7 +362,7 @@ if __name__ == "__main__":
     logging.info("Processing drought indices...")
 
     logging.info("Combnining recent soil moisture data")
-    # combine_swvl()
+    combine_swvl()
 
     logging.info("Assembling recent ERA5-Land data...")
     datasets = [
