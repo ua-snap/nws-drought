@@ -32,18 +32,8 @@ DATA_LAG_TIME_DAYS = int(os.getenv("DATA_LAG_TIME_DAYS") or 6)
 # the summary intervals for which to compute the drought indicators
 INTERVALS = [7, 30, 60, 90, 180, 365]
 # the geographic bounding box of the area of interest
-# DL_BBOX = [
-#     76,
-#     -180,
-#     44,
-#     -125,
-# ]
-DL_BBOX = [
-    61.7,
-    -150.5,
-    61,
-    -149,
-]
+DL_BBOX = [72, -180, 51, -129]
+
 # weights for combining soil moisture layers: prescribed during initial dev work by Brian B
 SOIL_MOISTURE_WEIGHT_LAYER1 = 0.25
 SOIL_MOISTURE_WEIGHT_LAYER2 = 0.75
