@@ -17,34 +17,31 @@ It generates a dataset of seven indicators computed over retrospective intervals
 * `spei`: Standarized precipitation evapotranspiration index. Same as `spi`, but using water budget instead of total precipitation, which is computed as total precipitation minus total evapotranspiration (Note, in ERA5-Land, this variable is just called potential evaporation).
 * `smd`: Soil moisture deficit. $\frac{\frac{1}{n}\sum swvlclim_j - \frac{1}{n}\sum swvl_j}{\frac{1}{n}\sum swvlclim_j} * 100$ for all days-of-year $j$ in the summary interval, where $swvl$ is the volumetric soil water content for the reference year, and $swvlclim$ is the climatological mean. Note, $swvl$ and $swvlclim$ are computed as a weighted average of the top two soil layers based on depth, so $swvl = (swvl_1 * 0.25) + (swvl_2 * 0.75)$.
 
+## Setup
 
-## Configuration
-
+### Configuration
 If needed, edit `./config.py` to...
-
  - Control the lag between the present date and the first date of data fetched by the CDS API
  - Modify the geographic bounding box
  - Modify the set of summary intervals over which the drought indicators are computed
+ - Modify the weights used to combine the soil moisture layers
 
 ### Climate Data Store (CDS) API Credentials
-
 Complete the following items to set up permissions for downloading ERA5-Land data.
-
  - Register for the ECWMF CDS API.
  - Store API credentials in a file called `.cdsapirc` in your `$HOME` directory.
  - Accept the Terms and Conditions of the CDS API
  
-### Input data
-
-Unzip the `drought_clim_data.zip` archive file somewhere and make note of this path. This folder contains some data (climatologies) that is necessary for computing the indices.
+### Baseline Reference Data
+Ensure that the baseline reference data is available at a known path with read permissions. These data (climatologies, gamma parameters, etc.) are required for computing drought indicators.
 
 ## Usage
 
 ### Environment Variables
+- Set `INDICES_DIR` to control the destination to which the results will be written. Default is `nws-drought/drought_ouputs`.
+- Set `CLIM_DIR` to control the destination that holds the baseline reference data (i.e. the climatologies and gamma parameters). Default is `nws-drought/baseline_data`.
 
-
-### Recurrent Execution
-
+### Pipeline Execution
 Each pipeline run will require the execution of the following two scripts:
 
 ```sh
