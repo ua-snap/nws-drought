@@ -176,7 +176,11 @@ def process_total_precip_pon():
             clim_tp = subset_clim_interval(tp_clim_ds, start_doy, end_doy).sum(
                 dim="time"
             )
-            indices["pntp"][i] = np.round((indices["tp"][i] / clim_tp["tp"]) * 100, 1)
+            indices["pntp"][i] = xr.where(
+                clim_tp["tp"] > 0,
+                np.round((indices["tp"][i] / clim_tp["tp"]) * 100, 1),
+                np.nan,
+            )
             indices["pntp"][i].name = "pntp"
             indices["pntp"][i].attrs["units"] = "percent"
 
@@ -188,7 +192,7 @@ def process_swe():
     temp_da = ds["sd"].copy(deep=True)
     # smooth with gaussian, returns same array shape but smooths
     #  0 axis only (because sigma set to 0 for other two dimensions)
-    temp_da.data = gaussian_filter(temp_da, sigma=(2, 0, 0))
+    # temp_da.data = gaussian_filter(temp_da, sigma=(2, 0, 0))
     # and take the most recent day
     indices["swe"][1] = (
         temp_da.sel(valid_time=ds.valid_time.values[-1]).drop_vars("valid_time") * 100
@@ -239,10 +243,18 @@ def process_swe_pon():
             # don't need to multiply by 100 because swe index is in cm,
             # so conversion of clim swe to cm would cancel with conversion of result to percentage
             # e.g. (swe_in_cm / (clim_swe_in_m * 100)) * 100 == swe_in_cm / clim_swe_in_m
-            indices["pnswe"][i] = np.round(indices["swe"][i] / clim_swe["sd"], 1)
+
+            # indices["pnswe"][i] = np.round(indices["swe"][i] / clim_swe["sd"], 1)
+
+            indices["pnswe"][i] = xr.where(
+                clim_swe["sd"] > 0,
+                np.round(indices["swe"][i] / clim_swe["sd"], 1),
+                np.nan,
+            )
+
             # over the water, SWE will always be zero. This comes out as NaN in the results (the only NaNs)
             # For now just treat this area as 100% of normal.
-            indices["pnswe"][i].values[np.isnan(indices["pnswe"][i])] = 100
+            # indices["pnswe"][i].values[np.isnan(indices["pnswe"][i])] = 100
             # CP Note: may not need abov line after transition to ERA5-Land
             indices["pnswe"][i].name = "pnswe"
             indices["pnswe"][i].attrs["units"] = "percent"
@@ -277,7 +289,8 @@ def _spi(pr: xr.DataArray, params: xr.DataArray, interval: int):
     # ensure params has this attr set
     params.attrs["scipy_dist"] = "gamma"
     prob_pos = dist_method("cdf", params, pr.where(pr > 0))
-    prob_zero = (pr == 0).astype(int) / pr.notnull().astype(int)
+    # prob_zero = (pr == 0).astype(int) / pr.notnull().astype(int)
+    prob_zero = xr.where(pr.notnull(), (pr == 0).astype("float32"), np.nan)
     prob = prob_zero + (1 - prob_zero) * prob_pos
 
     # Invert to normal distribution with ppf and obtain SPI
@@ -324,13 +337,15 @@ def process_smd():
     temp_da = ds["swvl"].copy(deep=True)
     # smooth with gaussian, returns same array shape but smooths
     # 0 axis only (because sigma set to 0 for other two dimensions)
-    temp_da.data = gaussian_filter(temp_da, sigma=(2, 0, 0))
+    # temp_da.data = gaussian_filter(temp_da, sigma=(2, 0, 0))
 
     with xr.open_dataset(
         CLIM_DIR.joinpath("era5_land_swvl_climo_1981_2020.nc")
     ) as swvl_clim_ds:
         # take the most recent day for the 1-day interval
-        swvl_1d = temp_da.sel(valid_time=ds.valid_time.values[-1]).drop_vars("valid_time")
+        swvl_1d = temp_da.sel(valid_time=ds.valid_time.values[-1]).drop_vars(
+            "valid_time"
+        )
         clim_swvl = (
             swvl_clim_ds["swvl"]
             .sel(time=ds.valid_time.dt.dayofyear.values[-1])
@@ -342,7 +357,11 @@ def process_smd():
         indices["smd"][1].attrs["units"] = "percent"
 
         for i in INTERVALS:
-            swvl = ds["swvl"].sel(valid_time=slice(times[-(i)], times[-1])).mean(dim="valid_time")
+            swvl = (
+                ds["swvl"]
+                .sel(valid_time=slice(times[-(i)], times[-1]))
+                .mean(dim="valid_time")
+            )
 
             start_doy = pd.Timestamp(times[-i]).dayofyear
             end_doy = pd.Timestamp(times[-1]).dayofyear
@@ -350,8 +369,10 @@ def process_smd():
                 dim="time"
             )
 
-            indices["smd"][i] = np.round(
-                ((clim_swvl["swvl"] - swvl) / clim_swvl["swvl"]) * 100, 1
+            indices["smd"][i] = xr.where(
+                clim_swvl["swvl"] > 0,
+                np.round(((clim_swvl["swvl"] - swvl) / clim_swvl["swvl"]) * 100, 1),
+                np.nan,
             )
             indices["smd"][i].name = "smd"
             indices["smd"][i].attrs["units"] = "percent"
