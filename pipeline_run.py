@@ -5,7 +5,6 @@ import logging
 import numpy as np
 import pandas as pd
 import xarray as xr
-from scipy.ndimage import gaussian_filter
 from xclim.indices.stats import dist_method
 
 from config import (
@@ -15,6 +14,7 @@ from config import (
     RECENT_DATA_ROOT,
     SOIL_MOISTURE_WEIGHT_LAYER1,
     SOIL_MOISTURE_WEIGHT_LAYER2,
+    WATER_BUDGET_OFFSET_M,
 )
 from era5_land_variable_registry import VARIABLE_REGISTRY
 from file_helpers import NETCDF_ENGINE, ds_combination, setup_logging
@@ -131,15 +131,16 @@ def assemble_recent_downloads(variable_key):
     return recent_data_ds
 
 
-def subset_clim_interval(clim_ds, start_doy, end_doy):
-    if start_doy < end_doy:
+def subset_clim_interval(clim_ds: xr.Dataset, start_doy: float, end_doy: float):
+    if start_doy <= end_doy:
         sub_ds = clim_ds.sel(time=slice(start_doy, end_doy))
     else:
-        sub_ds = xr.merge(
+        sub_ds = xr.concat(
             [
-                clim_ds.sel(time=slice(0, end_doy)),
                 clim_ds.sel(time=slice(start_doy, 366)),
-            ]
+                clim_ds.sel(time=slice(1, end_doy)),
+            ],
+            dim="time",
         )
     return sub_ds
 
@@ -165,11 +166,6 @@ def process_total_precip_pon():
     with xr.open_dataset(
         CLIM_DIR.joinpath("era5_land_tp_climo_1981_2020.nc")
     ) as tp_clim_ds:
-        # need to remap longitude coordinates from [180, 360] to [-180, 0]
-        # # CP note: do we need this???
-        # tp_clim_ds = tp_clim_ds.assign_coords(
-        #     longitude=(tp_clim_ds.longitude.values) - 360
-        # )
         for i in INTERVALS:
             start_doy = pd.Timestamp(times[-i]).dayofyear
             end_doy = pd.Timestamp(times[-1]).dayofyear
@@ -178,7 +174,7 @@ def process_total_precip_pon():
             )
             indices["pntp"][i] = xr.where(
                 clim_tp["tp"] > 0,
-                np.round((indices["tp"][i] / clim_tp["tp"]) * 100, 1),
+                np.round((indices["tp"][i] / clim_tp["tp"]), 1),
                 np.nan,
             )
             indices["pntp"][i].name = "pntp"
@@ -188,11 +184,7 @@ def process_total_precip_pon():
 def process_swe():
     indices["swe"] = {}
     # special case for SWE: 1 day
-    # copy DataArray structure for spot to put data that will result from smoothing
     temp_da = ds["sd"].copy(deep=True)
-    # smooth with gaussian, returns same array shape but smooths
-    #  0 axis only (because sigma set to 0 for other two dimensions)
-    # temp_da.data = gaussian_filter(temp_da, sigma=(2, 0, 0))
     # and take the most recent day
     indices["swe"][1] = (
         temp_da.sel(valid_time=ds.valid_time.values[-1]).drop_vars("valid_time") * 100
@@ -206,7 +198,7 @@ def process_swe():
             .sel(valid_time=slice(times[-(i)], times[-1]))
             .mean(dim="valid_time")
             * 100
-        )  # converts from m to cm
+        )  # convert from m to cm
         indices["swe"][i].name = "swe"
         indices["swe"][i].attrs["units"] = "cm"
 
@@ -219,10 +211,7 @@ def process_swe_pon():
     with xr.open_dataset(
         CLIM_DIR.joinpath("era5_land_swe_climo_1981_2020.nc")
     ) as swe_clim_ds:
-        # need to remap longitude coordinates from [180, 360] to [-180, 0]
         swe_clim_ds = swe_clim_ds.assign_coords(
-            # CP note: may not need below
-            #            longitude=(swe_clim_ds.longitude.values) - 360,
             # just convert time dim to DOY days for consistency with tp
             time=np.arange(swe_clim_ds.time.shape[0]) + 1,
         )
@@ -243,9 +232,6 @@ def process_swe_pon():
             # don't need to multiply by 100 because swe index is in cm,
             # so conversion of clim swe to cm would cancel with conversion of result to percentage
             # e.g. (swe_in_cm / (clim_swe_in_m * 100)) * 100 == swe_in_cm / clim_swe_in_m
-
-            # indices["pnswe"][i] = np.round(indices["swe"][i] / clim_swe["sd"], 1)
-
             indices["pnswe"][i] = xr.where(
                 clim_swe["sd"] > 0,
                 np.round(indices["swe"][i] / clim_swe["sd"], 1),
@@ -253,9 +239,6 @@ def process_swe_pon():
             )
 
             # over the water, SWE will always be zero. This comes out as NaN in the results (the only NaNs)
-            # For now just treat this area as 100% of normal.
-            # indices["pnswe"][i].values[np.isnan(indices["pnswe"][i])] = 100
-            # CP Note: may not need abov line after transition to ERA5-Land
             indices["pnswe"][i].name = "pnswe"
             indices["pnswe"][i].attrs["units"] = "percent"
 
@@ -289,7 +272,6 @@ def _spi(pr: xr.DataArray, params: xr.DataArray, interval: int):
     # ensure params has this attr set
     params.attrs["scipy_dist"] = "gamma"
     prob_pos = dist_method("cdf", params, pr.where(pr > 0))
-    # prob_zero = (pr == 0).astype(int) / pr.notnull().astype(int)
     prob_zero = xr.where(pr.notnull(), (pr == 0).astype("float32"), np.nan)
     prob = prob_zero + (1 - prob_zero) * prob_pos
 
@@ -321,8 +303,8 @@ def process_spi():
 def process_spei():
     indices["spei"] = {}
     with xr.open_dataset(CLIM_DIR.joinpath("spei_gamma_parameters.nc")) as spei_ds:
-        # add 1mm (?) offset consistent with precomputed gammas
-        wb = (ds["tp"] + ds["pev"]) + 0.002
+        wb = (ds["tp"] + ds["pev"]) + WATER_BUDGET_OFFSET_M
+
         for i in INTERVALS:
             indices["spei"][i] = _spi(wb, spei_ds["params"], i)
             indices["spei"][i].name = "spei"
@@ -335,9 +317,6 @@ def process_smd():
     # special case for SMD: a 1-day summary interval
     # copy dataarray structure for spot to put data that will result from smoothing
     temp_da = ds["swvl"].copy(deep=True)
-    # smooth with gaussian, returns same array shape but smooths
-    # 0 axis only (because sigma set to 0 for other two dimensions)
-    # temp_da.data = gaussian_filter(temp_da, sigma=(2, 0, 0))
 
     with xr.open_dataset(
         CLIM_DIR.joinpath("era5_land_swvl_climo_1981_2020.nc")
@@ -396,7 +375,13 @@ if __name__ == "__main__":
         ]
     ]
 
-    ds = xr.combine_by_coords(datasets, combine_attrs="drop_conflicts")
+    datasets = xr.align(*datasets, join="inner")
+    ds = xr.merge(
+        datasets,
+        join="exact",
+        compat="no_conflicts",
+        combine_attrs="drop_conflicts",
+    )
     end_time = ds.valid_time[-1]
     logging.info(f"End time for combined dataset is {end_time}.")
     ref_date = pd.to_datetime(end_time.values)
@@ -412,55 +397,51 @@ if __name__ == "__main__":
     # ensure that this is indeed 365 days (time diff is nanoseconds)
     assert (end_time - start_time) / 86400e9
 
-    # below globals(!) are inherited by all of the functions for computing indices
-    # the dataset `ds` the combined data, sliced to just include the previous year's worth of daata
-    # `times` the times we want to look at
-    # an initialized results dict in which to store the data
+    # below globals(!) are inherited by all the functions that compute indices:
+    #    the `ds` of the combined recent data, sliced to just include the previous year
+    #    `times` the times we want to look at
+    #    `indicies` an initialized results dict in which to store the data
     ds = ds.sel(valid_time=slice(start_time, end_time))
     times = ds.valid_time.values
-    # construct dict for processing the actual indices
     indices = {}
 
     logging.info("Processing drought index: total precipitation...")
     process_total_precip()
-
     logging.info("Processing drought index: total precipitation % of normal...")
     process_total_precip_pon()
-
     logging.info("Processing drought index: SWE...")
     process_swe()
-
     logging.info("Processing drought index: SWE % of normal...")
     process_swe_pon()
-
     logging.info("Processing drought index: SPI...")
     process_spi()
-
     logging.info("Processing drought index: SPEI...")
     process_spei()
-
     logging.info("Processing drought index: SMD...")
     process_smd()
-
     logging.info("Combining individual drought indicators and summary intervals")
+
     # write a single file for each interval
     for i in [1] + INTERVALS:
         if i == 1:
-            out_ds = xr.merge(
-                [indices[varname][i] for varname in ["swe", "pnswe", "smd"]]
-            )
-            out_ds = out_ds.drop_vars("time")
+            arrays = [
+                indices[varname][i].drop_vars("time", errors="ignore")
+                for varname in ["swe", "pnswe", "smd"]
+            ]
         else:
-            out_ds = xr.merge([indices[varname][i] for varname in indices])
+            arrays = [
+                indices[varname][i].drop_vars("time", errors="ignore")
+                for varname in indices
+            ]
 
-        #     # merging the datasets is causing inversion along latitude dim for some reason!
-        #     #  Flip it if it's upside down (increasing lat)
-        #     if out_ds.latitude[1] > out_ds.latitude[0]:
-        #         out_ds = out_ds.reindex(latitude=list(reversed(out_ds.latitude)))
+        out_ds = xr.merge(
+            arrays,
+            join="exact",
+            compat="no_conflicts",
+            combine_attrs="drop_conflicts",
+        )
 
         out_ds.attrs["reference_date"] = ref_date.strftime("%Y-%m-%d")
-        # remove dataset-level units attribute
-        del out_ds.attrs["units"]
         out_ds.to_netcdf(INDICES_DIR.joinpath(f"drought_indices_{i}day.nc"))
 
     logging.info("Pipeline completed.")

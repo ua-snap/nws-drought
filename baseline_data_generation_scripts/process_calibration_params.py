@@ -16,6 +16,7 @@ from xclim.indices.stats import fit
 
 from config import (
     INTERVALS,
+    WATER_BUDGET_OFFSET_M,
     daily_combined_file_for_var,
     gamma_output_file_for_index,
     gamma_partial_dir_for_index,
@@ -69,10 +70,8 @@ def load_calibration_array(index: str) -> xr.DataArray:
     # upward fluxes are negative, so adding pev gives the water budget.
     wb = tp_cal_ds["tp"] + pev_cal_ds["pev"]
 
-    # Gamma is bounded by zero: water budget must be shifted so only positive
-    # values are allowed. See xclim code; 1 mm is used there, but 2 mm avoids
-    # remaining negative values for 180- and 365-day intervals in this dataset.
-    wb += 0.002
+    # Gamma is bounded by zero: water budget must be forced to be positive
+    wb += WATER_BUDGET_OFFSET_M
     wb.name = "wb"
 
     return wb
