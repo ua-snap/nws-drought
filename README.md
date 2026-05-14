@@ -1,6 +1,6 @@
 # Drought Indicators
 
-This codebase computes a series of "drought indicators" (aka indices) that may be useful in assessing drought conditions in Alaska. 
+This codebase computes a series of "drought indicators" for assessing drought conditions in Alaska. 
 
 It generates a dataset of seven indicators computed over retrospective intervals - "summary intervals" - from a supplied reference date with the following lengths (in days): 7, 30, 60, 90, 180, 365. The summary interval is the $n$-length sequence of days preceding and ending with the reference date $d_0$, for each interval size $n$. The seven indicators are:
 
@@ -25,15 +25,16 @@ If needed, edit `./config.py` to...
  - Modify the geographic bounding box
  - Modify the set of summary intervals over which the drought indicators are computed
  - Modify the weights used to combine the soil moisture layers
+ - Modify the offset applied to the water budget
 
 ### Climate Data Store (CDS) API Credentials
 Complete the following items to set up permissions for downloading ERA5-Land data.
  - Register for the ECWMF CDS API.
  - Store API credentials in a file called `.cdsapirc` in your `$HOME` directory.
  - Accept the Terms and Conditions of the CDS API
- 
+
 ### Baseline Reference Data
-Ensure that the baseline reference data is available at a known path with read permissions. These data (climatologies, gamma parameters, etc.) are required for computing drought indicators.
+Ensure that the baseline reference data is available at a known path with read permissions. These data (climatologies, gamma parameters, etc.) are required for computing drought indicators. 
 
 ## Usage
 
