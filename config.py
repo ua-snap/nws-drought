@@ -17,9 +17,7 @@ CLIM_DIR = Path(os.getenv("DROUGHT_CLIM_DIR") or BASELINE_DATA_ROOT)
 CLIM_DIR.mkdir(exist_ok=True, parents=True)
 
 # Destination to which the pipeline data is downloaded
-RECENT_DATA_ROOT = Path(
-    os.getenv("DROUGHT_BASELINE_ROOT") or REPO_ROOT.joinpath("recent_data")
-)
+RECENT_DATA_ROOT = REPO_ROOT.joinpath("recent_data")
 RECENT_DATA_ROOT.mkdir(exist_ok=True, parents=True)
 
 # results directory for all drought indices for all summary intervals
