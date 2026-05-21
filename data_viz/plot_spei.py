@@ -1,101 +1,30 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[4]:
-
-
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import xarray as xr
-from matplotlib.colors import BoundaryNorm, ListedColormap
 
-data_dir = Path("snap/drought_outputs")
+from plot_scales import SPEI_USDM_SCALE, make_colormap
+
+data_dir = Path("drought_outputs")
+OUTPUT_DIR = Path(__file__).resolve().parent
 
 all_files = [
-    Path("snap/drought_outputs/drought_indices_1day.nc"),
-    Path("snap/drought_outputs/drought_indices_7day.nc"),
-    Path("snap/drought_outputs/drought_indices_30day.nc"),
-    Path("snap/drought_outputs/drought_indices_60day.nc"),
-    Path("snap/drought_outputs/drought_indices_90day.nc"),
-    Path("snap/drought_outputs/drought_indices_180day.nc"),
-    Path("snap/drought_outputs/drought_indices_365day.nc"),
+    Path("drought_outputs/drought_indices_7day.nc"),
+    Path("drought_outputs/drought_indices_30day.nc"),
+    Path("drought_outputs/drought_indices_60day.nc"),
+    Path("drought_outputs/drought_indices_90day.nc"),
+    Path("drought_outputs/drought_indices_180day.nc"),
+    Path("drought_outputs/drought_indices_365day.nc"),
 ]
 
 variable_key = "spei"
-long_name = "Standardized Precipitation Evapotranspiration Index"
 analysis_date = "2026-05-06"
 
-# Discrete SPEI categories.
-#
-# SPEI is unitless and behaves like a standardized anomaly:
-#   negative = drier-than-normal water-balance conditions
-#   positive = wetter-than-normal water-balance conditions
-#
-# Most SPEI values should usually fall between about -3 and +3.
-# Bounds extend to +/-4 so extreme values are clipped into the end categories.
-bounds = [
-    -4.0,
-    -2.0,
-    -1.5,
-    -1.0,
-    -0.5,
-    0.5,
-    1.0,
-    1.5,
-    2.0,
-    4.0,
-]
-
-colors = [
-    "#7f0000",  # <= -2.0: extremely dry
-    "#d7301f",  # -2.0 to -1.5: severely dry
-    "#fc8d59",  # -1.5 to -1.0: moderately dry
-    "#fdcc8a",  # -1.0 to -0.5: mildly dry
-    "#f0f0f0",  # -0.5 to 0.5: near normal
-    "#d9f0d3",  # 0.5 to 1.0: mildly wet
-    "#a6d96a",  # 1.0 to 1.5: moderately wet
-    "#1a9850",  # 1.5 to 2.0: very wet
-    "#08519c",  # >= 2.0: extremely wet
-]
-
-cmap = ListedColormap(colors)
-cmap.set_bad("#d9dee7")  # ocean / masked cells
-
-norm = BoundaryNorm(bounds, cmap.N, clip=True)
-
-cbar_labels = [
-    "≤ -2.0\nExtremely dry",
-    "-2.0 to -1.5\nSeverely dry",
-    "-1.5 to -1.0\nModerately dry",
-    "-1.0 to -0.5\nMildly dry",
-    "-0.5 to 0.5\nNear normal",
-    "0.5 to 1.0\nMildly wet",
-    "1.0 to 1.5\nModerately wet",
-    "1.5 to 2.0\nVery wet",
-    "≥ 2.0\nExtremely wet",
-]
-
-# Bin-center tick positions for categorical colorbar.
-cbar_ticks = [
-    -3.0,
-    -1.75,
-    -1.25,
-    -0.75,
-    0.0,
-    0.75,
-    1.25,
-    1.75,
-    3.0,
-]
-
-short_window_files = [all_files[0]]
-long_window_files = all_files[1::]
-
-
-def open_nc(path: str | Path) -> xr.Dataset:
-    """Open a NetCDF file with decoding enabled."""
-    return xr.open_dataset(path)
+scale = SPEI_USDM_SCALE
+bounds = scale.bounds
+cbar_labels = scale.cbar_labels
+cbar_ticks = scale.cbar_ticks
+cmap, norm = make_colormap(scale)
 
 
 def plot_variable_across_files(
@@ -124,7 +53,7 @@ def plot_variable_across_files(
 
     for path in paths:
         p = Path(path)
-        ds = open_nc(p)
+        ds = xr.open_dataset(p)
         opened.append((p, ds))
 
     mesh = None
@@ -147,7 +76,7 @@ def plot_variable_across_files(
 
         ax.set_title(Path(path).stem.split("_")[-1])
         ax.label_outer()
-        ax.set_facecolor("#d9dee7")
+        ax.set_facecolor(scale.mask_color)
 
     if mesh is None:
         raise ValueError("No input files were provided.")
@@ -164,10 +93,10 @@ def plot_variable_across_files(
     )
 
     cbar.set_ticklabels(cbar_labels)
-    cbar.set_label("SPEI")
+    cbar.set_label(scale.colorbar_axis_label)
 
     fig.suptitle(
-        f"{long_name} -- Analysis Date {analysis_date}",
+        f"{scale.indicator_title} -- Analysis Date {analysis_date}",
         fontsize=12,
     )
 
@@ -175,11 +104,4 @@ def plot_variable_across_files(
         fig.savefig(save_path, dpi=300, bbox_inches="tight")
 
 
-plot_variable_across_files(long_window_files, save_path="spei.png")
-
-
-# In[ ]:
-
-
-
-
+plot_variable_across_files(all_files, save_path=OUTPUT_DIR / "spei.png")
