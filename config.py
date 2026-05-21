@@ -28,7 +28,7 @@ INDICES_DIR.mkdir(exist_ok=True)
 # daily updates are available within ~5 days of real time, so 5 is likely the minimum
 DATA_LAG_TIME_DAYS = int(os.getenv("DATA_LAG_TIME_DAYS") or 6)
 # the summary intervals for which to compute the drought indicators
-INTERVALS = [7, 30, 60, 90, 180, 365]
+INTERVALS = [7, 14, 30, 60, 90, 180, 365]
 # the geographic bounding box of the area of interest
 DL_BBOX = [72, -180, 51, -129]
 
