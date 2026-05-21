@@ -48,10 +48,10 @@ mapfile -t INTERVALS < <(
 )
 
 PARTIAL_DIR="$(
-  uv run --frozen python -c "from config import gamma_partial_dir_for_index; print(gamma_partial_dir_for_index('${INDEX}'))"
+  uv run --frozen python -c "from config import statistical_rv_partial_dir_for_index; print(statistical_rv_partial_dir_for_index('${INDEX}'))"
 )"
 OUT_PATH="$(
-  uv run --frozen python -c "from config import gamma_output_file_for_index; print(gamma_output_file_for_index('${INDEX}'))"
+  uv run --frozen python -c "from config import statistical_rv_output_file_for_index; print(statistical_rv_output_file_for_index('${INDEX}'))"
 )"
 mkdir -p "${PARTIAL_DIR}" "$(dirname "${OUT_PATH}")"
 
@@ -74,11 +74,11 @@ if [[ "${MODE}" == "compute" ]]; then
   fi
 
   INTERVAL="${INTERVALS[${SLURM_ARRAY_TASK_ID}]}"
-  PARTIAL_OUT="${PARTIAL_DIR}/${INDEX}_gamma_parameters_interval_$(printf "%03d" "${INTERVAL}").nc"
+  #PARTIAL_OUT="${PARTIAL_DIR}/${INDEX}_gamma_parameters_interval_$(printf "%03d" "${INTERVAL}").nc"
 
   echo "Array task: ${SLURM_ARRAY_TASK_ID}"
   echo "Interval: ${INTERVAL}"
-  echo "Partial output: ${PARTIAL_OUT}"
+  #echo "Partial output: ${PARTIAL_OUT}"
 
   mkdir -p "${PARTIAL_DIR}"
 
@@ -86,12 +86,12 @@ if [[ "${MODE}" == "compute" ]]; then
     -i "${INDEX}" \
     --interval "${INTERVAL}"
 
-  if [[ -f "${PARTIAL_OUT}" ]]; then
-    echo "Wrote ${PARTIAL_OUT}"
-  else
-    echo "Error: expected partial output not found at ${PARTIAL_OUT}" >&2
-    exit 1
-  fi
+  # if [[ -f "${PARTIAL_OUT}" ]]; then
+  #   echo "Wrote ${PARTIAL_OUT}"
+  # else
+  #   echo "Error: expected partial output not found at ${PARTIAL_OUT}" >&2
+  #   exit 1
+  # fi
 else
   uv run --frozen python -m baseline_data_generation_scripts.process_calibration_params merge \
     -i "${INDEX}"

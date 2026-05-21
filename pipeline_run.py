@@ -14,6 +14,8 @@ from config import (
     RECENT_DATA_ROOT,
     SOIL_MOISTURE_WEIGHT_LAYER1,
     SOIL_MOISTURE_WEIGHT_LAYER2,
+    SPEI_DIST,
+    SPI_DIST,
     WATER_BUDGET_OFFSET_M,
 )
 from era5_land_variable_registry import VARIABLE_REGISTRY
@@ -230,11 +232,11 @@ def process_swe_pon():
 
 def _spi(pr: xr.DataArray, params: xr.DataArray, interval: int):
     """Computes Standardized Precipitation Index (SPI).
-    Adapted from xclim.indices._agro.standardized_precipitation_index to accept pre-fit gamma parameters.
+    Adapted from xclim.indices._agro.standardized_precipitation_index to accept pre-fit statistical distribution parameters.
 
     Args:
         pr (xr.DataArray): recent precip data
-        params (xr.DataArray): gamma parameters fit to precip data from 1981-2020, with intervals as a dimension
+        params (xr.DataArray): statistical distribution parameters fit to precip data from 1981-2020, with intervals as a dimension
         interval (int): interval length
 
     Returns:
@@ -253,9 +255,10 @@ def _spi(pr: xr.DataArray, params: xr.DataArray, interval: int):
         dim="valid_time", keep_attrs=True
     )
 
-    # ppf to cdf
     # ensure params has this attr set
-    params.attrs["scipy_dist"] = "gamma"
+    # params.attrs["scipy_dist"] = SPI_DIST
+
+    # ppf to cdf
     prob_pos = dist_method("cdf", params, pr.where(pr > 0))
     prob_zero = xr.where(pr.notnull(), (pr == 0).astype("float32"), np.nan)
     prob = prob_zero + (1 - prob_zero) * prob_pos
@@ -277,7 +280,7 @@ def _spi(pr: xr.DataArray, params: xr.DataArray, interval: int):
 
 def process_spi():
     indices["spi"] = {}
-    with xr.open_dataset(CLIM_DIR.joinpath("spi_gamma_parameters.nc")) as spi_ds:
+    with xr.open_dataset(CLIM_DIR.joinpath(f"spi_{SPI_DIST}_parameters.nc")) as spi_ds:
         for i in INTERVALS:
             indices["spi"][i] = _spi(ds["tp"], spi_ds["params"], i)
             indices["spi"][i].name = "spi"
@@ -287,7 +290,9 @@ def process_spi():
 
 def process_spei():
     indices["spei"] = {}
-    with xr.open_dataset(CLIM_DIR.joinpath("spei_gamma_parameters.nc")) as spei_ds:
+    with xr.open_dataset(
+        CLIM_DIR.joinpath(f"spei_{SPEI_DIST}_parameters.nc")
+    ) as spei_ds:
         wb = (ds["tp"] + ds["pev"]) + WATER_BUDGET_OFFSET_M
 
         for i in INTERVALS:
@@ -407,7 +412,7 @@ if __name__ == "__main__":
         out_ds.attrs["reference_date"] = ref_date.strftime("%Y-%m-%d")
         out_ds.to_netcdf(
             INDICES_DIR.joinpath(
-                f"drought_indices_{i}day_{ref_date.strftime('%Y-%m-%d')}.nc"
+                f"drought_indices_{i}day_{ref_date.strftime('%Y_%m_%d')}.nc"
             )
         )
 

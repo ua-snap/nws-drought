@@ -38,7 +38,11 @@ SOIL_MOISTURE_WEIGHT_LAYER2 = 0.75
 # water budget must be shifted so only positive values are allowed
 # in xclim implementation 1 mm is used
 # in ERA5 "Classic" 2 mm avoided negative values for 180, 365-day intervals
-WATER_BUDGET_OFFSET_M = 0.002
+# WATER_BUDGET_OFFSET_M = 0.002
+WATER_BUDGET_OFFSET_M = 0.00
+
+SPI_DIST = "gamma"
+SPEI_DIST = "fisk"
 
 
 # functions to generate the baseline data directory structures
@@ -58,14 +62,18 @@ def climo_file_for_var(varname: str) -> Path:
     return BASELINE_DATA_ROOT.joinpath(f"era5_land_{varname}_climo_1981_2020.nc")
 
 
-def gamma_partial_dir_for_index(index: str) -> Path:
+def statistical_rv_partial_dir_for_index(index: str) -> Path:
     _require_supported_index(index)
-    return BASELINE_DATA_ROOT.joinpath(f"{index}_gamma_parameter_intervals")
+    if index == "spi":
+        return BASELINE_DATA_ROOT.joinpath(f"{index}_{SPI_DIST}_parameter_intervals")
+    return BASELINE_DATA_ROOT.joinpath(f"{index}_{SPEI_DIST}_parameter_intervals")
 
 
-def gamma_output_file_for_index(index: str) -> Path:
+def statistical_rv_output_file_for_index(index: str) -> Path:
     _require_supported_index(index)
-    return BASELINE_DATA_ROOT.joinpath(f"{index}_gamma_parameters.nc")
+    if index == "spi":
+        return BASELINE_DATA_ROOT.joinpath(f"{index}_{SPI_DIST}_parameters.nc")
+    return BASELINE_DATA_ROOT.joinpath(f"{index}_{SPEI_DIST}_parameters.nc")
 
 
 # validators

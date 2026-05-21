@@ -41,7 +41,7 @@ sbatch baseline_data_generation_scripts/create_doy_climo.sbatch <swe|tp>
 ```
 
 ### Determine Distribution Parameters
-SPEI and SPI require computing reference distribution parameters. For each of these indicies, the parameters are computed for several summary intervals (7 day, 30 day, etc.) and then the data for each of those intervals is merged into a single file.
+SPEI and SPI require computing reference distribution parameters. For each of SPI and SPEI, the parameters are computed for all summary intervals (7 day, 30 day, etc.) and then the data for each of those intervals is merged into a single file.
 
 #### SPI
 ```sh
@@ -64,6 +64,6 @@ Once all the above processing is complete, the set of files should look like thi
 era5_land_tp_climo_1981_2020.nc
 era5_land_swe_climo_1981_2020.nc
 era5_land_swvl_climo_1981_2020.nc
-spei_gamma_parameters.nc
-spi_gamma_parameters.nc
+spei_{SPEI_DIST}_parameters.nc
+spi_{SPI_DIST}_parameters.nc
 ```
