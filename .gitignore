@@ -9,6 +9,7 @@ docs/
 *.netcdf
 *.nc
 *.grib
+*.png
 tmp/
 drought_outputs/
 
