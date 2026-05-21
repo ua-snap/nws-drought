@@ -405,6 +405,10 @@ if __name__ == "__main__":
         )
 
         out_ds.attrs["reference_date"] = ref_date.strftime("%Y-%m-%d")
-        out_ds.to_netcdf(INDICES_DIR.joinpath(f"drought_indices_{i}day.nc"))
+        out_ds.to_netcdf(
+            INDICES_DIR.joinpath(
+                f"drought_indices_{i}day_{ref_date.strftime('%Y-%m-%d')}.nc"
+            )
+        )
 
     logging.info("Pipeline completed.")
