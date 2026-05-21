@@ -182,15 +182,8 @@ def process_total_precip_pon():
 
 
 def process_swe():
+
     indices["swe"] = {}
-    # special case for SWE: 1 day
-    temp_da = ds["sd"].copy(deep=True)
-    # and take the most recent day
-    indices["swe"][1] = (
-        temp_da.sel(valid_time=ds.valid_time.values[-1]).drop_vars("valid_time") * 100
-    )
-    indices["swe"][1].name = "swe"
-    indices["swe"][1].attrs["units"] = "cm"
 
     for i in INTERVALS:
         indices["swe"][i] = (
@@ -201,12 +194,11 @@ def process_swe():
         )  # convert from m to cm
         indices["swe"][i].name = "swe"
         indices["swe"][i].attrs["units"] = "cm"
-
-    for i in INTERVALS + [1]:
         indices["swe"][i] = np.round(indices["swe"][i], 1)
 
 
 def process_swe_pon():
+
     indices["pnswe"] = {}
     with xr.open_dataset(
         CLIM_DIR.joinpath("era5_land_swe_climo_1981_2020.nc")
@@ -215,13 +207,6 @@ def process_swe_pon():
             # just convert time dim to DOY days for consistency with tp
             time=np.arange(swe_clim_ds.time.shape[0]) + 1,
         )
-
-        # special case for SWE % of normal: 1 day
-        end_doy = pd.Timestamp(times[-1]).dayofyear
-        clim_swe = swe_clim_ds["sd"].sel(time=end_doy)
-        indices["pnswe"][1] = np.round(indices["swe"][1] / clim_swe, 1)
-        indices["pnswe"][1].name = "pnswe"
-        indices["pnswe"][1].attrs["units"] = "cm"
 
         for i in INTERVALS:
             start_doy = pd.Timestamp(times[-i]).dayofyear
@@ -313,28 +298,12 @@ def process_spei():
 
 
 def process_smd():
+
     indices["smd"] = {}
-    # special case for SMD: a 1-day summary interval
-    # copy dataarray structure for spot to put data that will result from smoothing
-    temp_da = ds["swvl"].copy(deep=True)
 
     with xr.open_dataset(
         CLIM_DIR.joinpath("era5_land_swvl_climo_1981_2020.nc")
     ) as swvl_clim_ds:
-        # take the most recent day for the 1-day interval
-        swvl_1d = temp_da.sel(valid_time=ds.valid_time.values[-1]).drop_vars(
-            "valid_time"
-        )
-        clim_swvl = (
-            swvl_clim_ds["swvl"]
-            .sel(time=ds.valid_time.dt.dayofyear.values[-1])
-            .drop_vars("time")
-        )
-        indices["smd"][1] = np.round(((clim_swvl - swvl_1d) / clim_swvl) * 100, 1)
-
-        indices["smd"][1].name = "smd"
-        indices["smd"][1].attrs["units"] = "percent"
-
         for i in INTERVALS:
             swvl = (
                 ds["swvl"]
@@ -422,17 +391,11 @@ if __name__ == "__main__":
     logging.info("Combining individual drought indicators and summary intervals")
 
     # write a single file for each interval
-    for i in [1] + INTERVALS:
-        if i == 1:
-            arrays = [
-                indices[varname][i].drop_vars("time", errors="ignore")
-                for varname in ["swe", "pnswe", "smd"]
-            ]
-        else:
-            arrays = [
-                indices[varname][i].drop_vars("time", errors="ignore")
-                for varname in indices
-            ]
+    for i in INTERVALS:
+        arrays = [
+            indices[varname][i].drop_vars("time", errors="ignore")
+            for varname in indices
+        ]
 
         out_ds = xr.merge(
             arrays,
