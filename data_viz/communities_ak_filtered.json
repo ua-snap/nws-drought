@@ -1,0 +1,3392 @@
+[
+  {
+    "name": "Afognak",
+    "alt_name": "Agw’aneq",
+    "lat": 58.0078,
+    "lon": -152.768
+  },
+  {
+    "name": "Akhiok",
+    "alt_name": "Kasukuak",
+    "lat": 56.9455,
+    "lon": -154.17
+  },
+  {
+    "name": "Akiachak",
+    "alt_name": "Akiacuar",
+    "lat": 60.9094,
+    "lon": -161.431
+  },
+  {
+    "name": "Akiak",
+    "alt_name": "Akiaq",
+    "lat": 60.9122,
+    "lon": -161.214
+  },
+  {
+    "name": "Akutan",
+    "alt_name": "Achan-ingiiga",
+    "lat": 54.1385,
+    "lon": -165.778
+  },
+  {
+    "name": "Alakanuk",
+    "alt_name": "Alarneq",
+    "lat": 62.6889,
+    "lon": -164.615
+  },
+  {
+    "name": "Alatna",
+    "alt_name": "Alaasuq",
+    "lat": 66.5542,
+    "lon": -152.7019
+  },
+  {
+    "name": "Alcan Border",
+    "alt_name": "",
+    "lat": 62.6856,
+    "lon": -141.1253
+  },
+  {
+    "name": "Aleknagik",
+    "alt_name": "Alaqnaqiq",
+    "lat": 59.273,
+    "lon": -158.618
+  },
+  {
+    "name": "Aleneva",
+    "alt_name": "",
+    "lat": 58.0046,
+    "lon": -152.8825
+  },
+  {
+    "name": "Aleut Village",
+    "alt_name": "",
+    "lat": 58.0171,
+    "lon": -152.761
+  },
+  {
+    "name": "Alexander Creek",
+    "alt_name": "",
+    "lat": 61.4171,
+    "lon": -150.593
+  },
+  {
+    "name": "Allakaket",
+    "alt_name": "Aalaa Kkaakk’et",
+    "lat": 66.5656,
+    "lon": -152.646
+  },
+  {
+    "name": "Ambler",
+    "alt_name": "Ivisaappaat",
+    "lat": 67.0861,
+    "lon": -157.851
+  },
+  {
+    "name": "Anaktuvuk Pass",
+    "alt_name": "Anaqtuuvak / Naqsraq",
+    "lat": 68.1433,
+    "lon": -151.736
+  },
+  {
+    "name": "Anchor Point",
+    "alt_name": "",
+    "lat": 59.7766,
+    "lon": -151.831
+  },
+  {
+    "name": "Anchorage",
+    "alt_name": "Dgheyaytnu",
+    "lat": 61.1817,
+    "lon": -149.993
+  },
+  {
+    "name": "Anderson",
+    "alt_name": "",
+    "lat": 64.3441,
+    "lon": -149.187
+  },
+  {
+    "name": "Angoon",
+    "alt_name": "Aangóon",
+    "lat": 57.5033,
+    "lon": -134.584
+  },
+  {
+    "name": "Aniak",
+    "alt_name": "Anyaraq",
+    "lat": 61.5783,
+    "lon": -159.522
+  },
+  {
+    "name": "Annette",
+    "alt_name": "",
+    "lat": 55.063,
+    "lon": -131.541
+  },
+  {
+    "name": "Anvik",
+    "alt_name": "Gitr’ingith Chagg",
+    "lat": 62.6561,
+    "lon": -160.207
+  },
+  {
+    "name": "Arctic Village",
+    "alt_name": "Vashrąįį K'ǫǫ",
+    "lat": 68.1269,
+    "lon": -145.538
+  },
+  {
+    "name": "Atka",
+    "alt_name": "Atx̂ax̂",
+    "lat": 52.191,
+    "lon": -174.189
+  },
+  {
+    "name": "Atmautluak",
+    "alt_name": "Atmaulluaq",
+    "lat": 60.8641,
+    "lon": -162.2723
+  },
+  {
+    "name": "Atqasuk",
+    "alt_name": "",
+    "lat": 70.4694,
+    "lon": -157.396
+  },
+  {
+    "name": "Auke Bay",
+    "alt_name": "",
+    "lat": 58.383,
+    "lon": -134.657
+  },
+  {
+    "name": "Ayakulik",
+    "alt_name": "",
+    "lat": 57.2113,
+    "lon": -154.546
+  },
+  {
+    "name": "Back Island",
+    "alt_name": "",
+    "lat": 55.5483,
+    "lon": -131.7561
+  },
+  {
+    "name": "Badger",
+    "alt_name": "",
+    "lat": 64.8058,
+    "lon": -147.4039
+  },
+  {
+    "name": "Baranof Warm Springs",
+    "alt_name": "",
+    "lat": 57.0895,
+    "lon": -134.8337
+  },
+  {
+    "name": "Bartlett Cove",
+    "alt_name": "",
+    "lat": 58.45,
+    "lon": -135.916
+  },
+  {
+    "name": "Bear Creek",
+    "alt_name": "",
+    "lat": 60.1839,
+    "lon": -149.3886
+  },
+  {
+    "name": "Beaver",
+    "alt_name": "Ts'aahudaaneekk'onh Denh",
+    "lat": 66.3594,
+    "lon": -147.396
+  },
+  {
+    "name": "Beecher Pass State Marine Park",
+    "alt_name": "",
+    "lat": 56.6003,
+    "lon": -133.0267
+  },
+  {
+    "name": "Belkofski",
+    "alt_name": "Taxtamax̂",
+    "lat": 55.0905,
+    "lon": -162.034
+  },
+  {
+    "name": "Bell Island Hot Springs",
+    "alt_name": "",
+    "lat": 55.933,
+    "lon": -131.566
+  },
+  {
+    "name": "Beluga",
+    "alt_name": "",
+    "lat": 61.1849,
+    "lon": -151.035
+  },
+  {
+    "name": "Bessie No. 5 Dredge",
+    "alt_name": "",
+    "lat": 64.5502,
+    "lon": -165.151
+  },
+  {
+    "name": "Bethel",
+    "alt_name": "Mamterilleq",
+    "lat": 60.7922,
+    "lon": -161.756
+  },
+  {
+    "name": "Bettles",
+    "alt_name": "Kk’odlel T’odegheelenh Denh",
+    "lat": 66.9185,
+    "lon": -151.5162
+  },
+  {
+    "name": "Bettles Bay State Marine Park",
+    "alt_name": "",
+    "lat": 60.9597,
+    "lon": -148.3184
+  },
+  {
+    "name": "Big Bear Baby Bear State Marine Park",
+    "alt_name": "",
+    "lat": 57.432,
+    "lon": -135.563
+  },
+  {
+    "name": "Big Delta",
+    "alt_name": "",
+    "lat": 64.1525,
+    "lon": -145.842
+  },
+  {
+    "name": "Big Lake",
+    "alt_name": "",
+    "lat": 61.5378,
+    "lon": -149.824
+  },
+  {
+    "name": "Bill Moore's Slough",
+    "alt_name": "",
+    "lat": 62.9504,
+    "lon": -163.7777
+  },
+  {
+    "name": "Biorka",
+    "alt_name": "",
+    "lat": 53.831,
+    "lon": -166.208
+  },
+  {
+    "name": "Birch Creek",
+    "alt_name": "Łiteet'aii",
+    "lat": 66.2687,
+    "lon": -145.824
+  },
+  {
+    "name": "Birch Lake Recreation Annex",
+    "alt_name": "",
+    "lat": 64.3175,
+    "lon": -146.647
+  },
+  {
+    "name": "Birchwood",
+    "alt_name": "",
+    "lat": 61.4081,
+    "lon": -149.481
+  },
+  {
+    "name": "Bird Point",
+    "alt_name": "",
+    "lat": 60.9311,
+    "lon": -149.358
+  },
+  {
+    "name": "Bodenburg Butte",
+    "alt_name": "",
+    "lat": 61.5495,
+    "lon": -149.047
+  },
+  {
+    "name": "Bogoslof Island Refuge",
+    "alt_name": "",
+    "lat": 53.9379,
+    "lon": -168.0438
+  },
+  {
+    "name": "Boswell Bay",
+    "alt_name": "",
+    "lat": 60.4001,
+    "lon": -146.133
+  },
+  {
+    "name": "Brevig Mission",
+    "alt_name": "Sitaisaq",
+    "lat": 65.3347,
+    "lon": -166.489
+  },
+  {
+    "name": "Buckland",
+    "alt_name": "Kaŋiq",
+    "lat": 65.9797,
+    "lon": -161.123
+  },
+  {
+    "name": "Buffalo Soapstone",
+    "alt_name": "",
+    "lat": 61.6684,
+    "lon": -149.1217
+  },
+  {
+    "name": "Butte",
+    "alt_name": "",
+    "lat": 61.5417,
+    "lon": -149.0363
+  },
+  {
+    "name": "Candle",
+    "alt_name": "",
+    "lat": 65.9133,
+    "lon": -161.924
+  },
+  {
+    "name": "Canoe Passage State Marine Park",
+    "alt_name": "",
+    "lat": 60.5181,
+    "lon": -146.1118
+  },
+  {
+    "name": "Cantwell",
+    "alt_name": "Yidateni Na’",
+    "lat": 63.3917,
+    "lon": -148.951
+  },
+  {
+    "name": "Cape Lisburne",
+    "alt_name": "",
+    "lat": 68.8678,
+    "lon": -166.193
+  },
+  {
+    "name": "Cape Pole",
+    "alt_name": "",
+    "lat": 55.965,
+    "lon": -133.798
+  },
+  {
+    "name": "Cape Yakataga",
+    "alt_name": "",
+    "lat": 60.0652,
+    "lon": -142.428
+  },
+  {
+    "name": "Captain Cook State Recreation Area",
+    "alt_name": "",
+    "lat": 60.7858,
+    "lon": -151.0463
+  },
+  {
+    "name": "Central",
+    "alt_name": "",
+    "lat": 65.5724,
+    "lon": -144.803
+  },
+  {
+    "name": "Chakaktolik",
+    "alt_name": "",
+    "lat": 61.7711,
+    "lon": -163.625
+  },
+  {
+    "name": "Chakwaktolik",
+    "alt_name": "",
+    "lat": 61.2291,
+    "lon": -163.754
+  },
+  {
+    "name": "Chalkyitsik",
+    "alt_name": "Jałgiitsik",
+    "lat": 66.6544,
+    "lon": -143.722
+  },
+  {
+    "name": "Chaniliut",
+    "alt_name": "",
+    "lat": 63.0332,
+    "lon": -163.417
+  },
+  {
+    "name": "Chase",
+    "alt_name": "",
+    "lat": 62.4251,
+    "lon": -150.1245
+  },
+  {
+    "name": "Chatham",
+    "alt_name": "",
+    "lat": 57.514,
+    "lon": -134.924
+  },
+  {
+    "name": "Chefornak",
+    "alt_name": "Cevvʼarneq / Caputnguaq",
+    "lat": 60.1607,
+    "lon": -164.271
+  },
+  {
+    "name": "Chena Hot Springs",
+    "alt_name": "",
+    "lat": 65.053,
+    "lon": -146.056
+  },
+  {
+    "name": "Chena Ridge",
+    "alt_name": "",
+    "lat": 64.8228,
+    "lon": -147.9764
+  },
+  {
+    "name": "Chena River Research",
+    "alt_name": "",
+    "lat": 64.8283,
+    "lon": -146.9699
+  },
+  {
+    "name": "Chenega Bay",
+    "alt_name": "Caniqaq",
+    "lat": 60.0746,
+    "lon": -148.003
+  },
+  {
+    "name": "Chevak",
+    "alt_name": "Cevʼaq",
+    "lat": 61.5278,
+    "lon": -165.586
+  },
+  {
+    "name": "Chickaloon",
+    "alt_name": "Nay’dini’aa Na’",
+    "lat": 61.7967,
+    "lon": -148.463
+  },
+  {
+    "name": "Chicken",
+    "alt_name": "",
+    "lat": 64.0733,
+    "lon": -141.936
+  },
+  {
+    "name": "Chignik",
+    "alt_name": "Cirniq",
+    "lat": 56.2953,
+    "lon": -158.402
+  },
+  {
+    "name": "Chignik Lagoon",
+    "alt_name": "Nanwarnaq",
+    "lat": 56.3104,
+    "lon": -158.5361
+  },
+  {
+    "name": "Chignik Lake",
+    "alt_name": "Igyaraq",
+    "lat": 56.2552,
+    "lon": -158.7696
+  },
+  {
+    "name": "Chilkat River Critical Habitat Area",
+    "alt_name": "",
+    "lat": 59.373,
+    "lon": -135.8596
+  },
+  {
+    "name": "Chiniak",
+    "alt_name": "",
+    "lat": 57.617,
+    "lon": -152.2166
+  },
+  {
+    "name": "Chisana",
+    "alt_name": "",
+    "lat": 62.0671,
+    "lon": -142.049
+  },
+  {
+    "name": "Chistochina",
+    "alt_name": "Tsiis Tl’edze’ Caegge",
+    "lat": 62.565,
+    "lon": -144.665
+  },
+  {
+    "name": "Chitina",
+    "alt_name": "Tsedi Na'",
+    "lat": 61.5158,
+    "lon": -144.437
+  },
+  {
+    "name": "Christian",
+    "alt_name": "",
+    "lat": 67.3673,
+    "lon": -145.2
+  },
+  {
+    "name": "Chuathbaluk",
+    "alt_name": "Curarpalek",
+    "lat": 61.5726,
+    "lon": -159.235
+  },
+  {
+    "name": "Chugach National Forest Municipal Watershed",
+    "alt_name": "",
+    "lat": 60.5195,
+    "lon": -145.7223
+  },
+  {
+    "name": "Chuloonawick",
+    "alt_name": "",
+    "lat": 62.8961,
+    "lon": -163.894
+  },
+  {
+    "name": "Circle",
+    "alt_name": "Danzhit Khànląįį",
+    "lat": 65.8255,
+    "lon": -144.061
+  },
+  {
+    "name": "Circle Hot Springs",
+    "alt_name": "",
+    "lat": 65.4833,
+    "lon": -144.634
+  },
+  {
+    "name": "Clam Gulch",
+    "alt_name": "",
+    "lat": 60.2311,
+    "lon": -151.394
+  },
+  {
+    "name": "Clark's Point",
+    "alt_name": "Saguyaq",
+    "lat": 58.8441,
+    "lon": -158.551
+  },
+  {
+    "name": "Clear",
+    "alt_name": "",
+    "lat": 64.3332,
+    "lon": -149.167
+  },
+  {
+    "name": "Clear Air Force Station",
+    "alt_name": "",
+    "lat": 64.2882,
+    "lon": -149.1907
+  },
+  {
+    "name": "Clover Pass",
+    "alt_name": "",
+    "lat": 55.472,
+    "lon": -131.791
+  },
+  {
+    "name": "Coffman Cove",
+    "alt_name": "",
+    "lat": 56.0119,
+    "lon": -132.8296
+  },
+  {
+    "name": "Cohoe",
+    "alt_name": "",
+    "lat": 60.3671,
+    "lon": -151.3
+  },
+  {
+    "name": "Cold Bay",
+    "alt_name": "",
+    "lat": 55.1858,
+    "lon": -162.721
+  },
+  {
+    "name": "Coldfoot",
+    "alt_name": "",
+    "lat": 67.251,
+    "lon": -150.1744
+  },
+  {
+    "name": "College",
+    "alt_name": "",
+    "lat": 64.8582,
+    "lon": -147.808
+  },
+  {
+    "name": "Cooper Landing",
+    "alt_name": "",
+    "lat": 60.4906,
+    "lon": -149.833
+  },
+  {
+    "name": "Copper Center",
+    "alt_name": "Tl’aticae’e",
+    "lat": 61.955,
+    "lon": -145.305
+  },
+  {
+    "name": "Cordova",
+    "alt_name": "",
+    "lat": 60.5428,
+    "lon": -145.757
+  },
+  {
+    "name": "Council",
+    "alt_name": "",
+    "lat": 64.895,
+    "lon": -163.676
+  },
+  {
+    "name": "Covenant Life",
+    "alt_name": "",
+    "lat": 59.4003,
+    "lon": -136.0027
+  },
+  {
+    "name": "Craig",
+    "alt_name": "Sháan Séet",
+    "lat": 55.4764,
+    "lon": -133.148
+  },
+  {
+    "name": "Crooked Creek",
+    "alt_name": "Qipcarpak",
+    "lat": 61.87,
+    "lon": -158.111
+  },
+  {
+    "name": "Crown Point",
+    "alt_name": "",
+    "lat": 60.4289,
+    "lon": -149.3707
+  },
+  {
+    "name": "Dall Bay State Marine Park",
+    "alt_name": "",
+    "lat": 55.1559,
+    "lon": -131.749
+  },
+  {
+    "name": "Deadhorse",
+    "alt_name": "",
+    "lat": 70.2097,
+    "lon": -148.418
+  },
+  {
+    "name": "Decision Point State Marine Park",
+    "alt_name": "",
+    "lat": 60.8016,
+    "lon": -148.464
+  },
+  {
+    "name": "Deering",
+    "alt_name": "Ipnatchiaq",
+    "lat": 66.0755,
+    "lon": -162.717
+  },
+  {
+    "name": "Delta Junction",
+    "alt_name": "",
+    "lat": 64.0377,
+    "lon": -145.732
+  },
+  {
+    "name": "Deltana",
+    "alt_name": "",
+    "lat": 64.0404,
+    "lon": -145.5182
+  },
+  {
+    "name": "Denali Park",
+    "alt_name": "",
+    "lat": 63.6388,
+    "lon": -148.7895
+  },
+  {
+    "name": "Diamond Ridge",
+    "alt_name": "",
+    "lat": 59.6814,
+    "lon": -151.6226
+  },
+  {
+    "name": "Dillingham",
+    "alt_name": "Curyung",
+    "lat": 59.0397,
+    "lon": -158.457
+  },
+  {
+    "name": "Diomede",
+    "alt_name": "Iŋaliq",
+    "lat": 65.7648,
+    "lon": -168.911
+  },
+  {
+    "name": "Dot Lake",
+    "alt_name": "Kelt’aaddh Menn’",
+    "lat": 63.663,
+    "lon": -144.049
+  },
+  {
+    "name": "Dot Lake Village",
+    "alt_name": "",
+    "lat": 63.6568,
+    "lon": -144.0484
+  },
+  {
+    "name": "Douglas",
+    "alt_name": "",
+    "lat": 58.2762,
+    "lon": -134.392
+  },
+  {
+    "name": "Driftwood Bay State Marine Park",
+    "alt_name": "",
+    "lat": 59.9128,
+    "lon": -149.2571
+  },
+  {
+    "name": "Dry Creek",
+    "alt_name": "",
+    "lat": 63.7,
+    "lon": -144.567
+  },
+  {
+    "name": "Dutch Harbor",
+    "alt_name": "",
+    "lat": 53.891,
+    "lon": -166.535
+  },
+  {
+    "name": "Dyke Range",
+    "alt_name": "",
+    "lat": 64.7118,
+    "lon": -147.3332
+  },
+  {
+    "name": "Eagle",
+    "alt_name": "Tthee T'äwdlenn",
+    "lat": 64.788,
+    "lon": -141.2
+  },
+  {
+    "name": "Eagle River",
+    "alt_name": "",
+    "lat": 61.3221,
+    "lon": -149.567
+  },
+  {
+    "name": "Eagle Village",
+    "alt_name": "",
+    "lat": 64.7805,
+    "lon": -141.114
+  },
+  {
+    "name": "Eareckson Air Station",
+    "alt_name": "",
+    "lat": 52.7122,
+    "lon": 174.1136
+  },
+  {
+    "name": "Edna Bay",
+    "alt_name": "",
+    "lat": 55.9489,
+    "lon": -133.662
+  },
+  {
+    "name": "Eek",
+    "alt_name": "Ekvicuaq",
+    "lat": 60.2189,
+    "lon": -162.024
+  },
+  {
+    "name": "Egavik",
+    "alt_name": "",
+    "lat": 64.0332,
+    "lon": -160.917
+  },
+  {
+    "name": "Egegik",
+    "alt_name": "Igyagiiq",
+    "lat": 58.2155,
+    "lon": -157.376
+  },
+  {
+    "name": "Egorkovskoi",
+    "alt_name": "",
+    "lat": 53.564,
+    "lon": -168
+  },
+  {
+    "name": "Eielson Air Force Base",
+    "alt_name": "",
+    "lat": 64.6656,
+    "lon": -147.1014
+  },
+  {
+    "name": "Eielson Alpa Research (1-1)",
+    "alt_name": "",
+    "lat": 65.2349,
+    "lon": -147.763
+  },
+  {
+    "name": "Eielson Alpa Research (2-2)",
+    "alt_name": "",
+    "lat": 65.1945,
+    "lon": -147.3161
+  },
+  {
+    "name": "Eielson Alpa Research (2-3)",
+    "alt_name": "",
+    "lat": 65.0653,
+    "lon": -147.5641
+  },
+  {
+    "name": "Eielson Alpa Research (2-4)",
+    "alt_name": "",
+    "lat": 65.0994,
+    "lon": -148.0044
+  },
+  {
+    "name": "Eielson Alpa Research (3-23)",
+    "alt_name": "",
+    "lat": 65.027,
+    "lon": -147.1964
+  },
+  {
+    "name": "Eielson Alpa Research (3-3)",
+    "alt_name": "",
+    "lat": 64.9103,
+    "lon": -147.4459
+  },
+  {
+    "name": "Eielson Alpa Research (3-34)",
+    "alt_name": "",
+    "lat": 64.945,
+    "lon": -147.861
+  },
+  {
+    "name": "Eklutna",
+    "alt_name": "Idlughet",
+    "lat": 61.458,
+    "lon": -149.362
+  },
+  {
+    "name": "Ekuk",
+    "alt_name": "",
+    "lat": 58.804,
+    "lon": -158.541
+  },
+  {
+    "name": "Ekwok",
+    "alt_name": "Iquaq",
+    "lat": 59.3497,
+    "lon": -157.475
+  },
+  {
+    "name": "Elephant Point",
+    "alt_name": "",
+    "lat": 66.2673,
+    "lon": -161.333
+  },
+  {
+    "name": "Elfin Cove",
+    "alt_name": "",
+    "lat": 58.1944,
+    "lon": -136.343
+  },
+  {
+    "name": "Elim",
+    "alt_name": "Neviarcaurluq",
+    "lat": 64.6175,
+    "lon": -162.26
+  },
+  {
+    "name": "Ellamar",
+    "alt_name": "",
+    "lat": 60.8961,
+    "lon": -146.708
+  },
+  {
+    "name": "Elmendorf Air Force Base",
+    "alt_name": "",
+    "lat": 61.2698,
+    "lon": -149.8112
+  },
+  {
+    "name": "Elmendorf Air Force Base Site 2",
+    "alt_name": "",
+    "lat": 61.24,
+    "lon": -149.765
+  },
+  {
+    "name": "Emmonak",
+    "alt_name": "Imangaq",
+    "lat": 62.7778,
+    "lon": -164.523
+  },
+  {
+    "name": "Entry Cove State Marine Park",
+    "alt_name": "",
+    "lat": 60.8048,
+    "lon": -148.3636
+  },
+  {
+    "name": "Ernie Haugen Public Use Area",
+    "alt_name": "",
+    "lat": 56.5421,
+    "lon": -132.6616
+  },
+  {
+    "name": "Eska",
+    "alt_name": "",
+    "lat": 61.7381,
+    "lon": -148.906
+  },
+  {
+    "name": "Ester",
+    "alt_name": "",
+    "lat": 64.8472,
+    "lon": -148.014
+  },
+  {
+    "name": "Eureka Roadhouse",
+    "alt_name": "",
+    "lat": 61.9375,
+    "lon": -147.1688
+  },
+  {
+    "name": "Evansville",
+    "alt_name": "",
+    "lat": 66.9238,
+    "lon": -151.5061
+  },
+  {
+    "name": "Excursion Inlet",
+    "alt_name": "",
+    "lat": 58.417,
+    "lon": -135.441
+  },
+  {
+    "name": "Eyak",
+    "alt_name": "Igya’aq",
+    "lat": 60.5652,
+    "lon": -145.7
+  },
+  {
+    "name": "Fairbanks",
+    "alt_name": "",
+    "lat": 64.8378,
+    "lon": -147.716
+  },
+  {
+    "name": "Fairbanks Eielson Pipeline",
+    "alt_name": "",
+    "lat": 64.6656,
+    "lon": -147.1014
+  },
+  {
+    "name": "Fairbanks Permafrost Station",
+    "alt_name": "",
+    "lat": 64.8743,
+    "lon": -147.68
+  },
+  {
+    "name": "False Pass",
+    "alt_name": "Isanax̂",
+    "lat": 54.8548,
+    "lon": -163.407
+  },
+  {
+    "name": "Farm Loop",
+    "alt_name": "",
+    "lat": 61.6354,
+    "lon": -149.1482
+  },
+  {
+    "name": "Farmers Loop",
+    "alt_name": "",
+    "lat": 64.8988,
+    "lon": -147.6978
+  },
+  {
+    "name": "Ferry",
+    "alt_name": "",
+    "lat": 64.0172,
+    "lon": -149.117
+  },
+  {
+    "name": "Fish Village",
+    "alt_name": "",
+    "lat": 62.5212,
+    "lon": -163.847
+  },
+  {
+    "name": "Fishhook",
+    "alt_name": "",
+    "lat": 61.6718,
+    "lon": -149.2239
+  },
+  {
+    "name": "Flat",
+    "alt_name": "",
+    "lat": 62.4536,
+    "lon": -158.007
+  },
+  {
+    "name": "Fort Glenn",
+    "alt_name": "",
+    "lat": 53.3956,
+    "lon": -167.881
+  },
+  {
+    "name": "Fort Greely",
+    "alt_name": "",
+    "lat": 63.9731,
+    "lon": -145.7181
+  },
+  {
+    "name": "Fort Richardson",
+    "alt_name": "",
+    "lat": 61.2656,
+    "lon": -149.641
+  },
+  {
+    "name": "Fort Wainwright",
+    "alt_name": "",
+    "lat": 64.8278,
+    "lon": -147.6429
+  },
+  {
+    "name": "Fort Yukon",
+    "alt_name": "Gwichyaa Zheh",
+    "lat": 66.5647,
+    "lon": -145.274
+  },
+  {
+    "name": "Four Mile Road",
+    "alt_name": "",
+    "lat": 64.6018,
+    "lon": -149.1306
+  },
+  {
+    "name": "Fox",
+    "alt_name": "",
+    "lat": 64.958,
+    "lon": -147.618
+  },
+  {
+    "name": "Fox River",
+    "alt_name": "",
+    "lat": 59.8164,
+    "lon": -151.0895
+  },
+  {
+    "name": "Fox River Flats Critical Habitat Area",
+    "alt_name": "",
+    "lat": 59.7935,
+    "lon": -150.925
+  },
+  {
+    "name": "Fritz Creek",
+    "alt_name": "",
+    "lat": 59.6915,
+    "lon": -151.3746
+  },
+  {
+    "name": "Funny River",
+    "alt_name": "",
+    "lat": 60.5021,
+    "lon": -150.7939
+  },
+  {
+    "name": "Funter Bay State Marine Park",
+    "alt_name": "",
+    "lat": 58.2505,
+    "lon": -134.9227
+  },
+  {
+    "name": "Gakona",
+    "alt_name": "Ggax Kuna’",
+    "lat": 62.3019,
+    "lon": -145.302
+  },
+  {
+    "name": "Galena",
+    "alt_name": "Notaalee Denh",
+    "lat": 64.7333,
+    "lon": -156.927
+  },
+  {
+    "name": "Gambell",
+    "alt_name": "Sivuqaq",
+    "lat": 63.7797,
+    "lon": -171.741
+  },
+  {
+    "name": "Game Creek",
+    "alt_name": "",
+    "lat": 58.0752,
+    "lon": -135.484
+  },
+  {
+    "name": "Gateway",
+    "alt_name": "",
+    "lat": 61.5638,
+    "lon": -149.2645
+  },
+  {
+    "name": "Georgetown",
+    "alt_name": "",
+    "lat": 61.9085,
+    "lon": -157.787
+  },
+  {
+    "name": "Girdwood",
+    "alt_name": "",
+    "lat": 60.9421,
+    "lon": -149.167
+  },
+  {
+    "name": "Glacier View",
+    "alt_name": "",
+    "lat": 61.7977,
+    "lon": -147.6026
+  },
+  {
+    "name": "Glennallen",
+    "alt_name": "",
+    "lat": 62.1092,
+    "lon": -145.546
+  },
+  {
+    "name": "Goldstream",
+    "alt_name": "",
+    "lat": 64.9131,
+    "lon": -147.9051
+  },
+  {
+    "name": "Goldstream Public Use Area",
+    "alt_name": "",
+    "lat": 64.93,
+    "lon": -147.7653
+  },
+  {
+    "name": "Golovin",
+    "alt_name": "Cingik / Siŋik",
+    "lat": 64.5433,
+    "lon": -163.029
+  },
+  {
+    "name": "Goodnews Bay",
+    "alt_name": "Mamterat",
+    "lat": 59.1186,
+    "lon": -161.589
+  },
+  {
+    "name": "Grayling",
+    "alt_name": "Sixno' Xidakagg",
+    "lat": 62.9062,
+    "lon": -160.077
+  },
+  {
+    "name": "Gulkana",
+    "alt_name": "C'uul C'ena'",
+    "lat": 62.2714,
+    "lon": -145.382
+  },
+  {
+    "name": "Gustavus",
+    "alt_name": "",
+    "lat": 58.4125,
+    "lon": -135.738
+  },
+  {
+    "name": "Haines",
+    "alt_name": "Deishú",
+    "lat": 59.2358,
+    "lon": -135.445
+  },
+  {
+    "name": "Halibut Cove",
+    "alt_name": "",
+    "lat": 59.5906,
+    "lon": -151.2335
+  },
+  {
+    "name": "Happy Valley",
+    "alt_name": "",
+    "lat": 59.9328,
+    "lon": -151.729
+  },
+  {
+    "name": "Harding-Birch Lakes",
+    "alt_name": "",
+    "lat": 64.3481,
+    "lon": -146.855
+  },
+  {
+    "name": "Haycock",
+    "alt_name": "",
+    "lat": 65.2172,
+    "lon": -161.167
+  },
+  {
+    "name": "Hazen Bay Refuge",
+    "alt_name": "",
+    "lat": 60.8465,
+    "lon": -165.0807
+  },
+  {
+    "name": "Healy",
+    "alt_name": "",
+    "lat": 63.8578,
+    "lon": -148.966
+  },
+  {
+    "name": "Healy Lake",
+    "alt_name": "Mendees Cheeg",
+    "lat": 63.9441,
+    "lon": -144.755
+  },
+  {
+    "name": "Highland Park",
+    "alt_name": "",
+    "lat": 64.7582,
+    "lon": -147.371
+  },
+  {
+    "name": "Hobart Bay",
+    "alt_name": "",
+    "lat": 57.401,
+    "lon": -133.4127
+  },
+  {
+    "name": "Holikachuk",
+    "alt_name": "",
+    "lat": 62.9112,
+    "lon": -159.517
+  },
+  {
+    "name": "Hollis",
+    "alt_name": "",
+    "lat": 55.4879,
+    "lon": -132.663
+  },
+  {
+    "name": "Holy Cross",
+    "alt_name": "Ingirraller / Deloy Chet",
+    "lat": 62.1994,
+    "lon": -159.771
+  },
+  {
+    "name": "Homer",
+    "alt_name": "",
+    "lat": 59.6425,
+    "lon": -151.548
+  },
+  {
+    "name": "Hoonah",
+    "alt_name": "Xunaa / Gaaw Yat’aḵ Aan",
+    "lat": 58.11,
+    "lon": -135.444
+  },
+  {
+    "name": "Hooper Bay",
+    "alt_name": "Naparyaarmiut",
+    "lat": 61.5311,
+    "lon": -166.097
+  },
+  {
+    "name": "Hope",
+    "alt_name": "",
+    "lat": 60.9203,
+    "lon": -149.64
+  },
+  {
+    "name": "Horseshoe Bay State Marine Park",
+    "alt_name": "",
+    "lat": 60.0322,
+    "lon": -147.9418
+  },
+  {
+    "name": "Houston",
+    "alt_name": "",
+    "lat": 61.6302,
+    "lon": -149.818
+  },
+  {
+    "name": "Hughes",
+    "alt_name": "Hut’odlee Kkaakk’et",
+    "lat": 66.0488,
+    "lon": -154.255
+  },
+  {
+    "name": "Huslia",
+    "alt_name": "Ts’aateyhdenaadekk’onh Denh",
+    "lat": 65.6986,
+    "lon": -156.4
+  },
+  {
+    "name": "Hydaburg",
+    "alt_name": "Higdáa G̱ándlaay",
+    "lat": 55.208,
+    "lon": -132.827
+  },
+  {
+    "name": "Hyder",
+    "alt_name": "",
+    "lat": 55.9169,
+    "lon": -130.025
+  },
+  {
+    "name": "Iditarod",
+    "alt_name": "",
+    "lat": 62.5448,
+    "lon": -158.094
+  },
+  {
+    "name": "Igiugig",
+    "alt_name": "Igyaraq",
+    "lat": 59.3278,
+    "lon": -155.895
+  },
+  {
+    "name": "Ikatan",
+    "alt_name": "",
+    "lat": 54.75,
+    "lon": -163.308
+  },
+  {
+    "name": "Iliamna",
+    "alt_name": "Illiamna",
+    "lat": 59.7536,
+    "lon": -154.817
+  },
+  {
+    "name": "Inakpuk",
+    "alt_name": "",
+    "lat": 59.5331,
+    "lon": -157.15
+  },
+  {
+    "name": "Indian",
+    "alt_name": "",
+    "lat": 60.9881,
+    "lon": -149.513
+  },
+  {
+    "name": "Indian River",
+    "alt_name": "",
+    "lat": 62.6672,
+    "lon": -144.433
+  },
+  {
+    "name": "Ingrihak",
+    "alt_name": "",
+    "lat": 61.7561,
+    "lon": -162
+  },
+  {
+    "name": "Ishtalitna Creek Hot Springs Research Natural Area",
+    "alt_name": "",
+    "lat": 65.8669,
+    "lon": -151.6311
+  },
+  {
+    "name": "Ivanof Bay",
+    "alt_name": "",
+    "lat": 55.8996,
+    "lon": -159.507
+  },
+  {
+    "name": "Jack Bay State Marine Park",
+    "alt_name": "",
+    "lat": 61.032,
+    "lon": -146.5743
+  },
+  {
+    "name": "Joe Mace Island State Marine Park",
+    "alt_name": "",
+    "lat": 56.3473,
+    "lon": -133.635
+  },
+  {
+    "name": "Joe Ward Camp",
+    "alt_name": "",
+    "lat": 66.8673,
+    "lon": -143.699
+  },
+  {
+    "name": "Joint Base Elmendorf-Richardson",
+    "alt_name": "",
+    "lat": 61.2514,
+    "lon": -149.8064
+  },
+  {
+    "name": "Jonesville",
+    "alt_name": "",
+    "lat": 61.7311,
+    "lon": -148.933
+  },
+  {
+    "name": "Juneau",
+    "alt_name": "Dzánti K'ihéeni",
+    "lat": 58.3019,
+    "lon": -134.42
+  },
+  {
+    "name": "Kachemak",
+    "alt_name": "",
+    "lat": 59.6488,
+    "lon": -151.451
+  },
+  {
+    "name": "Kake",
+    "alt_name": "Ḵéex̱ʼ",
+    "lat": 56.9758,
+    "lon": -133.947
+  },
+  {
+    "name": "Kaktovik",
+    "alt_name": "Qaaktuġvik",
+    "lat": 70.1131,
+    "lon": -143.6623
+  },
+  {
+    "name": "Kalifornsky",
+    "alt_name": "Unhghenesditnu",
+    "lat": 60.4412,
+    "lon": -151.198
+  },
+  {
+    "name": "Kaltag",
+    "alt_name": "Ggaał Doh",
+    "lat": 64.3272,
+    "lon": -158.722
+  },
+  {
+    "name": "Kanakanak",
+    "alt_name": "",
+    "lat": 59.0031,
+    "lon": -158.533
+  },
+  {
+    "name": "Kantishna",
+    "alt_name": "",
+    "lat": 63.5253,
+    "lon": -150.9581
+  },
+  {
+    "name": "Kanuti Hot Springs Area Of Critical Environmental Concern",
+    "alt_name": "",
+    "lat": 66.3427,
+    "lon": -150.8468
+  },
+  {
+    "name": "Karluk",
+    "alt_name": "Kal’ut",
+    "lat": 57.5719,
+    "lon": -154.455
+  },
+  {
+    "name": "Kasaan",
+    "alt_name": "Gasa'áan",
+    "lat": 55.5389,
+    "lon": -132.401
+  },
+  {
+    "name": "Kashega",
+    "alt_name": "",
+    "lat": 53.467,
+    "lon": -167.16
+  },
+  {
+    "name": "Kashegelok",
+    "alt_name": "",
+    "lat": 60.8331,
+    "lon": -157.833
+  },
+  {
+    "name": "Kasigluk",
+    "alt_name": "Kassigluq",
+    "lat": 60.8955,
+    "lon": -162.521
+  },
+  {
+    "name": "Kasilof",
+    "alt_name": "",
+    "lat": 60.3375,
+    "lon": -151.274
+  },
+  {
+    "name": "Kathakne",
+    "alt_name": "",
+    "lat": 62.9692,
+    "lon": -141.832
+  },
+  {
+    "name": "Kenai",
+    "alt_name": "Shk'ituk't",
+    "lat": 60.5544,
+    "lon": -151.258
+  },
+  {
+    "name": "Kenai River Special Management Area",
+    "alt_name": "",
+    "lat": 60.5069,
+    "lon": -150.9635
+  },
+  {
+    "name": "Kenny Lake",
+    "alt_name": "",
+    "lat": 61.7379,
+    "lon": -144.945
+  },
+  {
+    "name": "Kepangalook",
+    "alt_name": "",
+    "lat": 60.8501,
+    "lon": -161.617
+  },
+  {
+    "name": "Ketchikan",
+    "alt_name": "Kichx̱áan",
+    "lat": 55.3422,
+    "lon": -131.646
+  },
+  {
+    "name": "Kiana",
+    "alt_name": "Katyaaq",
+    "lat": 66.975,
+    "lon": -160.423
+  },
+  {
+    "name": "Kinegnak",
+    "alt_name": "",
+    "lat": 58.8331,
+    "lon": -161.667
+  },
+  {
+    "name": "King Cove",
+    "alt_name": "Agdaaĝux̂",
+    "lat": 55.0629,
+    "lon": -162.31
+  },
+  {
+    "name": "King Island",
+    "alt_name": "Ugiuvak",
+    "lat": 64.9694,
+    "lon": -168.065
+  },
+  {
+    "name": "King Salmon",
+    "alt_name": "",
+    "lat": 58.6883,
+    "lon": -156.661
+  },
+  {
+    "name": "Kipnuk",
+    "alt_name": "Qipnek",
+    "lat": 59.9389,
+    "lon": -164.041
+  },
+  {
+    "name": "Kivalina",
+    "alt_name": "Kivaliñiq",
+    "lat": 67.7269,
+    "lon": -164.533
+  },
+  {
+    "name": "Kiwalik",
+    "alt_name": "",
+    "lat": 66.0333,
+    "lon": -161.833
+  },
+  {
+    "name": "Klawock",
+    "alt_name": "Lawaak",
+    "lat": 55.5522,
+    "lon": -133.096
+  },
+  {
+    "name": "Klery Creek",
+    "alt_name": "",
+    "lat": 67.1793,
+    "lon": -160.4
+  },
+  {
+    "name": "Klukwan",
+    "alt_name": "Tlákw.aan",
+    "lat": 59.3991,
+    "lon": -135.894
+  },
+  {
+    "name": "Knik",
+    "alt_name": "",
+    "lat": 61.4578,
+    "lon": -149.729
+  },
+  {
+    "name": "Knik River",
+    "alt_name": "",
+    "lat": 61.4812,
+    "lon": -149.13
+  },
+  {
+    "name": "Kobuk",
+    "alt_name": "Laugviik",
+    "lat": 66.9072,
+    "lon": -156.881
+  },
+  {
+    "name": "Kodiak",
+    "alt_name": "Sun'aq",
+    "lat": 57.79,
+    "lon": -152.407
+  },
+  {
+    "name": "Kodiak Station",
+    "alt_name": "",
+    "lat": 57.7552,
+    "lon": -152.514
+  },
+  {
+    "name": "Kokhanok",
+    "alt_name": "Qarr’unaq",
+    "lat": 59.4426,
+    "lon": -154.761
+  },
+  {
+    "name": "Kokrines",
+    "alt_name": "Łoyh Denlekk’es Denh",
+    "lat": 64.9332,
+    "lon": -154.7
+  },
+  {
+    "name": "Koliganek",
+    "alt_name": "Qalirneq",
+    "lat": 59.7286,
+    "lon": -157.284
+  },
+  {
+    "name": "Kongiganak",
+    "alt_name": "Kangirnaq",
+    "lat": 59.9647,
+    "lon": -162.877
+  },
+  {
+    "name": "Kotlik",
+    "alt_name": "Qerrulliik",
+    "lat": 63.0341,
+    "lon": -163.553
+  },
+  {
+    "name": "Kotzebue",
+    "alt_name": "Qikiqtaġruk",
+    "lat": 66.8983,
+    "lon": -162.597
+  },
+  {
+    "name": "Koyuk",
+    "alt_name": "Kuuyuk",
+    "lat": 64.9319,
+    "lon": -161.157
+  },
+  {
+    "name": "Koyukuk",
+    "alt_name": "Meneelghaadze’ T’oh",
+    "lat": 64.8802,
+    "lon": -157.701
+  },
+  {
+    "name": "Kupreanof",
+    "alt_name": "",
+    "lat": 56.8153,
+    "lon": -133.006
+  },
+  {
+    "name": "Kustatan",
+    "alt_name": "Qezdeghnen",
+    "lat": 60.7171,
+    "lon": -151.75
+  },
+  {
+    "name": "Kvichak",
+    "alt_name": "",
+    "lat": 58.9671,
+    "lon": -156.933
+  },
+  {
+    "name": "Kwethluk",
+    "alt_name": "Kuiggluk",
+    "lat": 60.8122,
+    "lon": -161.436
+  },
+  {
+    "name": "Kwigillingok",
+    "alt_name": "Kuigilnguq",
+    "lat": 59.8644,
+    "lon": -163.134
+  },
+  {
+    "name": "Kwiguk",
+    "alt_name": "",
+    "lat": 62.7683,
+    "lon": -164.5067
+  },
+  {
+    "name": "Lake Louise",
+    "alt_name": "",
+    "lat": 62.2721,
+    "lon": -146.5351
+  },
+  {
+    "name": "Lake Minchumina",
+    "alt_name": "Menchuh Mene’",
+    "lat": 63.8828,
+    "lon": -152.312
+  },
+  {
+    "name": "Lake Todatonten Pingos Research Natural Area",
+    "alt_name": "",
+    "lat": 66.1055,
+    "lon": -152.938
+  },
+  {
+    "name": "Larsen Bay",
+    "alt_name": "Uyaqsaq",
+    "lat": 57.54,
+    "lon": -153.979
+  },
+  {
+    "name": "Last Tetlin Village",
+    "alt_name": "",
+    "lat": 63.0332,
+    "lon": -142.616
+  },
+  {
+    "name": "Latouche",
+    "alt_name": "",
+    "lat": 60.0511,
+    "lon": -147.9
+  },
+  {
+    "name": "Lazy Mountain",
+    "alt_name": "",
+    "lat": 61.6152,
+    "lon": -149.0608
+  },
+  {
+    "name": "Lena Beach",
+    "alt_name": "",
+    "lat": 58.393,
+    "lon": -134.746
+  },
+  {
+    "name": "Levelock",
+    "alt_name": "Liivlek",
+    "lat": 59.115,
+    "lon": -156.857
+  },
+  {
+    "name": "Libbyville",
+    "alt_name": "",
+    "lat": 58.7781,
+    "lon": -157.056
+  },
+  {
+    "name": "Lime Village",
+    "alt_name": "Hekdichen Hdakaq'",
+    "lat": 61.3564,
+    "lon": -155.436
+  },
+  {
+    "name": "Livengood",
+    "alt_name": "",
+    "lat": 65.5244,
+    "lon": -148.545
+  },
+  {
+    "name": "Loring",
+    "alt_name": "",
+    "lat": 55.603,
+    "lon": -131.632
+  },
+  {
+    "name": "Lowell Point",
+    "alt_name": "",
+    "lat": 60.0709,
+    "lon": -149.442
+  },
+  {
+    "name": "Lower Kalskag",
+    "alt_name": "Qalqaq",
+    "lat": 61.5122,
+    "lon": -160.358
+  },
+  {
+    "name": "Lower Tonsina",
+    "alt_name": "Kentsii Cae'e",
+    "lat": 61.655,
+    "lon": -144.659
+  },
+  {
+    "name": "Lucky Shot Landing",
+    "alt_name": "",
+    "lat": 61.7751,
+    "lon": -149.408
+  },
+  {
+    "name": "Lutak",
+    "alt_name": "",
+    "lat": 59.3233,
+    "lon": -135.5602
+  },
+  {
+    "name": "Magoun Islands State Marine Park",
+    "alt_name": "",
+    "lat": 57.1619,
+    "lon": -135.5777
+  },
+  {
+    "name": "Manley Hot Springs",
+    "alt_name": "Too Naaleł Denh",
+    "lat": 65.0011,
+    "lon": -150.634
+  },
+  {
+    "name": "Manokotak",
+    "alt_name": "Manuquutaq",
+    "lat": 58.9796,
+    "lon": -159.053
+  },
+  {
+    "name": "Mansfield Village",
+    "alt_name": "Dihthâad",
+    "lat": 63.4672,
+    "lon": -143.433
+  },
+  {
+    "name": "Marshall",
+    "alt_name": "Masserculleq",
+    "lat": 61.8778,
+    "lon": -162.081
+  },
+  {
+    "name": "Marys Igloo",
+    "alt_name": "",
+    "lat": 65.1478,
+    "lon": -165.063
+  },
+  {
+    "name": "Matanuska",
+    "alt_name": "",
+    "lat": 61.5421,
+    "lon": -149.229
+  },
+  {
+    "name": "McCarthy",
+    "alt_name": "",
+    "lat": 61.4333,
+    "lon": -142.922
+  },
+  {
+    "name": "McGrath",
+    "alt_name": "Tochak’",
+    "lat": 62.9564,
+    "lon": -155.596
+  },
+  {
+    "name": "McKinley Park Airport",
+    "alt_name": "",
+    "lat": 63.7331,
+    "lon": -148.9111
+  },
+  {
+    "name": "Meadow Lakes",
+    "alt_name": "",
+    "lat": 61.5846,
+    "lon": -149.628
+  },
+  {
+    "name": "Meakerville",
+    "alt_name": "",
+    "lat": 60.5421,
+    "lon": -145.008
+  },
+  {
+    "name": "Medfra",
+    "alt_name": "",
+    "lat": 63.1067,
+    "lon": -154.714
+  },
+  {
+    "name": "Mekoryuk",
+    "alt_name": "Mikuryar",
+    "lat": 60.388,
+    "lon": -166.185
+  },
+  {
+    "name": "Mendeltna",
+    "alt_name": "",
+    "lat": 62.0487,
+    "lon": -146.5386
+  },
+  {
+    "name": "Mentasta Lake",
+    "alt_name": "Mendaesde",
+    "lat": 62.9212,
+    "lon": -143.792
+  },
+  {
+    "name": "Mertarvik",
+    "alt_name": "",
+    "lat": 60.8196,
+    "lon": -164.5123
+  },
+  {
+    "name": "Metlakatla",
+    "alt_name": "Maxłakxaała",
+    "lat": 55.1292,
+    "lon": -131.572
+  },
+  {
+    "name": "Meyers Chuck",
+    "alt_name": "",
+    "lat": 55.7408,
+    "lon": -132.256
+  },
+  {
+    "name": "Mill Bay",
+    "alt_name": "",
+    "lat": 57.8195,
+    "lon": -152.3559
+  },
+  {
+    "name": "Minto",
+    "alt_name": "",
+    "lat": 65.1496,
+    "lon": -149.3504
+  },
+  {
+    "name": "Misty Fjords National Monument",
+    "alt_name": "",
+    "lat": 55.7913,
+    "lon": -130.7927
+  },
+  {
+    "name": "Moose Creek",
+    "alt_name": "",
+    "lat": 64.7155,
+    "lon": -147.1645
+  },
+  {
+    "name": "Moose Pass",
+    "alt_name": "",
+    "lat": 60.4876,
+    "lon": -149.367
+  },
+  {
+    "name": "Morzhovoi",
+    "alt_name": "",
+    "lat": 54.91,
+    "lon": -163.303
+  },
+  {
+    "name": "Moses Point",
+    "alt_name": "",
+    "lat": 64.7002,
+    "lon": -162.033
+  },
+  {
+    "name": "Mosquito Lake",
+    "alt_name": "",
+    "lat": 59.4246,
+    "lon": -136.016
+  },
+  {
+    "name": "Mountain Village",
+    "alt_name": "Asaacaryaraq",
+    "lat": 62.0884,
+    "lon": -163.72
+  },
+  {
+    "name": "Mud Bay",
+    "alt_name": "",
+    "lat": 59.1702,
+    "lon": -135.3665
+  },
+  {
+    "name": "Murphy Dome Long Range Radar Site",
+    "alt_name": "",
+    "lat": 64.9517,
+    "lon": -148.3398
+  },
+  {
+    "name": "Nabesna",
+    "alt_name": "Naambia Niign Daacheeg",
+    "lat": 62.3719,
+    "lon": -143.009
+  },
+  {
+    "name": "Nakeen",
+    "alt_name": "",
+    "lat": 58.9361,
+    "lon": -157.038
+  },
+  {
+    "name": "Naknek",
+    "alt_name": "Nakniq",
+    "lat": 58.7283,
+    "lon": -157.014
+  },
+  {
+    "name": "Nanwalek",
+    "alt_name": "English Bay",
+    "lat": 59.354,
+    "lon": -151.916
+  },
+  {
+    "name": "Napaimute",
+    "alt_name": "",
+    "lat": 61.54,
+    "lon": -158.674
+  },
+  {
+    "name": "Napakiak",
+    "alt_name": "Naparyarraq",
+    "lat": 60.6967,
+    "lon": -161.952
+  },
+  {
+    "name": "Napaskiak",
+    "alt_name": "Napaskiaq",
+    "lat": 60.708,
+    "lon": -161.766
+  },
+  {
+    "name": "Nash Harbor",
+    "alt_name": "",
+    "lat": 60.2041,
+    "lon": -166.939
+  },
+  {
+    "name": "National Guard Alcantra Armory Complex",
+    "alt_name": "",
+    "lat": 61.603,
+    "lon": -149.3748
+  },
+  {
+    "name": "National Guard Anchorage International Airport",
+    "alt_name": "",
+    "lat": 61.1599,
+    "lon": -149.9695
+  },
+  {
+    "name": "National Guard Fairbanks Armory",
+    "alt_name": "",
+    "lat": 64.8417,
+    "lon": -147.7535
+  },
+  {
+    "name": "National Guard Wasilla Storefront Recruiting Office",
+    "alt_name": "",
+    "lat": 61.5769,
+    "lon": -149.4107
+  },
+  {
+    "name": "Naukati Bay",
+    "alt_name": "",
+    "lat": 55.8762,
+    "lon": -133.1921
+  },
+  {
+    "name": "Naval Air Facility Adak",
+    "alt_name": "",
+    "lat": 51.8751,
+    "lon": -176.6498
+  },
+  {
+    "name": "Nelchina",
+    "alt_name": "",
+    "lat": 61.996,
+    "lon": -146.8203
+  },
+  {
+    "name": "Nelson Lagoon",
+    "alt_name": "Niilsanam Alĝuudaa",
+    "lat": 56.0012,
+    "lon": -161.201
+  },
+  {
+    "name": "Nenana",
+    "alt_name": "Toghotili",
+    "lat": 64.5638,
+    "lon": -149.093
+  },
+  {
+    "name": "New Knockhock",
+    "alt_name": "",
+    "lat": 62.1291,
+    "lon": -164.894
+  },
+  {
+    "name": "New Stuyahok",
+    "alt_name": "Cetuyaraq",
+    "lat": 59.4528,
+    "lon": -157.312
+  },
+  {
+    "name": "Newhalen",
+    "alt_name": "Nuuriileng",
+    "lat": 59.72,
+    "lon": -154.897
+  },
+  {
+    "name": "Newtok",
+    "alt_name": "Niugtaq",
+    "lat": 60.9427,
+    "lon": -164.629
+  },
+  {
+    "name": "Nightmute",
+    "alt_name": "Negtemiut",
+    "lat": 60.4794,
+    "lon": -164.724
+  },
+  {
+    "name": "Nike Alaska Mike",
+    "alt_name": "",
+    "lat": 64.5849,
+    "lon": -146.7309
+  },
+  {
+    "name": "Nike Alaska Peter",
+    "alt_name": "",
+    "lat": 64.6745,
+    "lon": -146.7542
+  },
+  {
+    "name": "Nikiski",
+    "alt_name": "",
+    "lat": 60.6394,
+    "lon": -151.334
+  },
+  {
+    "name": "Nikolaevsk",
+    "alt_name": "",
+    "lat": 59.8109,
+    "lon": -151.623
+  },
+  {
+    "name": "Nikolai",
+    "alt_name": "Nikolai",
+    "lat": 63.0133,
+    "lon": -154.375
+  },
+  {
+    "name": "Nikolski",
+    "alt_name": "Chalukax̂",
+    "lat": 52.938,
+    "lon": -168.868
+  },
+  {
+    "name": "Nilikluguk",
+    "alt_name": "",
+    "lat": 60.6501,
+    "lon": -165.15
+  },
+  {
+    "name": "Ninilchik",
+    "alt_name": "",
+    "lat": 60.0514,
+    "lon": -151.669
+  },
+  {
+    "name": "Noatak",
+    "alt_name": "Nuataam Kuuŋa",
+    "lat": 67.5711,
+    "lon": -162.965
+  },
+  {
+    "name": "Nome",
+    "alt_name": "Sitŋasuaq",
+    "lat": 64.5107,
+    "lon": -165.4447
+  },
+  {
+    "name": "Nondalton",
+    "alt_name": "Nundaltin",
+    "lat": 59.9736,
+    "lon": -154.846
+  },
+  {
+    "name": "Noorvik",
+    "alt_name": "Nuurvik",
+    "lat": 66.8383,
+    "lon": -161.033
+  },
+  {
+    "name": "North Lakes",
+    "alt_name": "",
+    "lat": 61.6135,
+    "lon": -149.3298
+  },
+  {
+    "name": "North Pole",
+    "alt_name": "",
+    "lat": 64.7511,
+    "lon": -147.349
+  },
+  {
+    "name": "Northway",
+    "alt_name": "K’ehtthiign",
+    "lat": 62.9616,
+    "lon": -141.937
+  },
+  {
+    "name": "Northway Indian Village",
+    "alt_name": "",
+    "lat": 62.9832,
+    "lon": -141.949
+  },
+  {
+    "name": "Northway Junction",
+    "alt_name": "",
+    "lat": 63.0173,
+    "lon": -141.792
+  },
+  {
+    "name": "Nuiqsut",
+    "alt_name": "Nuiqsat",
+    "lat": 70.2175,
+    "lon": -150.976
+  },
+  {
+    "name": "Nulato",
+    "alt_name": "Noolaaghe Doh",
+    "lat": 64.7194,
+    "lon": -158.103
+  },
+  {
+    "name": "Nunam Iqua",
+    "alt_name": "Sheldon Point",
+    "lat": 62.5336,
+    "lon": -164.841
+  },
+  {
+    "name": "Nunapitchuk",
+    "alt_name": "Nunapicuar",
+    "lat": 60.8969,
+    "lon": -162.459
+  },
+  {
+    "name": "Nunivak Island Refuge",
+    "alt_name": "",
+    "lat": 59.8228,
+    "lon": -165.2814
+  },
+  {
+    "name": "Nyac",
+    "alt_name": "",
+    "lat": 61.0061,
+    "lon": -159.946
+  },
+  {
+    "name": "Ohogamiut",
+    "alt_name": "Urr'agmiut",
+    "lat": 61.5677,
+    "lon": -161.864
+  },
+  {
+    "name": "Old Harbor",
+    "alt_name": "Nuniaq",
+    "lat": 57.2028,
+    "lon": -153.304
+  },
+  {
+    "name": "Old Minto",
+    "alt_name": "Menhti Xwghotthit",
+    "lat": 64.8882,
+    "lon": -149.182
+  },
+  {
+    "name": "Oliver Inlet State Marine Park",
+    "alt_name": "",
+    "lat": 58.1015,
+    "lon": -134.3127
+  },
+  {
+    "name": "Ophir",
+    "alt_name": "",
+    "lat": 63.1447,
+    "lon": -156.519
+  },
+  {
+    "name": "Oscarville",
+    "alt_name": "Kuiggayagaq",
+    "lat": 60.7273,
+    "lon": -161.79
+  },
+  {
+    "name": "Osviak",
+    "alt_name": "",
+    "lat": 58.8171,
+    "lon": -161.3
+  },
+  {
+    "name": "Ouzinkie",
+    "alt_name": "Uusenkaa",
+    "lat": 57.9236,
+    "lon": -152.496
+  },
+  {
+    "name": "Paimiut",
+    "alt_name": "Paimute",
+    "lat": 61.6971,
+    "lon": -165.83
+  },
+  {
+    "name": "Palmer",
+    "alt_name": "",
+    "lat": 61.5997,
+    "lon": -149.113
+  },
+  {
+    "name": "Pastolik",
+    "alt_name": "",
+    "lat": 62.9972,
+    "lon": -163.304
+  },
+  {
+    "name": "Pauloff Harbor",
+    "alt_name": "",
+    "lat": 54.4589,
+    "lon": -162.7
+  },
+  {
+    "name": "Paxson",
+    "alt_name": "",
+    "lat": 63.033,
+    "lon": -145.4979
+  },
+  {
+    "name": "Pedro Bay",
+    "alt_name": "",
+    "lat": 59.7914,
+    "lon": -154.098
+  },
+  {
+    "name": "Pelican",
+    "alt_name": "K'udeis'x̱'e",
+    "lat": 57.9608,
+    "lon": -136.227
+  },
+  {
+    "name": "Pennock Island",
+    "alt_name": "",
+    "lat": 55.328,
+    "lon": -131.628
+  },
+  {
+    "name": "Perryville",
+    "alt_name": "Perry-q",
+    "lat": 55.9119,
+    "lon": -159.166
+  },
+  {
+    "name": "Petersburg",
+    "alt_name": "Séet Ká",
+    "lat": 56.8125,
+    "lon": -132.955
+  },
+  {
+    "name": "Petersville",
+    "alt_name": "",
+    "lat": 62.373,
+    "lon": -150.7332
+  },
+  {
+    "name": "Pile Bay Village",
+    "alt_name": "",
+    "lat": 59.7789,
+    "lon": -153.8819
+  },
+  {
+    "name": "Pilot Point",
+    "alt_name": "Agisaq",
+    "lat": 57.5641,
+    "lon": -157.579
+  },
+  {
+    "name": "Pilot Station",
+    "alt_name": "Tuutalgaq",
+    "lat": 61.9389,
+    "lon": -162.875
+  },
+  {
+    "name": "Pitkas Point",
+    "alt_name": "Negeqliim Painga",
+    "lat": 62.0328,
+    "lon": -163.288
+  },
+  {
+    "name": "Platinum",
+    "alt_name": "Arviiq",
+    "lat": 59.013,
+    "lon": -161.816
+  },
+  {
+    "name": "Pleasant Valley",
+    "alt_name": "",
+    "lat": 64.8802,
+    "lon": -146.8875
+  },
+  {
+    "name": "Point Baker",
+    "alt_name": "",
+    "lat": 56.3528,
+    "lon": -133.621
+  },
+  {
+    "name": "Point Bridget State Park",
+    "alt_name": "",
+    "lat": 58.6657,
+    "lon": -134.9685
+  },
+  {
+    "name": "Point Hope",
+    "alt_name": "Tikiġaq",
+    "lat": 68.348,
+    "lon": -166.734
+  },
+  {
+    "name": "Point Lay",
+    "alt_name": "Kali",
+    "lat": 69.7574,
+    "lon": -163.051
+  },
+  {
+    "name": "Point MacKenzie",
+    "alt_name": "",
+    "lat": 61.3471,
+    "lon": -150.0659
+  },
+  {
+    "name": "Point Possession",
+    "alt_name": "",
+    "lat": 60.9536,
+    "lon": -150.6744
+  },
+  {
+    "name": "Poorman",
+    "alt_name": "",
+    "lat": 64.0991,
+    "lon": -155.544
+  },
+  {
+    "name": "Pope-Vannoy Landing",
+    "alt_name": "",
+    "lat": 59.5354,
+    "lon": -154.5052
+  },
+  {
+    "name": "Port Alexander",
+    "alt_name": "",
+    "lat": 56.2497,
+    "lon": -134.644
+  },
+  {
+    "name": "Port Alsworth",
+    "alt_name": "",
+    "lat": 60.2025,
+    "lon": -154.313
+  },
+  {
+    "name": "Port Ashton",
+    "alt_name": "",
+    "lat": 60.0581,
+    "lon": -148.05
+  },
+  {
+    "name": "Port Clarence",
+    "alt_name": "",
+    "lat": 65.2573,
+    "lon": -166.8661
+  },
+  {
+    "name": "Port Graham",
+    "alt_name": "Paluwik",
+    "lat": 59.3514,
+    "lon": -151.83
+  },
+  {
+    "name": "Port Heiden",
+    "alt_name": "Masrriq",
+    "lat": 56.9566,
+    "lon": -158.645
+  },
+  {
+    "name": "Port Lions",
+    "alt_name": "Masiqsirraq",
+    "lat": 57.8675,
+    "lon": -152.882
+  },
+  {
+    "name": "Port Mackenzie",
+    "alt_name": "",
+    "lat": 61.2686,
+    "lon": -149.9202
+  },
+  {
+    "name": "Port Moller",
+    "alt_name": "",
+    "lat": 55.99,
+    "lon": -160.577
+  },
+  {
+    "name": "Port Protection",
+    "alt_name": "",
+    "lat": 56.3127,
+    "lon": -133.602
+  },
+  {
+    "name": "Portage",
+    "alt_name": "",
+    "lat": 60.8381,
+    "lon": -148.979
+  },
+  {
+    "name": "Portage Creek",
+    "alt_name": "",
+    "lat": 58.9006,
+    "lon": -157.714
+  },
+  {
+    "name": "Portlock",
+    "alt_name": "",
+    "lat": 59.2144,
+    "lon": -151.7461
+  },
+  {
+    "name": "Primrose",
+    "alt_name": "",
+    "lat": 60.3236,
+    "lon": -149.3576
+  },
+  {
+    "name": "Prudhoe Bay",
+    "alt_name": "",
+    "lat": 70.2366,
+    "lon": -148.38
+  },
+  {
+    "name": "Quinhagak",
+    "alt_name": "Kuinerraq",
+    "lat": 59.7489,
+    "lon": -161.916
+  },
+  {
+    "name": "Rainbow",
+    "alt_name": "",
+    "lat": 61.0041,
+    "lon": -149.642
+  },
+  {
+    "name": "Rampart",
+    "alt_name": "Dleł Taaneets",
+    "lat": 65.5049,
+    "lon": -150.17
+  },
+  {
+    "name": "Red Devil",
+    "alt_name": "",
+    "lat": 61.7611,
+    "lon": -157.313
+  },
+  {
+    "name": "Red Dog Mine",
+    "alt_name": "",
+    "lat": 68.036,
+    "lon": -162.8964
+  },
+  {
+    "name": "Refuge Cove",
+    "alt_name": "",
+    "lat": 55.407,
+    "lon": -131.741
+  },
+  {
+    "name": "Ridgeway",
+    "alt_name": "",
+    "lat": 60.5165,
+    "lon": -151.0582
+  },
+  {
+    "name": "Ruby",
+    "alt_name": "Tl'aa'ologhe",
+    "lat": 64.7394,
+    "lon": -155.487
+  },
+  {
+    "name": "Russian Mission",
+    "alt_name": "Iqugmiut",
+    "lat": 61.7856,
+    "lon": -161.325
+  },
+  {
+    "name": "Safety Cove State Marine Park",
+    "alt_name": "",
+    "lat": 59.9819,
+    "lon": -149.2235
+  },
+  {
+    "name": "Saint George",
+    "alt_name": "Anĝaaxchalux̂",
+    "lat": 56.603,
+    "lon": -169.545
+  },
+  {
+    "name": "Saint Mary's",
+    "alt_name": "Negeqliq",
+    "lat": 62.053,
+    "lon": -163.166
+  },
+  {
+    "name": "Saint Michael",
+    "alt_name": "Taciq",
+    "lat": 63.478,
+    "lon": -162.039
+  },
+  {
+    "name": "Saint Paul",
+    "alt_name": "Tanax̂ Amix̂",
+    "lat": 57.1221,
+    "lon": -170.276
+  },
+  {
+    "name": "Salamatof",
+    "alt_name": "",
+    "lat": 60.5878,
+    "lon": -151.326
+  },
+  {
+    "name": "Salcha",
+    "alt_name": "Soł Chaget",
+    "lat": 64.5288,
+    "lon": -146.899
+  },
+  {
+    "name": "Salt Chuck",
+    "alt_name": "",
+    "lat": 55.628,
+    "lon": -132.552
+  },
+  {
+    "name": "Sanak",
+    "alt_name": "",
+    "lat": 54.4831,
+    "lon": -162.814
+  },
+  {
+    "name": "Sand Point",
+    "alt_name": "",
+    "lat": 55.3397,
+    "lon": -160.497
+  },
+  {
+    "name": "Sandspit Point State Marine Park",
+    "alt_name": "",
+    "lat": 59.9378,
+    "lon": -149.318
+  },
+  {
+    "name": "Savonoski",
+    "alt_name": "",
+    "lat": 58.7171,
+    "lon": -156.867
+  },
+  {
+    "name": "Savoonga",
+    "alt_name": "Sivunga",
+    "lat": 63.6904,
+    "lon": -170.481
+  },
+  {
+    "name": "Sawmill Bay State Marine Park",
+    "alt_name": "",
+    "lat": 61.0575,
+    "lon": -146.7888
+  },
+  {
+    "name": "Saxman",
+    "alt_name": "",
+    "lat": 55.3183,
+    "lon": -131.596
+  },
+  {
+    "name": "Scammon Bay",
+    "alt_name": "Marayaarmiut",
+    "lat": 61.8428,
+    "lon": -165.582
+  },
+  {
+    "name": "Security Bay State Marine Park",
+    "alt_name": "",
+    "lat": 56.8515,
+    "lon": -134.3301
+  },
+  {
+    "name": "Selawik",
+    "alt_name": "Siiḷivik / Akuliġaq",
+    "lat": 66.6039,
+    "lon": -160.007
+  },
+  {
+    "name": "Seldovia",
+    "alt_name": "Angagkitaqnuuq",
+    "lat": 59.438,
+    "lon": -151.711
+  },
+  {
+    "name": "Seldovia Village",
+    "alt_name": "",
+    "lat": 59.4716,
+    "lon": -151.6548
+  },
+  {
+    "name": "Serpentine Slide Research Natural Area",
+    "alt_name": "",
+    "lat": 65.7113,
+    "lon": -147.4653
+  },
+  {
+    "name": "Seward",
+    "alt_name": "Qutalleq",
+    "lat": 60.1043,
+    "lon": -149.442
+  },
+  {
+    "name": "Shageluk",
+    "alt_name": "Edixi",
+    "lat": 62.6822,
+    "lon": -159.562
+  },
+  {
+    "name": "Shaktoolik",
+    "alt_name": "Saktuliq",
+    "lat": 64.35,
+    "lon": -161.183
+  },
+  {
+    "name": "Shelter Island State Marine Park",
+    "alt_name": "",
+    "lat": 58.4513,
+    "lon": -134.881
+  },
+  {
+    "name": "Shemya Station",
+    "alt_name": "",
+    "lat": 52.7246,
+    "lon": 174.112
+  },
+  {
+    "name": "Shishmaref",
+    "alt_name": "Qigiqtaq",
+    "lat": 66.2567,
+    "lon": -166.072
+  },
+  {
+    "name": "Shungnak",
+    "alt_name": "Isiŋnaq / Nuurviuraq",
+    "lat": 66.888,
+    "lon": -157.136
+  },
+  {
+    "name": "Silver Springs",
+    "alt_name": "",
+    "lat": 62.0138,
+    "lon": -145.336
+  },
+  {
+    "name": "Sitka",
+    "alt_name": "Sheet'ká",
+    "lat": 57.053,
+    "lon": -135.33
+  },
+  {
+    "name": "Skagway",
+    "alt_name": "",
+    "lat": 59.4583,
+    "lon": -135.314
+  },
+  {
+    "name": "Skwentna",
+    "alt_name": "",
+    "lat": 61.9649,
+    "lon": -151.158
+  },
+  {
+    "name": "Slana",
+    "alt_name": "Stl’aa Caegge",
+    "lat": 62.707,
+    "lon": -143.9697
+  },
+  {
+    "name": "Sleetmute",
+    "alt_name": "Cellitemiut",
+    "lat": 61.7025,
+    "lon": -157.17
+  },
+  {
+    "name": "Soldotna",
+    "alt_name": "",
+    "lat": 60.4878,
+    "lon": -151.058
+  },
+  {
+    "name": "Solomon",
+    "alt_name": "",
+    "lat": 64.5608,
+    "lon": -164.439
+  },
+  {
+    "name": "South Lakes",
+    "alt_name": "",
+    "lat": 61.5903,
+    "lon": -149.3165
+  },
+  {
+    "name": "South Naknek",
+    "alt_name": "Qinuyang",
+    "lat": 58.7155,
+    "lon": -156.998
+  },
+  {
+    "name": "South Todatonten Summit Research Natural Area",
+    "alt_name": "",
+    "lat": 66.0506,
+    "lon": -152.881
+  },
+  {
+    "name": "South Van Horn",
+    "alt_name": "",
+    "lat": 64.8075,
+    "lon": -147.774
+  },
+  {
+    "name": "Spenard",
+    "alt_name": "",
+    "lat": 61.1881,
+    "lon": -149.917
+  },
+  {
+    "name": "Stan Price State Wildlife Sanctuary",
+    "alt_name": "",
+    "lat": 57.9051,
+    "lon": -134.275
+  },
+  {
+    "name": "Stebbins",
+    "alt_name": "Tapraq",
+    "lat": 63.5222,
+    "lon": -162.288
+  },
+  {
+    "name": "Steele Creek",
+    "alt_name": "",
+    "lat": 64.9028,
+    "lon": -147.5241
+  },
+  {
+    "name": "Sterling",
+    "alt_name": "",
+    "lat": 60.5381,
+    "lon": -150.758
+  },
+  {
+    "name": "Stevens Village",
+    "alt_name": "Denyeet",
+    "lat": 66.0063,
+    "lon": -149.091
+  },
+  {
+    "name": "Stony River",
+    "alt_name": "Gidighuyghatno’ Xidochagg Qay / K'qizaghetnu",
+    "lat": 61.7831,
+    "lon": -156.588
+  },
+  {
+    "name": "Summit",
+    "alt_name": "",
+    "lat": 63.3292,
+    "lon": -149.119
+  },
+  {
+    "name": "Sunny Cove State Marine Park",
+    "alt_name": "",
+    "lat": 59.9024,
+    "lon": -149.3453
+  },
+  {
+    "name": "Sunrise",
+    "alt_name": "",
+    "lat": 60.8921,
+    "lon": -149.425
+  },
+  {
+    "name": "Suntrana",
+    "alt_name": "",
+    "lat": 63.8582,
+    "lon": -148.846
+  },
+  {
+    "name": "Surprise Cove State Marine Park",
+    "alt_name": "",
+    "lat": 60.7568,
+    "lon": -148.3873
+  },
+  {
+    "name": "Susitna",
+    "alt_name": "",
+    "lat": 61.5786,
+    "lon": -150.6091
+  },
+  {
+    "name": "Susitna North",
+    "alt_name": "",
+    "lat": 62.1322,
+    "lon": -150.0322
+  },
+  {
+    "name": "Susitna Station",
+    "alt_name": "",
+    "lat": 61.5432,
+    "lon": -150.5162
+  },
+  {
+    "name": "Sutton",
+    "alt_name": "",
+    "lat": 61.7114,
+    "lon": -148.894
+  },
+  {
+    "name": "Sutton-Alpine",
+    "alt_name": "",
+    "lat": 61.7168,
+    "lon": -148.8844
+  },
+  {
+    "name": "Takotna",
+    "alt_name": "Tochotno’",
+    "lat": 62.9886,
+    "lon": -156.064
+  },
+  {
+    "name": "Taku Harbor State Marine Park",
+    "alt_name": "",
+    "lat": 58.0622,
+    "lon": -134.0187
+  },
+  {
+    "name": "Talkeetna",
+    "alt_name": "K'dalkitnu",
+    "lat": 62.3239,
+    "lon": -150.109
+  },
+  {
+    "name": "Tanacross",
+    "alt_name": "Taats’altęy",
+    "lat": 63.378,
+    "lon": -143.356
+  },
+  {
+    "name": "Tanaina",
+    "alt_name": "",
+    "lat": 61.6141,
+    "lon": -149.4508
+  },
+  {
+    "name": "Tanana",
+    "alt_name": "Hohudodetlaatl Denh",
+    "lat": 65.1719,
+    "lon": -152.079
+  },
+  {
+    "name": "Tatitlek",
+    "alt_name": "Taatiilaaq",
+    "lat": 60.8647,
+    "lon": -146.679
+  },
+  {
+    "name": "Tazlina",
+    "alt_name": "Tezdlen Na’",
+    "lat": 62.0305,
+    "lon": -145.416
+  },
+  {
+    "name": "Tee Harbor",
+    "alt_name": "",
+    "lat": 58.41,
+    "lon": -134.757
+  },
+  {
+    "name": "Telida",
+    "alt_name": "Tilayadi",
+    "lat": 63.3833,
+    "lon": -153.267
+  },
+  {
+    "name": "Teller",
+    "alt_name": "Tala",
+    "lat": 65.2636,
+    "lon": -166.361
+  },
+  {
+    "name": "Tenakee Springs",
+    "alt_name": "Tʼanag̱eey / Tlaagoowu Aan",
+    "lat": 57.7808,
+    "lon": -135.219
+  },
+  {
+    "name": "Tetlin",
+    "alt_name": "Teełąy",
+    "lat": 63.1373,
+    "lon": -142.5208
+  },
+  {
+    "name": "Tetlin Junction",
+    "alt_name": "",
+    "lat": 63.3172,
+    "lon": -142.599
+  },
+  {
+    "name": "Thane",
+    "alt_name": "",
+    "lat": 58.264,
+    "lon": -134.328
+  },
+  {
+    "name": "Thoms Place State Marine Park",
+    "alt_name": "",
+    "lat": 56.1732,
+    "lon": -132.1328
+  },
+  {
+    "name": "Thorne Bay",
+    "alt_name": "",
+    "lat": 55.7274,
+    "lon": -132.471
+  },
+  {
+    "name": "Thumb Cove State Marine Park",
+    "alt_name": "",
+    "lat": 60.004,
+    "lon": -149.3008
+  },
+  {
+    "name": "Tin City",
+    "alt_name": "",
+    "lat": 65.5502,
+    "lon": -167.851
+  },
+  {
+    "name": "Togiak",
+    "alt_name": "Tuyuryaq",
+    "lat": 59.0619,
+    "lon": -160.376
+  },
+  {
+    "name": "Tok",
+    "alt_name": "",
+    "lat": 63.3366,
+    "lon": -142.985
+  },
+  {
+    "name": "Tokeen",
+    "alt_name": "",
+    "lat": 55.938,
+    "lon": -133.324
+  },
+  {
+    "name": "Toksook Bay",
+    "alt_name": "Nunakauyaq",
+    "lat": 60.5303,
+    "lon": -165.102
+  },
+  {
+    "name": "Tolovana",
+    "alt_name": "",
+    "lat": 64.8542,
+    "lon": -149.824
+  },
+  {
+    "name": "Tolsona",
+    "alt_name": "",
+    "lat": 62.099,
+    "lon": -146.0444
+  },
+  {
+    "name": "Tonsina",
+    "alt_name": "",
+    "lat": 61.6558,
+    "lon": -145.175
+  },
+  {
+    "name": "Toolik Field Station",
+    "alt_name": "",
+    "lat": 68.6268,
+    "lon": -149.5952
+  },
+  {
+    "name": "Trapper Creek",
+    "alt_name": "",
+    "lat": 62.3114,
+    "lon": -150.2458
+  },
+  {
+    "name": "Tuluksak",
+    "alt_name": "Tuulkessaaq",
+    "lat": 61.1025,
+    "lon": -160.962
+  },
+  {
+    "name": "Tuntutuliak",
+    "alt_name": "Tuntutuliaq",
+    "lat": 60.3397,
+    "lon": -162.669
+  },
+  {
+    "name": "Tununak",
+    "alt_name": "Tununeq",
+    "lat": 60.5855,
+    "lon": -165.256
+  },
+  {
+    "name": "Twin Hills",
+    "alt_name": "Ingricuar",
+    "lat": 59.0792,
+    "lon": -160.275
+  },
+  {
+    "name": "Two Rivers",
+    "alt_name": "",
+    "lat": 64.8767,
+    "lon": -147.0384
+  },
+  {
+    "name": "Tyonek",
+    "alt_name": "Qaggeyshlat",
+    "lat": 61.0681,
+    "lon": -151.137
+  },
+  {
+    "name": "Ugashik",
+    "alt_name": "Ugaasaq",
+    "lat": 57.513,
+    "lon": -157.397
+  },
+  {
+    "name": "Umiat",
+    "alt_name": "",
+    "lat": 69.3674,
+    "lon": -152.133
+  },
+  {
+    "name": "Umkumiute",
+    "alt_name": "",
+    "lat": 60.4983,
+    "lon": -165.199
+  },
+  {
+    "name": "Umnak",
+    "alt_name": "",
+    "lat": 53.267,
+    "lon": -168.217
+  },
+  {
+    "name": "Unalakleet",
+    "alt_name": "Uŋalaqłiit",
+    "lat": 63.873,
+    "lon": -160.788
+  },
+  {
+    "name": "Unalaska",
+    "alt_name": "Iluulux̂",
+    "lat": 53.8733,
+    "lon": -166.533
+  },
+  {
+    "name": "Unga",
+    "alt_name": "Uĝnaasaqax̂",
+    "lat": 55.1828,
+    "lon": -160.506
+  },
+  {
+    "name": "Upper Kalskag",
+    "alt_name": "Qalqaq",
+    "lat": 61.5391,
+    "lon": -160.306
+  },
+  {
+    "name": "Utqiaġvik",
+    "alt_name": "Barrow",
+    "lat": 71.2905,
+    "lon": -156.789
+  },
+  {
+    "name": "Utukakarvik",
+    "alt_name": "",
+    "lat": 61.9611,
+    "lon": -164.75
+  },
+  {
+    "name": "Uyak",
+    "alt_name": "",
+    "lat": 57.6256,
+    "lon": -153.988
+  },
+  {
+    "name": "Valdez",
+    "alt_name": "Suacit",
+    "lat": 61.1369,
+    "lon": -146.3471
+  },
+  {
+    "name": "Venetie",
+    "alt_name": "Vįįhtąįį",
+    "lat": 67.0139,
+    "lon": -146.419
+  },
+  {
+    "name": "Wainwright",
+    "alt_name": "Ulġuniq",
+    "lat": 70.6369,
+    "lon": -160.038
+  },
+  {
+    "name": "Wales",
+    "alt_name": "Kiŋigin",
+    "lat": 65.6097,
+    "lon": -168.0876
+  },
+  {
+    "name": "Ward Cove",
+    "alt_name": "",
+    "lat": 55.408,
+    "lon": -131.724
+  },
+  {
+    "name": "Wasilla",
+    "alt_name": "",
+    "lat": 61.5814,
+    "lon": -149.439
+  },
+  {
+    "name": "Whale Pass",
+    "alt_name": "",
+    "lat": 56.1,
+    "lon": -133.167
+  },
+  {
+    "name": "White Mountain",
+    "alt_name": "Nasirvik",
+    "lat": 64.6813,
+    "lon": -163.406
+  },
+  {
+    "name": "Whitestone",
+    "alt_name": "",
+    "lat": 64.1536,
+    "lon": -145.8863
+  },
+  {
+    "name": "Whitestone Logging Camp",
+    "alt_name": "",
+    "lat": 58.0831,
+    "lon": -135.4367
+  },
+  {
+    "name": "Whittier",
+    "alt_name": "",
+    "lat": 60.773,
+    "lon": -148.684
+  },
+  {
+    "name": "Whittier Anchorage Pipeline",
+    "alt_name": "",
+    "lat": 60.9399,
+    "lon": -149.2897
+  },
+  {
+    "name": "Willow",
+    "alt_name": "",
+    "lat": 61.7472,
+    "lon": -150.037
+  },
+  {
+    "name": "Willow Creek",
+    "alt_name": "",
+    "lat": 61.8123,
+    "lon": -145.1944
+  },
+  {
+    "name": "Wiseman",
+    "alt_name": "",
+    "lat": 67.41,
+    "lon": -150.107
+  },
+  {
+    "name": "Womens Bay",
+    "alt_name": "",
+    "lat": 57.7099,
+    "lon": -152.586
+  },
+  {
+    "name": "Woody Island",
+    "alt_name": "",
+    "lat": 57.78,
+    "lon": -152.355
+  },
+  {
+    "name": "Wrangell",
+    "alt_name": "Shtax’héen",
+    "lat": 56.4708,
+    "lon": -132.377
+  },
+  {
+    "name": "Yakutat",
+    "alt_name": "Yaakwdáat",
+    "lat": 59.5469,
+    "lon": -139.727
+  },
+  {
+    "name": "Yukon Command Training Site",
+    "alt_name": "",
+    "lat": 64.6892,
+    "lon": -146.6233
+  },
+  {
+    "name": "Yukon Weapons Range",
+    "alt_name": "",
+    "lat": 64.7682,
+    "lon": -146.8895
+  },
+  {
+    "name": "Ziegler Cove State Marine Park",
+    "alt_name": "",
+    "lat": 60.8381,
+    "lon": -148.3205
+  }
+]

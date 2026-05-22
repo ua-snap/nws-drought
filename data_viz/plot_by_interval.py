@@ -3,11 +3,22 @@
 Contrast with plot_<variable>.py, which compares one variable across intervals.
 """
 
+import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import xarray as xr
 
+from plot_common import (
+    INDICES_DIR,
+    INTERVALS,
+    OUTPUT_DIR,
+    interval_netcdf_path,
+    masked_for_land,
+    parse_drought_indices_path,
+    parse_region_arg,
+)
+from plot_communities import add_communities_to_axes
 from plot_scales import (
     PNTP_SCALE,
     PNSWE_SCALE,
@@ -19,12 +30,12 @@ from plot_scales import (
     PlotScale,
     make_colormap,
 )
-
-# Matches the per-variable scripts and README intervals (excluding 14-day configs).
-SUMMARY_INTERVAL_DAYS = (7, 30, 60, 90, 180, 365)
-
-DATA_DIR = Path("drought_outputs")
-OUTPUT_DIR = Path(__file__).resolve().parent
+from region_subset import (
+    PlotRegion,
+    region_output_dir,
+    region_title_suffix,
+    subset_for_pcolormesh,
+)
 
 # Order matches README indicator list (variable key, discrete color scale).
 VARIABLE_PANELS: tuple[tuple[str, PlotScale], ...] = (
@@ -38,30 +49,11 @@ VARIABLE_PANELS: tuple[tuple[str, PlotScale], ...] = (
 )
 
 
-def resolve_interval_nc_path(data_dir: Path, days: int) -> Path | None:
-    """Locate the NetCDF for a summary interval (dated or plain filename).
-
-    `pipeline_run.py` writes drought_indices_<n>day_<YYYY_MM_DD>.nc; the
-    per-variable plotting scripts use drought_indices_<n>day.nc.
-    """
-
-    bare = data_dir / f"drought_indices_{days}day.nc"
-    if bare.exists():
-        return bare
-    dated = sorted(data_dir.glob(f"drought_indices_{days}day_*.nc"))
-    return dated[-1] if dated else None
-
-
-def masked_for_land(ds: xr.Dataset, da: xr.DataArray) -> xr.DataArray:
-    """Mask ocean/non-land consistently with existing variable plots."""
-
-    return da.where(ds["smd"].notnull())
-
-
 def plot_all_variables_one_interval(
     nc_path: str | Path,
     figsize: tuple[float, float] = (16, 12),
     save_path: str | Path | None = None,
+    region: PlotRegion | None = None,
 ) -> plt.Figure:
     """One figure showing every indicator grid for one summary-interval file."""
 
@@ -83,25 +75,22 @@ def plot_all_variables_one_interval(
         ax_unused.axis("off")
 
     with xr.open_dataset(path) as ds:
-        ref_date_str = ds.attrs.get("reference_date", path.stem)
-        suffix = path.stem.removeprefix("drought_indices_")
-        interval_suffix = suffix.split("_")[0] if suffix else ""
-
-        lon = ds["longitude"].values
-        lat = ds["latitude"].values
+        _, reference_date, interval_label = parse_drought_indices_path(path)
 
         for ax, (var_key, scale) in zip(axes, VARIABLE_PANELS, strict=False):
             da = masked_for_land(ds, ds[var_key])
+            lon, lat, values = subset_for_pcolormesh(ds, da, region)
 
             cmap, norm = make_colormap(scale)
             mesh = ax.pcolormesh(
                 lon,
                 lat,
-                da.values,
+                values,
                 shading="auto",
                 cmap=cmap,
                 norm=norm,
             )
+            add_communities_to_axes(ax, region, lon, lat)
 
             ax.set_title(scale.panel_title, fontsize=10)
             ax.label_outer()
@@ -121,7 +110,8 @@ def plot_all_variables_one_interval(
     fig.supxlabel("Longitude")
     fig.supylabel("Latitude")
     fig.suptitle(
-        f"Drought indicators — {interval_suffix} — reference date {ref_date_str}",
+        f"Drought indicators — {interval_label}{region_title_suffix(region)} — "
+        f"reference date {reference_date}",
         fontsize=12,
     )
 
@@ -131,19 +121,24 @@ def plot_all_variables_one_interval(
     return fig
 
 
-def main() -> None:
-    for days in SUMMARY_INTERVAL_DAYS:
-        resolved = resolve_interval_nc_path(DATA_DIR, days)
-        if resolved is None:
-            raise FileNotFoundError(
-                f"No NetCDF found for {days}-day interval under {DATA_DIR} "
-                f"(expected drought_indices_{days}day.nc or drought_indices_{days}day_*.nc)"
-            )
+def main(region: PlotRegion | None = None) -> None:
+    out_dir = region_output_dir(OUTPUT_DIR, region)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-        outfile = OUTPUT_DIR / f"drought_maps_{days}day.png"
-        plot_all_variables_one_interval(resolved, save_path=outfile)
+    for days in INTERVALS:
+        nc_path = interval_netcdf_path(INDICES_DIR, days)
+        outfile = out_dir / f"drought_maps_{days}day.png"
+        plot_all_variables_one_interval(nc_path, save_path=outfile, region=region)
         plt.close("all")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--region",
+        choices=sorted(__import__("region_subset", fromlist=["REGIONS"]).REGIONS),
+        default=None,
+        help="Zoom to a predefined subset (e.g. interior_alaska for 64×64 cells)",
+    )
+    args = parser.parse_args()
+    main(region=parse_region_arg(args.region))

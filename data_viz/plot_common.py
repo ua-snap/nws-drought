@@ -1,0 +1,195 @@
+"""Shared paths, NetCDF helpers, and cross-interval plotting for drought maps."""
+
+from __future__ import annotations
+
+import math
+import sys
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import xarray as xr
+
+from plot_communities import add_communities_to_axes
+from plot_scales import PlotScale, make_colormap
+from region_subset import (
+    PlotRegion,
+    region_output_dir,
+    region_title_suffix,
+    subset_for_pcolormesh,
+)
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from config import INDICES_DIR, INTERVALS  # noqa: E402
+
+OUTPUT_DIR = Path(__file__).resolve().parent
+
+DATED_INDICES_GLOB = "drought_indices_{days}day_*.nc"
+
+
+def parse_drought_indices_path(path: Path) -> tuple[int, str, str]:
+    """Parse ``drought_indices_<n>day_<YYYY>_<MM>_<DD>.nc``."""
+
+    parts = Path(path).stem.split("_")
+    if len(parts) != 6 or parts[0] != "drought" or parts[1] != "indices":
+        raise ValueError(
+            f"Expected drought_indices_<n>day_<YYYY>_<MM>_<DD>.nc, got {path.name!r}"
+        )
+
+    interval_token = parts[2]
+    if not interval_token.endswith("day"):
+        raise ValueError(f"Invalid interval token in {path.name!r}: {interval_token!r}")
+
+    days = int(interval_token.removesuffix("day"))
+    reference_date = "-".join(parts[3:6])
+    interval_label = interval_token
+    return days, reference_date, interval_label
+
+
+def interval_netcdf_path(data_dir: Path, days: int) -> Path:
+    """Return the single dated NetCDF for one summary interval."""
+
+    matches = sorted(data_dir.glob(DATED_INDICES_GLOB.format(days=days)))
+    expected = f"drought_indices_{days}day_<YYYY>_<MM>_<DD>.nc"
+    if len(matches) != 1:
+        raise FileNotFoundError(
+            f"Expected exactly one {expected} under {data_dir}, found {len(matches)}"
+        )
+    return matches[0]
+
+
+def all_interval_netcdf_paths(data_dir: Path = INDICES_DIR) -> list[Path]:
+    """Return one dated NetCDF per configured summary interval, in ``INTERVALS`` order."""
+
+    return [interval_netcdf_path(data_dir, days) for days in INTERVALS]
+
+
+def masked_for_land(ds: xr.Dataset, da: xr.DataArray) -> xr.DataArray:
+    """Mask ocean/non-land consistently with existing variable plots."""
+
+    return da.where(ds["smd"].notnull())
+
+
+def plot_variable_across_files(
+    paths: list[str | Path],
+    *,
+    variable_key: str,
+    scale: PlotScale,
+    region: PlotRegion | None = None,
+    figsize_per_panel: tuple[float, float] = (5.5, 4.0),
+    save_path: str | Path | None = None,
+    mask_land: bool = True,
+) -> plt.Figure:
+    """Compare one indicator across multiple summary-interval NetCDF files."""
+
+    path_objs = [Path(path) for path in paths]
+    n_intervals = len(path_objs)
+    ncols = 3
+    nrows = math.ceil(n_intervals / ncols)
+    cmap, norm = make_colormap(scale)
+
+    fig, axes = plt.subplots(
+        nrows=nrows,
+        ncols=ncols,
+        figsize=(figsize_per_panel[0] * ncols, figsize_per_panel[1] * nrows),
+        constrained_layout=True,
+        squeeze=False,
+        sharex=True,
+        sharey=True,
+    )
+    fig.patch.set_facecolor("white")
+
+    opened: list[tuple[Path, xr.Dataset]] = []
+    for path in path_objs:
+        opened.append((path, xr.open_dataset(path)))
+
+    _, reference_date, _ = parse_drought_indices_path(path_objs[0])
+    mesh = None
+
+    for ax, (path, ds) in zip(axes.flat, opened, strict=False):
+        _, _, interval_label = parse_drought_indices_path(path)
+
+        da = ds[variable_key]
+        if mask_land:
+            da = masked_for_land(ds, da)
+
+        lon, lat, values = subset_for_pcolormesh(ds, da, region)
+        mesh = ax.pcolormesh(
+            lon,
+            lat,
+            values,
+            shading="auto",
+            cmap=cmap,
+            norm=norm,
+        )
+        add_communities_to_axes(ax, region, lon, lat)
+
+        ax.set_title(interval_label)
+        ax.label_outer()
+        ax.set_facecolor(scale.mask_color)
+
+    for ax_unused in axes.flat[n_intervals:]:
+        ax_unused.axis("off")
+
+    for _, ds in opened:
+        ds.close()
+
+    if mesh is None:
+        raise ValueError("No input files were provided.")
+
+    fig.supxlabel("Longitude")
+    fig.supylabel("Latitude")
+
+    cbar = fig.colorbar(
+        mesh,
+        ax=axes.ravel().tolist(),
+        boundaries=scale.bounds,
+        ticks=scale.cbar_ticks,
+        spacing="uniform",
+    )
+    cbar.set_ticklabels(scale.cbar_labels)
+    cbar.set_label(scale.colorbar_axis_label)
+
+    fig.suptitle(
+        f"{scale.indicator_title}{region_title_suffix(region)} — "
+        f"Reference Date {reference_date}",
+        fontsize=12,
+    )
+
+    if save_path is not None:
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+
+    return fig
+
+
+def parse_region_arg(region_name: str | None) -> PlotRegion | None:
+    from region_subset import REGIONS
+
+    if region_name is None:
+        return None
+    key = region_name.lower()
+    if key not in REGIONS:
+        known = ", ".join(sorted(REGIONS))
+        raise SystemExit(f"Unknown region {region_name!r}. Choose from: {known}")
+    return REGIONS[key]
+
+
+def add_region_arg(parser) -> None:
+    parser.add_argument(
+        "--region",
+        choices=sorted(__import__("region_subset", fromlist=["REGIONS"]).REGIONS),
+        default=None,
+        help="Zoom to a predefined subset (e.g. interior_alaska for 64×64 cells)",
+    )
+
+
+def output_path_for_variable(
+    variable_key: str,
+    region: PlotRegion | None,
+    output_dir: Path = OUTPUT_DIR,
+) -> Path:
+    out_dir = region_output_dir(output_dir, region)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    return out_dir / f"{variable_key}.png"

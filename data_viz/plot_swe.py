@@ -1,106 +1,38 @@
-from pathlib import Path
+import argparse
 
 import matplotlib.pyplot as plt
-import xarray as xr
 
-from plot_scales import SWE_SCALE, make_colormap
+from plot_common import (
+    all_interval_netcdf_paths,
+    output_path_for_variable,
+    parse_region_arg,
+    plot_variable_across_files,
+)
+from plot_scales import SWE_SCALE
 
-data_dir = Path("drought_outputs")
-OUTPUT_DIR = Path(__file__).resolve().parent
-
-all_files = [
-    Path("drought_outputs/drought_indices_7day.nc"),
-    Path("drought_outputs/drought_indices_30day.nc"),
-    Path("drought_outputs/drought_indices_60day.nc"),
-    Path("drought_outputs/drought_indices_90day.nc"),
-    Path("drought_outputs/drought_indices_180day.nc"),
-    Path("drought_outputs/drought_indices_365day.nc"),
-]
-
-variable_key = "swe"
-analysis_date = "2026-05-06"
-
-scale = SWE_SCALE
-bounds = scale.bounds
-cbar_labels = scale.cbar_labels
-cbar_ticks = scale.cbar_ticks
-cmap, norm = make_colormap(scale)
+VARIABLE_KEY = "swe"
+SCALE = SWE_SCALE
 
 
-def plot_variable_across_files(
-    paths: list[str | Path],
-    figsize_per_panel: tuple[float, float] = (5.5, 4.0),
-    save_path: str | Path | None = None,
-) -> plt.Figure:
-    """Compare snow water equivalent across multiple NetCDF files."""
-
-    ncols = 3
-    nrows = 2
-
-    fig, axes = plt.subplots(
-        nrows=nrows,
-        ncols=ncols,
-        figsize=(figsize_per_panel[0] * ncols, figsize_per_panel[1] * nrows),
-        constrained_layout=True,
-        squeeze=False,
-        sharex=True,
-        sharey=True,
+def main(region=None) -> None:
+    plot_variable_across_files(
+        all_interval_netcdf_paths(),
+        variable_key=VARIABLE_KEY,
+        scale=SCALE,
+        region=region,
+        save_path=output_path_for_variable(VARIABLE_KEY, region),
     )
+    plt.close("all")
 
-    opened: list[tuple[Path, xr.Dataset]] = []
 
-    for path in paths:
-        p = Path(path)
-        ds = xr.open_dataset(p)
-        opened.append((p, ds))
-
-    mesh = None
-
-    for ax, (path, ds) in zip(axes.flat, opened, strict=False):
-        # Mask ocean using smd, assuming smd is NaN over ocean.
-        # This avoids treating ocean SWE = 0 as valid land snow-free area.
-        da = ds[variable_key].where(ds["smd"].notnull())
-
-        lon = ds["longitude"].values
-        lat = ds["latitude"].values
-
-        mesh = ax.pcolormesh(
-            lon,
-            lat,
-            da.values,
-            shading="auto",
-            cmap=cmap,
-            norm=norm,
-        )
-
-        ax.set_title(Path(path).stem.split("_")[-1])
-        ax.label_outer()
-        ax.set_facecolor(scale.mask_color)
-
-    if mesh is None:
-        raise ValueError("No input files were provided.")
-
-    fig.supxlabel("Longitude")
-    fig.supylabel("Latitude")
-
-    cbar = fig.colorbar(
-        mesh,
-        ax=axes.ravel().tolist(),
-        boundaries=bounds,
-        ticks=cbar_ticks,
-        spacing="uniform",
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description=f"Plot {SCALE.indicator_title} across intervals."
     )
-
-    cbar.set_ticklabels(cbar_labels)
-    cbar.set_label(scale.colorbar_axis_label)
-
-    fig.suptitle(
-        f"{scale.indicator_title} -- Analysis Date {analysis_date}",
-        fontsize=12,
+    parser.add_argument(
+        "--region",
+        choices=sorted(__import__("region_subset", fromlist=["REGIONS"]).REGIONS),
+        default=None,
+        help="Zoom to a predefined subset (e.g. interior_alaska for 64×64 cells)",
     )
-
-    if save_path is not None:
-        fig.savefig(save_path, dpi=300, bbox_inches="tight")
-
-
-plot_variable_across_files(all_files, save_path=OUTPUT_DIR / "swe.png")
+    main(region=parse_region_arg(parser.parse_args().region))
