@@ -50,4 +50,32 @@ python pipeline_download.py
 python pipeline_run.py
 ```
 
-A drought indicator netCDF dataset, one file per summary interval, will be written to the `INDICES_DIR` directory. Each file contains results for all indices for the entire area of interest. The output file naming convention is: `drought_indices_<summary_interval>day.nc`.
+A drought indicator netCDF dataset, one file per summary interval, will be written to the `INDICES_DIR` directory. Each file contains results for all indices for the entire area of interest. `pipeline_run.py` names outputs `drought_indices_<summary_interval>day_<YYYY>_<MM>_<DD>.nc`. Plotting scripts expect exactly one dated file per interval listed in `INTERVALS` in `config.py`.
+
+### Plotting maps (`data_viz/`)
+
+Run scripts from the repository root so `INDICES_DIR` (`drought_outputs/` by default) resolves. Figures are saved under **`data_viz/`** (next to the script files), regardless of the current working directory.
+
+- **`plot_<variable>.py`** — one figure per indicator, comparing all summary-interval files side by side (`data_viz/tp.png`, `data_viz/spi.png`, …).
+- **`plot_by_interval.py`** — one figure per summary interval, with all seven indicators on a grid (`data_viz/drought_maps_7day.png`, …).
+- **`plot_by_interval_no_tp_swe.py`** — same layout idea as **`plot_by_interval.py`**, but only five panels (omits Total Precipitation and Snow Water Equivalent); outputs `data_viz/drought_maps_7day_no_tp_swe.png`, …).
+
+Shared discrete colors, categorical bin labels, and human-readable indicator titles (`indicator_title`, `panel_title`, `colorbar_axis_label`) live in **`data_viz/plot_scales.py`** (SPI/SPEI bins follow the USDM SPI legend).
+
+#### Zoomed regional subsets
+
+Any plotting script accepts **`--region <name>`** to zoom to a 64×64 grid-cell window (~576 km per side at ~9 km resolution). Regional figures are written under **`data_viz/<region>/`** with the same filenames as the full-domain plots.
+
+| Region | Center | Coverage (approx.) |
+|--------|--------|--------------------|
+| `interior_alaska` | 64.5°N, 147°W | Central Interior / Fairbanks area |
+| `southeast_alaska` | 58.3°N, 134.4°W | Alaska Panhandle |
+| `southwest_alaska` | 60.8°N, 161.8°W | Yukon–Kuskokwim delta (Bethel) |
+
+```sh
+python data_viz/plot_spi.py --region southeast_alaska
+python data_viz/plot_by_interval.py --region southwest_alaska
+python data_viz/plot_all_regions.py --region interior_alaska   # all figures at once
+```
+
+Community markers are drawn from **`data_viz/communities_ak_filtered.json`** for all three regions (four labeled communities each). Region definitions and slice logic live in **`data_viz/region_subset.py`**.
