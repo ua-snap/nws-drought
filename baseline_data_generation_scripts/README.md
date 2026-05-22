@@ -45,14 +45,14 @@ SPEI and SPI require computing reference distribution parameters. For each of SP
 
 #### SPI
 ```sh
-ARRAY_JOB_ID=$(sbatch --parsable --array=0-5 baseline_data_generation_scripts/process_calibration_params.sbatch compute spi)
+ARRAY_JOB_ID=$(sbatch --parsable --array=0-6 baseline_data_generation_scripts/process_calibration_params.sbatch compute spi)
 
 sbatch --dependency=afterok:${ARRAY_JOB_ID} baseline_data_generation_scripts/process_calibration_params.sbatch merge spi
 ```
 
 #### SPEI
 ```sh
-ARRAY_JOB_ID=$(sbatch --parsable --array=0-5 baseline_data_generation_scripts/process_calibration_params.sbatch compute spei)
+ARRAY_JOB_ID=$(sbatch --parsable --array=0-6 baseline_data_generation_scripts/process_calibration_params.sbatch compute spei)
 
 sbatch --dependency=afterok:${ARRAY_JOB_ID} baseline_data_generation_scripts/process_calibration_params.sbatch merge spei
 ```

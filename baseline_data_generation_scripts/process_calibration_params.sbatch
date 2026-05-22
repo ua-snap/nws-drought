@@ -68,11 +68,6 @@ if [[ "${MODE}" == "compute" ]]; then
     exit 2
   fi
 
-  if ((SLURM_ARRAY_TASK_ID < 0 || SLURM_ARRAY_TASK_ID >= ${#INTERVALS[@]})); then
-    echo "SLURM_ARRAY_TASK_ID must be between 0 and 5; got ${SLURM_ARRAY_TASK_ID}." >&2
-    exit 2
-  fi
-
   INTERVAL="${INTERVALS[${SLURM_ARRAY_TASK_ID}]}"
   #PARTIAL_OUT="${PARTIAL_DIR}/${INDEX}_gamma_parameters_interval_$(printf "%03d" "${INTERVAL}").nc"
 
