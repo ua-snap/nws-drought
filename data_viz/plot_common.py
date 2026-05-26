@@ -13,7 +13,6 @@ from plot_communities import add_communities_to_axes
 from plot_scales import PlotScale, make_colormap
 from region_subset import (
     PlotRegion,
-    region_output_dir,
     region_title_suffix,
     subset_for_pcolormesh,
 )
@@ -25,6 +24,23 @@ if str(REPO_ROOT) not in sys.path:
 from config import INDICES_DIR, INTERVALS  # noqa: E402
 
 OUTPUT_DIR = Path(__file__).resolve().parent
+FIGURES_ROOT = OUTPUT_DIR / "figures"
+
+# Descriptive subdirectories under ``figures/`` for collaborator-friendly browsing.
+BY_INDICATOR_DIR = "by_indicator"
+BY_SUMMARY_INTERVAL_DIR = "by_summary_interval"
+BY_SUMMARY_INTERVAL_FIVE_PANEL_DIR = "by_summary_interval_five_panel"
+FULL_DOMAIN_SLUG = "full_domain"
+
+VARIABLE_OUTPUT_FILENAMES: dict[str, str] = {
+    "tp": "total_precipitation.png",
+    "pntp": "precip_percent_of_normal.png",
+    "swe": "snow_water_equivalent.png",
+    "pnswe": "swe_percent_of_normal.png",
+    "spi": "spi.png",
+    "spei": "spei.png",
+    "smd": "soil_moisture_deficit.png",
+}
 
 DATED_INDICES_GLOB = "drought_indices_{days}day_*.nc"
 
@@ -185,11 +201,37 @@ def add_region_arg(parser) -> None:
     )
 
 
+def scope_slug(region: PlotRegion | None) -> str:
+    """Geographic scope directory name under each figure category."""
+
+    return FULL_DOMAIN_SLUG if region is None else region.slug
+
+
+def figures_dir(category: str, region: PlotRegion | None = None) -> Path:
+    """Return (and create) ``figures/<category>/<scope>/`` for saved PNGs."""
+
+    out_dir = FIGURES_ROOT / category / scope_slug(region)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    return out_dir
+
+
 def output_path_for_variable(
     variable_key: str,
     region: PlotRegion | None,
-    output_dir: Path = OUTPUT_DIR,
 ) -> Path:
-    out_dir = region_output_dir(output_dir, region)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    return out_dir / f"{variable_key}.png"
+    filename = VARIABLE_OUTPUT_FILENAMES.get(variable_key, f"{variable_key}.png")
+    return figures_dir(BY_INDICATOR_DIR, region) / filename
+
+
+def output_path_for_interval_maps(
+    days: int,
+    region: PlotRegion | None,
+    *,
+    five_panel: bool = False,
+) -> Path:
+    category = (
+        BY_SUMMARY_INTERVAL_FIVE_PANEL_DIR
+        if five_panel
+        else BY_SUMMARY_INTERVAL_DIR
+    )
+    return figures_dir(category, region) / f"{days}day.png"

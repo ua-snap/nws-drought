@@ -54,17 +54,26 @@ A drought indicator netCDF dataset, one file per summary interval, will be writt
 
 ### Plotting maps (`data_viz/`)
 
-Run scripts from the repository root so `INDICES_DIR` (`drought_outputs/` by default) resolves. Figures are saved under **`data_viz/`** (next to the script files), regardless of the current working directory.
+Run scripts from the repository root so `INDICES_DIR` (`drought_outputs/` by default) resolves. Figures are saved under **`data_viz/figures/`**, regardless of the current working directory.
 
-- **`plot_<variable>.py`** — one figure per indicator, comparing all summary-interval files side by side (`data_viz/tp.png`, `data_viz/spi.png`, …).
-- **`plot_by_interval.py`** — one figure per summary interval, with all seven indicators on a grid (`data_viz/drought_maps_7day.png`, …).
-- **`plot_by_interval_no_tp_swe.py`** — same layout idea as **`plot_by_interval.py`**, but only five panels (omits Total Precipitation and Snow Water Equivalent); outputs `data_viz/drought_maps_7day_no_tp_swe.png`, …).
+| Directory | Contents |
+|-----------|----------|
+| `figures/by_indicator/<scope>/` | One indicator compared across all summary intervals (`total_precipitation.png`, `spi.png`, …) |
+| `figures/by_summary_interval/<scope>/` | All seven indicators on one grid per interval (`7day.png`, `30day.png`, …) |
+| `figures/by_summary_interval_five_panel/<scope>/` | Five indicators per interval (omits total precipitation and SWE) |
+
+`<scope>` is either `full_domain` or a regional subset name (`interior_alaska`, `southeast_alaska`, `southwest_alaska`).
+
+- **`plot_<variable>.py`** — writes to `figures/by_indicator/<scope>/`.
+- **`plot_by_interval.py`** — writes to `figures/by_summary_interval/<scope>/`.
+- **`plot_by_interval_no_tp_swe.py`** — writes to `figures/by_summary_interval_five_panel/<scope>/`.
+- **`plot_all.py`** — runs every script above for the full domain and all three regional subsets (36 figures total). Use `--full-domain-only`, `--regions-only`, or `--region <name>` to narrow scope.
 
 Shared discrete colors, categorical bin labels, and human-readable indicator titles (`indicator_title`, `panel_title`, `colorbar_axis_label`) live in **`data_viz/plot_scales.py`** (SPI/SPEI bins follow the USDM SPI legend).
 
 #### Zoomed regional subsets
 
-Any plotting script accepts **`--region <name>`** to zoom to a 64×64 grid-cell window (~576 km per side at ~9 km resolution). Regional figures are written under **`data_viz/<region>/`** with the same filenames as the full-domain plots.
+Any plotting script accepts **`--region <name>`** to zoom to a 64×64 grid-cell window (~576 km per side at ~9 km resolution). Regional figures use the same directory layout as full-domain plots, with `<scope>` set to the region name instead of `full_domain`.
 
 | Region | Center | Coverage (approx.) |
 |--------|--------|--------------------|
@@ -73,9 +82,10 @@ Any plotting script accepts **`--region <name>`** to zoom to a 64×64 grid-cell 
 | `southwest_alaska` | 60.8°N, 161.8°W | Yukon–Kuskokwim delta (Bethel) |
 
 ```sh
+python data_viz/plot_all.py                              # full domain + all regions
 python data_viz/plot_spi.py --region southeast_alaska
 python data_viz/plot_by_interval.py --region southwest_alaska
-python data_viz/plot_all_regions.py --region interior_alaska   # all figures at once
+python data_viz/plot_all.py --region interior_alaska     # one region only
 ```
 
 Community markers are drawn from **`data_viz/communities_ak_filtered.json`** for all three regions (four labeled communities each). Region definitions and slice logic live in **`data_viz/region_subset.py`**.

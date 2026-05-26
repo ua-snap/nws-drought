@@ -1,25 +1,12 @@
-"""Generate every drought map figure for a zoomed geographic subset."""
+"""Generate every drought map figure for one zoomed geographic subset.
+
+For full-domain and multi-region batch runs, prefer ``plot_all.py``.
+"""
 
 import argparse
-import subprocess
-import sys
-from pathlib import Path
 
+from plot_all import run_all_plots
 from region_subset import REGIONS
-
-DATA_VIZ_DIR = Path(__file__).resolve().parent
-
-PLOT_SCRIPTS = (
-    "plot_tp.py",
-    "plot_pntp.py",
-    "plot_swe.py",
-    "plot_pnswe.py",
-    "plot_spi.py",
-    "plot_spei.py",
-    "plot_smd.py",
-    "plot_by_interval.py",
-    "plot_by_interval_no_tp_swe.py",
-)
 
 
 def main() -> None:
@@ -33,11 +20,7 @@ def main() -> None:
         help="Predefined subset (default: interior_alaska, 64×64 cells)",
     )
     args = parser.parse_args()
-
-    for script in PLOT_SCRIPTS:
-        cmd = [sys.executable, str(DATA_VIZ_DIR / script), "--region", args.region]
-        print("Running:", " ".join(cmd))
-        subprocess.run(cmd, check=True, cwd=DATA_VIZ_DIR.parent)
+    run_all_plots(region=args.region)
 
 
 if __name__ == "__main__":

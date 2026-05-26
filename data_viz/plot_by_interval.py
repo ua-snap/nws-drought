@@ -12,9 +12,9 @@ import xarray as xr
 from plot_common import (
     INDICES_DIR,
     INTERVALS,
-    OUTPUT_DIR,
     interval_netcdf_path,
     masked_for_land,
+    output_path_for_interval_maps,
     parse_drought_indices_path,
     parse_region_arg,
 )
@@ -30,12 +30,7 @@ from plot_scales import (
     PlotScale,
     make_colormap,
 )
-from region_subset import (
-    PlotRegion,
-    region_output_dir,
-    region_title_suffix,
-    subset_for_pcolormesh,
-)
+from region_subset import PlotRegion, region_title_suffix, subset_for_pcolormesh
 
 # Order matches README indicator list (variable key, discrete color scale).
 VARIABLE_PANELS: tuple[tuple[str, PlotScale], ...] = (
@@ -122,12 +117,9 @@ def plot_all_variables_one_interval(
 
 
 def main(region: PlotRegion | None = None) -> None:
-    out_dir = region_output_dir(OUTPUT_DIR, region)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
     for days in INTERVALS:
         nc_path = interval_netcdf_path(INDICES_DIR, days)
-        outfile = out_dir / f"drought_maps_{days}day.png"
+        outfile = output_path_for_interval_maps(days, region)
         plot_all_variables_one_interval(nc_path, save_path=outfile, region=region)
         plt.close("all")
 
