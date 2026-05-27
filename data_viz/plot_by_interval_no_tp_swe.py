@@ -19,6 +19,15 @@ from plot_common import (
     parse_region_arg,
 )
 from plot_communities import add_communities_to_axes
+from plot_crs import (
+    DATA_CRS,
+    MAP_CRS,
+    PLOT_BACKGROUND,
+    projected_aspect_ratio_from_corners,
+    projected_aspect_ratio_from_grid,
+    set_extent_from_corners,
+    set_extent_from_grid,
+)
 from plot_scales import (
     PNTP_SCALE,
     PNSWE_SCALE,
@@ -28,7 +37,11 @@ from plot_scales import (
     PlotScale,
     make_colormap,
 )
-from region_subset import PlotRegion, region_title_suffix, subset_for_pcolormesh
+from region_subset import (
+    PlotRegion,
+    region_title_suffix,
+    subset_for_pcolormesh,
+)
 
 VARIABLE_PANELS: tuple[tuple[str, PlotScale], ...] = (
     ("pntp", PNTP_SCALE),
@@ -37,6 +50,11 @@ VARIABLE_PANELS: tuple[tuple[str, PlotScale], ...] = (
     ("spei", SPEI_USDM_SCALE),
     ("smd", SMD_SCALE),
 )
+
+PANEL_TITLE_FONTSIZE = 11
+SUPTITLE_FONTSIZE = 13
+COLORBAR_TICK_FONTSIZE = 8
+COLORBAR_LABEL_FONTSIZE = 10
 
 
 def plot_five_variables_one_interval(
@@ -51,14 +69,27 @@ def plot_five_variables_one_interval(
 
     nrows = 2
     ncols = 3
+    panel_h = figsize[1] / nrows
+
+    with xr.open_dataset(path) as ds:
+        if region is None:
+            proj_aspect = projected_aspect_ratio_from_grid(
+                ds["longitude"].values,
+                ds["latitude"].values,
+            )
+        else:
+            proj_aspect = projected_aspect_ratio_from_corners(region.corners_latlon)
+
+    panel_w = panel_h * proj_aspect
+    panel_figsize = (panel_w * ncols, panel_h * nrows)
+
     fig, axes_grid = plt.subplots(
         nrows=nrows,
         ncols=ncols,
-        figsize=figsize,
+        figsize=panel_figsize,
         constrained_layout=True,
         squeeze=False,
-        sharex=True,
-        sharey=True,
+        subplot_kw={"projection": MAP_CRS},
     )
     axes = axes_grid.ravel()
     fig.patch.set_facecolor("white")
@@ -81,12 +112,13 @@ def plot_five_variables_one_interval(
                 shading="auto",
                 cmap=cmap,
                 norm=norm,
+                transform=DATA_CRS,
             )
             add_communities_to_axes(ax, region, lon, lat)
 
-            ax.set_title(scale.panel_title, fontsize=10)
+            ax.set_title(scale.panel_title, fontsize=PANEL_TITLE_FONTSIZE)
             ax.label_outer()
-            ax.set_facecolor(scale.mask_color)
+            ax.set_facecolor(PLOT_BACKGROUND)
 
             cbar = fig.colorbar(
                 mesh,
@@ -96,15 +128,22 @@ def plot_five_variables_one_interval(
                 spacing="uniform",
             )
             cbar.set_ticklabels(list(scale.cbar_labels))
-            cbar.ax.tick_params(labelsize=7)
-            cbar.set_label(scale.colorbar_axis_label, fontsize=9)
+            cbar.ax.tick_params(labelsize=COLORBAR_TICK_FONTSIZE)
+            cbar.set_label(
+                scale.colorbar_axis_label,
+                fontsize=COLORBAR_LABEL_FONTSIZE,
+            )
 
-    fig.supxlabel("Longitude")
-    fig.supylabel("Latitude")
+        for ax in axes[: len(VARIABLE_PANELS)]:
+            if region is None:
+                set_extent_from_grid(ax, lon, lat)
+            else:
+                set_extent_from_corners(ax, region.corners_latlon)
+
     fig.suptitle(
         f"Drought indicators — {interval_label}{region_title_suffix(region)} — "
         f"reference date {reference_date}",
-        fontsize=12,
+        fontsize=SUPTITLE_FONTSIZE,
     )
 
     if save_path is not None:
@@ -127,7 +166,7 @@ if __name__ == "__main__":
         "--region",
         choices=sorted(__import__("region_subset", fromlist=["REGIONS"]).REGIONS),
         default=None,
-        help="Zoom to a predefined subset (e.g. interior_alaska for 64×64 cells)",
+        help="Zoom to a predefined regional subset (e.g. interior_alaska)",
     )
     args = parser.parse_args()
     main(region=parse_region_arg(args.region))

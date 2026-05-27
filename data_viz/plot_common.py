@@ -10,6 +10,15 @@ import matplotlib.pyplot as plt
 import xarray as xr
 
 from plot_communities import add_communities_to_axes
+from plot_crs import (
+    DATA_CRS,
+    MAP_CRS,
+    PLOT_BACKGROUND,
+    projected_aspect_ratio_from_corners,
+    projected_aspect_ratio_from_grid,
+    set_extent_from_corners,
+    set_extent_from_grid,
+)
 from plot_scales import PlotScale, make_colormap
 from region_subset import (
     PlotRegion,
@@ -106,23 +115,33 @@ def plot_variable_across_files(
     nrows = math.ceil(n_intervals / ncols)
     cmap, norm = make_colormap(scale)
 
-    fig, axes = plt.subplots(
-        nrows=nrows,
-        ncols=ncols,
-        figsize=(figsize_per_panel[0] * ncols, figsize_per_panel[1] * nrows),
-        constrained_layout=True,
-        squeeze=False,
-        sharex=True,
-        sharey=True,
-    )
-    fig.patch.set_facecolor("white")
-
     opened: list[tuple[Path, xr.Dataset]] = []
     for path in path_objs:
         opened.append((path, xr.open_dataset(path)))
 
+    if region is None:
+        reference_ds = opened[0][1]
+        proj_aspect = projected_aspect_ratio_from_grid(
+            reference_ds["longitude"].values,
+            reference_ds["latitude"].values,
+        )
+    else:
+        proj_aspect = projected_aspect_ratio_from_corners(region.corners_latlon)
+
+    panel_size = (figsize_per_panel[1] * proj_aspect, figsize_per_panel[1])
+
     _, reference_date, _ = parse_drought_indices_path(path_objs[0])
     mesh = None
+
+    fig, axes = plt.subplots(
+        nrows=nrows,
+        ncols=ncols,
+        figsize=(panel_size[0] * ncols, panel_size[1] * nrows),
+        constrained_layout=True,
+        squeeze=False,
+        subplot_kw={"projection": MAP_CRS},
+    )
+    fig.patch.set_facecolor("white")
 
     for ax, (path, ds) in zip(axes.flat, opened, strict=False):
         _, _, interval_label = parse_drought_indices_path(path)
@@ -139,12 +158,19 @@ def plot_variable_across_files(
             shading="auto",
             cmap=cmap,
             norm=norm,
+            transform=DATA_CRS,
         )
         add_communities_to_axes(ax, region, lon, lat)
 
         ax.set_title(interval_label)
         ax.label_outer()
-        ax.set_facecolor(scale.mask_color)
+        ax.set_facecolor(PLOT_BACKGROUND)
+
+    for ax in axes.flat[:n_intervals]:
+        if region is None:
+            set_extent_from_grid(ax, lon, lat)
+        else:
+            set_extent_from_corners(ax, region.corners_latlon)
 
     for ax_unused in axes.flat[n_intervals:]:
         ax_unused.axis("off")
@@ -154,9 +180,6 @@ def plot_variable_across_files(
 
     if mesh is None:
         raise ValueError("No input files were provided.")
-
-    fig.supxlabel("Longitude")
-    fig.supylabel("Latitude")
 
     cbar = fig.colorbar(
         mesh,
@@ -197,7 +220,7 @@ def add_region_arg(parser) -> None:
         "--region",
         choices=sorted(__import__("region_subset", fromlist=["REGIONS"]).REGIONS),
         default=None,
-        help="Zoom to a predefined subset (e.g. interior_alaska for 64×64 cells)",
+        help="Zoom to a predefined regional subset (e.g. interior_alaska)",
     )
 
 
@@ -230,8 +253,6 @@ def output_path_for_interval_maps(
     five_panel: bool = False,
 ) -> Path:
     category = (
-        BY_SUMMARY_INTERVAL_FIVE_PANEL_DIR
-        if five_panel
-        else BY_SUMMARY_INTERVAL_DIR
+        BY_SUMMARY_INTERVAL_FIVE_PANEL_DIR if five_panel else BY_SUMMARY_INTERVAL_DIR
     )
     return figures_dir(category, region) / f"{days}day.png"

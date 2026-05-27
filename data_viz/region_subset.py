@@ -1,7 +1,8 @@
 """Spatial subsets for zoomed drought map plots.
 
-ERA5-Land drought outputs use ~0.1° grid spacing (~9 km). A 64×64 cell window
-covers roughly 576 km on each axis in index space.
+ERA5-Land drought outputs use ~0.1° grid spacing (~9 km). Regional windows are
+defined by their display bounds in lat/lon, plus a small source-data buffer so
+projected plots are filled to the EPSG:3338 axes extent.
 """
 
 from dataclasses import dataclass
@@ -15,44 +16,60 @@ GRID_CELL_KM = 9.0
 
 @dataclass(frozen=True)
 class PlotRegion:
-    """Square grid-cell window centered on a lat/lon point."""
+    """Lat/lon display bounds for a regional projected map."""
 
     name: str
     label: str
-    center_lat: float
-    center_lon: float
-    n_cells: int = 64
+    lat_min: float
+    lat_max: float
+    lon_min: float
+    lon_max: float
+    source_padding_cells: int = 14
 
     @property
     def slug(self) -> str:
         return self.name
+
+    @property
+    def corners_latlon(self) -> tuple[tuple[float, float], ...]:
+        """Display-box corners as ``(lat, lon)`` pairs."""
+
+        return (
+            (self.lat_max, self.lon_min),
+            (self.lat_max, self.lon_max),
+            (self.lat_min, self.lon_max),
+            (self.lat_min, self.lon_min),
+        )
 
 
 # Fairbanks / central Interior Alaska (~64.5°N, 147°W).
 INTERIOR_ALASKA = PlotRegion(
     name="interior_alaska",
     label="Interior Alaska",
-    center_lat=64.5,
-    center_lon=-147.0,
-    n_cells=64,
+    lat_min=62.5,
+    lat_max=66.5,
+    lon_min=-151.6,
+    lon_max=-142.4,
 )
 
-# Alaska Panhandle, centered on Juneau (~58.3°N, 134.4°W).
+
 SOUTHEAST_ALASKA = PlotRegion(
     name="southeast_alaska",
     label="Southeast Alaska",
-    center_lat=58.30,
-    center_lon=-134.42,
-    n_cells=64,
+    lat_min=56.3,
+    lat_max=60.3,
+    lon_min=-138.2,
+    lon_max=-130.6,
 )
 
-# Yukon–Kuskokwim delta, centered on Bethel (~60.8°N, 161.8°W).
+
 SOUTHWEST_ALASKA = PlotRegion(
     name="southwest_alaska",
     label="Southwest Alaska",
-    center_lat=60.79,
-    center_lon=-161.76,
-    n_cells=64,
+    lat_min=58.8,
+    lat_max=62.8,
+    lon_min=-163.8,
+    lon_max=-155.8,
 )
 
 REGIONS: dict[str, PlotRegion] = {
@@ -67,21 +84,26 @@ def slice_indices(
     lon: np.ndarray,
     region: PlotRegion,
 ) -> tuple[slice, slice]:
-    """Return lat/lon index slices for a square ``region.n_cells`` window."""
+    """Return buffered lat/lon index slices that cover a ``region`` window."""
 
-    i_center = int(np.argmin(np.abs(lat - region.center_lat)))
-    j_center = int(np.argmin(np.abs(lon - region.center_lon)))
-    half = region.n_cells // 2
-    i0 = i_center - half
-    i1 = i_center + half
-    j0 = j_center - half
-    j1 = j_center + half
+    lat_matches = np.flatnonzero((lat >= region.lat_min) & (lat <= region.lat_max))
+    lon_matches = np.flatnonzero((lon >= region.lon_min) & (lon <= region.lon_max))
+    if len(lat_matches) == 0 or len(lon_matches) == 0:
+        raise ValueError(
+            f"Region {region.name!r} does not overlap the grid "
+            f"(lat n={len(lat)}, lon n={len(lon)})."
+        )
+
+    pad = region.source_padding_cells
+    i0 = int(lat_matches.min()) - pad
+    i1 = int(lat_matches.max()) + pad + 1
+    j0 = int(lon_matches.min()) - pad
+    j1 = int(lon_matches.max()) + pad + 1
 
     if i0 < 0 or i1 > len(lat) or j0 < 0 or j1 > len(lon):
         raise ValueError(
-            f"Region {region.name!r} ({region.n_cells}×{region.n_cells} cells "
-            f"centered on {region.center_lat}°N, {region.center_lon}°E) extends "
-            f"outside the grid (lat n={len(lat)}, lon n={len(lon)})."
+            f"Region {region.name!r} plus {pad} padding cells extends outside "
+            f"the grid (lat n={len(lat)}, lon n={len(lon)})."
         )
 
     return slice(i0, i1), slice(j0, j1)

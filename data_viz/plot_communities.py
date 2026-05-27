@@ -9,6 +9,7 @@ import matplotlib.patheffects as pe
 import numpy as np
 from matplotlib.axes import Axes
 
+from plot_crs import DATA_CRS
 from region_subset import PlotRegion
 
 COMMUNITIES_JSON = Path(__file__).resolve().parent / "communities_ak_filtered.json"
@@ -28,7 +29,7 @@ LABEL_HALO_WIDTH = 4.5
 LABEL_RING_COLOR = "#333333"
 LABEL_RING_WIDTH = 1.2
 
-# Four communities spread across each regional 64×64 window.
+# Four communities spread across each regional map window.
 REGION_COMMUNITY_NAMES: dict[str, tuple[str, ...]] = {
     "interior_alaska": (
         "Fairbanks",
@@ -45,7 +46,7 @@ REGION_COMMUNITY_NAMES: dict[str, tuple[str, ...]] = {
     "southwest_alaska": (
         "Bethel",
         "Dillingham",
-        "Emmonak",
+        "Mountain Village",
         "Aniak",
     ),
 }
@@ -116,6 +117,7 @@ def add_communities_to_axes(
             markeredgecolor=MARKER_EDGE,
             markeredgewidth=MARKER_EDGE_WIDTH,
             linestyle="None",
+            transform=DATA_CRS,
             zorder=10,
         )
         ax.annotate(
@@ -126,6 +128,7 @@ def add_communities_to_axes(
             fontsize=LABEL_FONTSIZE,
             fontweight=LABEL_FONTWEIGHT,
             color=LABEL_COLOR,
+            transform=DATA_CRS,
             zorder=11,
             path_effects=[
                 pe.withStroke(linewidth=LABEL_HALO_WIDTH, foreground=LABEL_HALO_COLOR),

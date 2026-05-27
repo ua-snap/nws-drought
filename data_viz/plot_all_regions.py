@@ -17,7 +17,7 @@ def main() -> None:
         "--region",
         choices=sorted(REGIONS),
         default="interior_alaska",
-        help="Predefined subset (default: interior_alaska, 64×64 cells)",
+        help="Predefined subset (default: interior_alaska)",
     )
     args = parser.parse_args()
     run_all_plots(region=args.region)

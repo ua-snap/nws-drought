@@ -34,6 +34,6 @@ if __name__ == "__main__":
         "--region",
         choices=sorted(__import__("region_subset", fromlist=["REGIONS"]).REGIONS),
         default=None,
-        help="Zoom to a predefined subset (e.g. interior_alaska for 64×64 cells)",
+        help="Zoom to a predefined regional subset (e.g. interior_alaska)",
     )
     main(region=parse_region_arg(parser.parse_args().region))
