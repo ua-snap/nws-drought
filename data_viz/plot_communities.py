@@ -19,22 +19,29 @@ MARKER_FACE = "#fff8e7"
 MARKER_EDGE = "#1a1a1a"
 MARKER_EDGE_WIDTH = 1.4
 
-LABEL_FONTSIZE = 11
-LABEL_FONTWEIGHT = "bold"
+LABEL_FONTSIZE = 9
+LABEL_FONTWEIGHT = "semibold"
 LABEL_COLOR = "#111111"
 LABEL_OFFSET = (5, 5)
 # Cream halo + thin dark ring reads on white "normal" cells and colored drought bins.
 LABEL_HALO_COLOR = "#fff8e7"
-LABEL_HALO_WIDTH = 4.5
+LABEL_HALO_WIDTH = 3.0
 LABEL_RING_COLOR = "#333333"
-LABEL_RING_WIDTH = 1.2
+LABEL_RING_WIDTH = 0.7
+
+LABEL_PLACEMENT: dict[str, dict[str, object]] = {
+    "Fort Yukon": {"offset": (-5, -12), "va": "top"},
+    "Delta Junction": {"offset": (-5, 5), "ha": "right"},
+    "Ketchikan": {"offset": (-5, 5), "ha": "right"},
+    "Mountain Village": {"offset": (5, -5), "va": "top"},
+}
 
 # Four communities spread across each regional map window.
 REGION_COMMUNITY_NAMES: dict[str, tuple[str, ...]] = {
     "interior_alaska": (
         "Fairbanks",
         "Delta Junction",
-        "Nenana",
+        "Fort Yukon",
         "Healy",
     ),
     "southeast_alaska": (
@@ -123,11 +130,13 @@ def add_communities_to_axes(
         ax.annotate(
             place["name"],
             (place_lon, place_lat),
-            xytext=LABEL_OFFSET,
+            xytext=LABEL_PLACEMENT.get(place["name"], {}).get("offset", LABEL_OFFSET),
             textcoords="offset points",
             fontsize=LABEL_FONTSIZE,
             fontweight=LABEL_FONTWEIGHT,
             color=LABEL_COLOR,
+            ha=LABEL_PLACEMENT.get(place["name"], {}).get("ha", "left"),
+            va=LABEL_PLACEMENT.get(place["name"], {}).get("va", "baseline"),
             transform=DATA_CRS,
             zorder=11,
             path_effects=[
