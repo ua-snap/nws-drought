@@ -49,13 +49,9 @@ def combine_swvl():
         "this_yr": out_dir.joinpath("swvl_current_year.nc"),
     }
 
-    try:
-        # check on data availability
-        for period_of_record in recent_swvl1.keys():
-            ds = xr.open_dataset(recent_swvl1[period_of_record])
-            ds.close()
-            recent_data_to_open = list(recent_swvl1.keys())
-    except FileNotFoundError:
+    if recent_swvl1["this_yr"].exists():
+        recent_data_to_open = list(recent_swvl1.keys())
+    else:
         # should only happen if current month is January
         recent_data_to_open = ["prev_yr", "this_month"]
 
@@ -109,7 +105,7 @@ def assemble_recent_downloads(variable_key):
         ),
     }
 
-    try:
+    if recent_data["this_yr"].exists():
         # first, majority (non-January) of analysis date cases
         data_to_merge = [
             recent_data["prev_yr"],
@@ -119,15 +115,15 @@ def assemble_recent_downloads(variable_key):
         logging.info(
             "Merging recent data for prior year, current year, current month..."
         )
-        recent_data_ds = ds_combination(data_to_merge, suffix)
-    except FileNotFoundError:
+    else:
         # should only happen if current month is January
         data_to_merge = [
             recent_data["prev_yr"],
             recent_data["this_month"],
         ]
         logging.info("Merging recent data for prior year and current month...")
-        recent_data_ds = ds_combination(data_to_merge, suffix)
+
+    recent_data_ds = ds_combination(data_to_merge, suffix)
 
     logging.info("Merging recent data complete.")
     return recent_data_ds
@@ -389,54 +385,6 @@ def process_swe_pon():
             indices["pnswe"][i].attrs["units"] = "percent"
 
 
-def _spi(pr: xr.DataArray, params: xr.DataArray, interval: int):
-    """Computes Standardized Precipitation Index (SPI).
-    Adapted from xclim.indices._agro.standardized_precipitation_index to accept pre-fit statistical distribution parameters.
-
-    Args:
-        pr (xr.DataArray): recent precip data
-        params (xr.DataArray): statistical distribution parameters fit to precip data from 1981-2020, with intervals as a dimension
-        interval (int): interval length
-
-    Returns:
-        spi (xr.DataArray): the standardized precipitation index
-    """
-    # subset params to the most recent doy and interval
-    recent_doy = pr.valid_time.dt.dayofyear[-1]
-    params = (
-        params.sel(dayofyear=[recent_doy], interval=interval)
-        .drop_vars("interval")
-        .load()
-    )
-
-    # resampling precipitations
-    pr = pr.sel(valid_time=slice(pr.valid_time[-interval], pr.valid_time[-1])).mean(
-        dim="valid_time", keep_attrs=True
-    )
-
-    # ensure params has this attr set
-    # params.attrs["scipy_dist"] = SPI_DIST
-
-    # ppf to cdf
-    prob_pos = dist_method("cdf", params, pr.where(pr > 0))
-    prob_zero = xr.where(pr.notnull(), (pr == 0).astype("float32"), np.nan)
-    prob = prob_zero + (1 - prob_zero) * prob_pos
-
-    # Invert to normal distribution with ppf and obtain SPI
-    params_norm = xr.DataArray(
-        [0, 1],
-        dims=["dparams"],
-        coords=dict(dparams=(["loc", "scale"])),
-        attrs=dict(scipy_dist="norm"),
-    )
-    spi = dist_method("ppf", params_norm, prob)
-    spi.attrs["units"] = ""
-    spi.attrs["calibration_period"] = "1981-2020"
-    spi = spi.drop_vars("dayofyear").squeeze()
-
-    return spi
-
-
 def process_spi():
     indices["spi"] = {}
     with xr.open_dataset(CLIM_DIR.joinpath(f"spi_{SPI_DIST}_parameters.nc")) as spi_ds:
@@ -540,7 +488,7 @@ if __name__ == "__main__":
     )
 
     # ensure that this is indeed 365 days (time diff is nanoseconds)
-    assert (end_time - start_time) / 86400e9
+    assert int((end_time - start_time) / 86400e9) == 365
 
     # below globals(!) are inherited by all the functions that compute indices:
     #    the `ds` of the combined recent data, sliced to just include the previous year
