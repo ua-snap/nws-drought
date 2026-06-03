@@ -19,6 +19,7 @@ from plot_common import (
     parse_region_arg,
 )
 from plot_communities import add_communities_to_axes
+from plot_rivers import add_rivers_to_axes
 from plot_crs import (
     DATA_CRS,
     MAP_CRS,
@@ -128,6 +129,7 @@ def plot_all_variables_one_interval(
                 norm=norm,
                 transform=DATA_CRS,
             )
+            add_rivers_to_axes(ax, region)
             add_communities_to_axes(ax, region, lon, lat)
 
             ax.set_title(scale.panel_title, fontsize=PANEL_TITLE_FONTSIZE)

@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import xarray as xr
 
 from plot_communities import add_communities_to_axes
+from plot_rivers import add_rivers_to_axes
 from plot_crs import (
     DATA_CRS,
     MAP_CRS,
@@ -37,6 +38,7 @@ FIGURES_ROOT = OUTPUT_DIR / "figures"
 
 # Descriptive subdirectories under ``figures/`` for collaborator-friendly browsing.
 BY_INDICATOR_DIR = "by_indicator"
+BY_INDICATOR_INTERVAL_DIR = "by_indicator_interval"
 BY_SUMMARY_INTERVAL_DIR = "by_summary_interval"
 BY_SUMMARY_INTERVAL_FIVE_PANEL_DIR = "by_summary_interval_five_panel"
 FULL_DOMAIN_SLUG = "full_domain"
@@ -160,6 +162,7 @@ def plot_variable_across_files(
             norm=norm,
             transform=DATA_CRS,
         )
+        add_rivers_to_axes(ax, region)
         add_communities_to_axes(ax, region, lon, lat)
 
         ax.set_title(interval_label)
@@ -244,6 +247,16 @@ def output_path_for_variable(
 ) -> Path:
     filename = VARIABLE_OUTPUT_FILENAMES.get(variable_key, f"{variable_key}.png")
     return figures_dir(BY_INDICATOR_DIR, region) / filename
+
+
+def output_path_for_indicator_interval(
+    variable_key: str,
+    days: int,
+    region: PlotRegion | None,
+) -> Path:
+    return (
+        figures_dir(BY_INDICATOR_INTERVAL_DIR, region) / f"{variable_key}_{days}day.png"
+    )
 
 
 def output_path_for_interval_maps(

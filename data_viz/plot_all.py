@@ -22,6 +22,7 @@ PLOT_SCRIPTS = (
     "plot_smd.py",
     "plot_by_interval.py",
     "plot_by_interval_no_tp_swe.py",
+    "plot_single_panels.py",
 )
 
 

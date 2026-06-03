@@ -4,8 +4,11 @@ from dataclasses import dataclass
 
 from matplotlib.colors import BoundaryNorm, ListedColormap
 
-# SPI / SPEI (USDM): 11 categories from D4 through Excp Moist.
-# Thresholds match the U.S. Drought Monitor SPI legend.
+# SPI / SPEI (USDM-aligned): six drought / normal categories from D4 through
+# the ±0.5 "Normal" band, plus a single combined "Moist" category for any
+# wet anomaly. The five USDM wet subdivisions (Abn / Mod / Very / Extr /
+# Excp Moist) are collapsed into one bin so the eye stays focused on the
+# drought side of the ramp, which is the product's primary purpose.
 SPI_SPEI_USDM_BOUNDS = (
     -4.0,
     -2.0,
@@ -14,10 +17,6 @@ SPI_SPEI_USDM_BOUNDS = (
     -0.8,
     -0.5,
     0.5,
-    0.8,
-    1.3,
-    1.6,
-    2.0,
     4.0,
 )
 
@@ -28,11 +27,7 @@ SPI_SPEI_USDM_COLORS = (
     "#fcd37f",  # D1
     "#ffff00",  # D0
     "#ffffff",  # Normal (±0.5)
-    "#c2e699",  # Abn Moist (+0.51)
-    "#1b7837",  # Mod Moist
-    "#4575b4",  # Very Moist
-    "#253494",  # Extr Moist
-    "#762a83",  # Excp Moist (≥ +2.00)
+    "#64c864",  # Moist (≥ +0.50): single bin to collapse the wet ramp.
 )
 
 SPI_SPEI_USDM_CBAR_LABELS = (
@@ -42,11 +37,7 @@ SPI_SPEI_USDM_CBAR_LABELS = (
     "-1.30 to -0.80\n(D1)",
     "-0.80 to -0.50\n(D0)",
     "-0.50 to 0.50\n(Normal)",
-    "0.50 to 0.80\n(Abn Moist)",
-    "0.80 to 1.30\n(Mod Moist)",
-    "1.30 to 1.60\n(Very Moist)",
-    "1.60 to 2.00\n(Extr Moist)",
-    "≥ 2.00\n(Excp Moist)",
+    "≥ 0.50\n(Moist)",
 )
 
 SPI_SPEI_USDM_CBAR_TICKS = (
@@ -56,11 +47,7 @@ SPI_SPEI_USDM_CBAR_TICKS = (
     -1.05,
     -0.65,
     0.0,
-    0.65,
-    1.05,
-    1.45,
-    1.8,
-    3.0,
+    2.25,
 )
 
 # Single fill for oceans, invalid/masked cells, and subplot margins on all drought maps.
