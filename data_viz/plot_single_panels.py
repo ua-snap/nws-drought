@@ -1,6 +1,5 @@
 """Plot one drought-indicator variable for one summary interval per figure."""
 
-from __future__ import annotations
 
 import argparse
 from pathlib import Path
@@ -65,14 +64,13 @@ def plot_single_variable_one_interval(
         else:
             proj_aspect = projected_aspect_ratio_from_corners(region.corners_latlon)
 
-    fig, ax = plt.subplots(
-        figsize=(figure_height * proj_aspect, figure_height),
-        constrained_layout=True,
-        subplot_kw={"projection": MAP_CRS},
-    )
-    fig.patch.set_facecolor("white")
+        fig, ax = plt.subplots(
+            figsize=(figure_height * proj_aspect, figure_height),
+            constrained_layout=True,
+            subplot_kw={"projection": MAP_CRS},
+        )
+        fig.patch.set_facecolor("white")
 
-    with xr.open_dataset(path) as ds:
         _, reference_date, interval_label = parse_drought_indices_path(path)
         da = masked_for_land(ds, ds[variable_key])
         lon, lat, values = subset_for_pcolormesh(ds, da, region)
@@ -95,27 +93,27 @@ def plot_single_variable_one_interval(
         else:
             set_extent_from_corners(ax, region.corners_latlon)
 
-    ax.set_facecolor(PLOT_BACKGROUND)
+        ax.set_facecolor(PLOT_BACKGROUND)
 
-    cbar = fig.colorbar(
-        mesh,
-        ax=ax,
-        boundaries=scale.bounds,
-        ticks=list(scale.cbar_ticks),
-        spacing="uniform",
-    )
-    cbar.set_ticklabels(list(scale.cbar_labels))
-    cbar.ax.tick_params(labelsize=COLORBAR_TICK_FONTSIZE)
-    cbar.set_label(scale.colorbar_axis_label, fontsize=COLORBAR_LABEL_FONTSIZE)
+        cbar = fig.colorbar(
+            mesh,
+            ax=ax,
+            boundaries=scale.bounds,
+            ticks=list(scale.cbar_ticks),
+            spacing="uniform",
+        )
+        cbar.set_ticklabels(list(scale.cbar_labels))
+        cbar.ax.tick_params(labelsize=COLORBAR_TICK_FONTSIZE)
+        cbar.set_label(scale.colorbar_axis_label, fontsize=COLORBAR_LABEL_FONTSIZE)
 
-    fig.suptitle(
-        f"{scale.indicator_title} — {interval_label}{region_title_suffix(region)} — "
-        f"reference date {reference_date}",
-        fontsize=SUPTITLE_FONTSIZE,
-    )
+        fig.suptitle(
+            f"{scale.indicator_title} — {interval_label}{region_title_suffix(region)} — "
+            f"reference date {reference_date}",
+            fontsize=SUPTITLE_FONTSIZE,
+        )
 
-    if save_path is not None:
-        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+        if save_path is not None:
+            fig.savefig(save_path, dpi=300, bbox_inches="tight")
 
     return fig
 

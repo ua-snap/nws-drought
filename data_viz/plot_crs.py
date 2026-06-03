@@ -1,7 +1,5 @@
 """Map projections for drought plots."""
 
-from __future__ import annotations
-
 from collections.abc import Sequence
 
 import numpy as np
@@ -10,7 +8,6 @@ import cartopy.crs as ccrs
 
 from plot_scales import NO_DATA_FILL
 
-# Gridded fields are on geographic lon/lat (ERA5 convention).
 DATA_CRS = ccrs.PlateCarree()
 
 MAP_CRS = ccrs.epsg(3338)

@@ -12,17 +12,17 @@ from region_subset import REGIONS
 DATA_VIZ_DIR = Path(__file__).resolve().parent
 REPO_ROOT = DATA_VIZ_DIR.parent
 
-PLOT_SCRIPTS = (
-    "plot_tp.py",
-    "plot_pntp.py",
-    "plot_swe.py",
-    "plot_pnswe.py",
-    "plot_spi.py",
-    "plot_spei.py",
-    "plot_smd.py",
-    "plot_by_interval.py",
-    "plot_by_interval_no_tp_swe.py",
-    "plot_single_panels.py",
+PLOT_COMMANDS: tuple[tuple[str, ...], ...] = (
+    ("plot_indicator.py", "tp"),
+    ("plot_indicator.py", "pntp"),
+    ("plot_indicator.py", "swe"),
+    ("plot_indicator.py", "pnswe"),
+    ("plot_indicator.py", "spi"),
+    ("plot_indicator.py", "spei"),
+    ("plot_indicator.py", "smd"),
+    ("plot_by_interval.py",),
+    ("plot_by_interval.py", "--no-tp-swe"),
+    ("plot_single_panels.py",),
 )
 
 
@@ -49,8 +49,11 @@ def resolve_scopes(
     return [None, *sorted(REGIONS)]
 
 
-def run_plot_script(script: str, region: str | None) -> None:
+def run_plot_command(command: tuple[str, ...], region: str | None) -> None:
+    script = command[0]
     cmd = [sys.executable, str(DATA_VIZ_DIR / script)]
+    if len(command) > 1:
+        cmd.extend(command[1:])
     if region is not None:
         cmd.extend(["--region", region])
     print("Running:", " ".join(cmd))
@@ -71,8 +74,8 @@ def run_all_plots(
         include_full_domain=include_full_domain,
     )
     for scope in scopes:
-        for script in PLOT_SCRIPTS:
-            run_plot_script(script, scope)
+        for command in PLOT_COMMANDS:
+            run_plot_command(command, scope)
 
 
 def main() -> None:

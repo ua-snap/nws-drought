@@ -1,6 +1,5 @@
 """Shared paths, NetCDF helpers, and cross-interval plotting for drought maps."""
 
-from __future__ import annotations
 
 import math
 import sys
@@ -50,7 +49,7 @@ VARIABLE_OUTPUT_FILENAMES: dict[str, str] = {
     "pnswe": "swe_percent_of_normal.png",
     "spi": "spi.png",
     "spei": "spei.png",
-    "smd": "soil_moisture_deficit.png",
+    "smd": "soil_moisture_percent_of_normal.png",
 }
 
 DATED_INDICES_GLOB = "drought_indices_{days}day_*.nc"
@@ -209,22 +208,7 @@ def plot_variable_across_files(
 def parse_region_arg(region_name: str | None) -> PlotRegion | None:
     from region_subset import REGIONS
 
-    if region_name is None:
-        return None
-    key = region_name.lower()
-    if key not in REGIONS:
-        known = ", ".join(sorted(REGIONS))
-        raise SystemExit(f"Unknown region {region_name!r}. Choose from: {known}")
-    return REGIONS[key]
-
-
-def add_region_arg(parser) -> None:
-    parser.add_argument(
-        "--region",
-        choices=sorted(__import__("region_subset", fromlist=["REGIONS"]).REGIONS),
-        default=None,
-        help="Zoom to a predefined regional subset (e.g. interior_alaska)",
-    )
+    return REGIONS.get(region_name) if region_name else None
 
 
 def scope_slug(region: PlotRegion | None) -> str:

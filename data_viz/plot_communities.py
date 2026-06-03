@@ -1,7 +1,5 @@
 """Community markers for regional drought map overlays."""
 
-from __future__ import annotations
-
 import json
 from pathlib import Path
 

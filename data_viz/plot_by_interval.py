@@ -1,6 +1,6 @@
 """Plots all drought-indicator variables by summary interval (one figure per interval).
 
-Contrast with plot_<variable>.py, which compares one variable across intervals.
+Supports either a 7-panel layout or a 5-panel layout (excluding TP and SWE).
 """
 
 import argparse
@@ -47,10 +47,18 @@ from region_subset import (
 )
 
 # Order matches README indicator list (variable key, discrete color scale).
-VARIABLE_PANELS: tuple[tuple[str, PlotScale], ...] = (
+VARIABLE_PANELS_7: tuple[tuple[str, PlotScale], ...] = (
     ("tp", TP_SCALE),
     ("pntp", PNTP_SCALE),
     ("swe", SWE_SCALE),
+    ("pnswe", PNSWE_SCALE),
+    ("spi", SPI_USDM_SCALE),
+    ("spei", SPEI_USDM_SCALE),
+    ("smd", SMD_SCALE),
+)
+
+VARIABLE_PANELS_5: tuple[tuple[str, PlotScale], ...] = (
+    ("pntp", PNTP_SCALE),
     ("pnswe", PNSWE_SCALE),
     ("spi", SPI_USDM_SCALE),
     ("spei", SPEI_USDM_SCALE),
@@ -65,26 +73,33 @@ COLORBAR_LABEL_FONTSIZE = 10
 
 def interval_grid_layout(region: PlotRegion | None) -> tuple[int, int, float]:
     """Return rows, columns, and figure height for interval grid maps."""
-
     if region is None:
         return 3, 3, 9.0
     return 2, 4, 10.0
 
 
-def plot_all_variables_one_interval(
+def plot_variables_one_interval(
     nc_path: str | Path,
     figsize: tuple[float, float] = (16, 9),
     save_path: str | Path | None = None,
     region: PlotRegion | None = None,
+    no_tp_swe: bool = False,
 ) -> plt.Figure:
-    """One figure showing every indicator grid for one summary-interval file."""
-
+    """One figure showing indicator grids for one summary-interval file."""
     path = Path(nc_path)
 
-    nrows, ncols, figure_height = interval_grid_layout(region)
-    if region is None:
-        figure_height = figsize[1]
-    panel_h = figure_height / nrows
+    if no_tp_swe:
+        panels = VARIABLE_PANELS_5
+        nrows = 2
+        ncols = 3
+        figure_height = 10.0
+        panel_h = figure_height / nrows
+    else:
+        panels = VARIABLE_PANELS_7
+        nrows, ncols, figure_height = interval_grid_layout(region)
+        if region is None:
+            figure_height = figsize[1]
+        panel_h = figure_height / nrows
 
     with xr.open_dataset(path) as ds:
         if region is None:
@@ -93,7 +108,9 @@ def plot_all_variables_one_interval(
                 ds["latitude"].values,
             )
         else:
-            proj_aspect = projected_aspect_ratio_from_corners(region.corners_latlon)
+            proj_aspect = projected_aspect_ratio_from_corners(
+                region.corners_latlon
+            )
 
     panel_w = panel_h * proj_aspect
     panel_figsize = (panel_w * ncols, panel_h * nrows)
@@ -109,13 +126,13 @@ def plot_all_variables_one_interval(
     axes = axes_grid.ravel()
     fig.patch.set_facecolor("white")
 
-    for ax_unused in axes[len(VARIABLE_PANELS) :]:
+    for ax_unused in axes[len(panels) :]:
         ax_unused.axis("off")
 
     with xr.open_dataset(path) as ds:
         _, reference_date, interval_label = parse_drought_indices_path(path)
 
-        for ax, (var_key, scale) in zip(axes, VARIABLE_PANELS, strict=False):
+        for ax, (var_key, scale) in zip(axes, panels, strict=False):
             da = masked_for_land(ds, ds[var_key])
             lon, lat, values = subset_for_pcolormesh(ds, da, region)
 
@@ -150,7 +167,7 @@ def plot_all_variables_one_interval(
                 fontsize=COLORBAR_LABEL_FONTSIZE,
             )
 
-        for ax in axes[: len(VARIABLE_PANELS)]:
+        for ax in axes[: len(panels)]:
             if region is None:
                 set_extent_from_grid(ax, lon, lat)
             else:
@@ -168,11 +185,15 @@ def plot_all_variables_one_interval(
     return fig
 
 
-def main(region: PlotRegion | None = None) -> None:
+def main(region: PlotRegion | None = None, no_tp_swe: bool = False) -> None:
     for days in INTERVALS:
         nc_path = interval_netcdf_path(INDICES_DIR, days)
-        outfile = output_path_for_interval_maps(days, region)
-        plot_all_variables_one_interval(nc_path, save_path=outfile, region=region)
+        outfile = output_path_for_interval_maps(
+            days, region, five_panel=no_tp_swe
+        )
+        plot_variables_one_interval(
+            nc_path, save_path=outfile, region=region, no_tp_swe=no_tp_swe
+        )
         plt.close("all")
 
 
@@ -180,9 +201,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--region",
-        choices=sorted(__import__("region_subset", fromlist=["REGIONS"]).REGIONS),
+        choices=sorted(
+            __import__("region_subset", fromlist=["REGIONS"]).REGIONS
+        ),
         default=None,
         help="Zoom to a predefined regional subset (e.g. interior_alaska)",
     )
+    parser.add_argument(
+        "--no-tp-swe",
+        action="store_true",
+        help="Omit TP (Total Precipitation) and SWE (Snow Water Equivalent) panels",
+    )
     args = parser.parse_args()
-    main(region=parse_region_arg(args.region))
+    main(region=parse_region_arg(args.region), no_tp_swe=args.no_tp_swe)

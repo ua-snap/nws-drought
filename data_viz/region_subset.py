@@ -10,7 +10,6 @@ from dataclasses import dataclass
 import numpy as np
 import xarray as xr
 
-# Native ERA5-Land spacing; domain NetCDFs use 0.1° lat/lon steps.
 GRID_CELL_KM = 9.0
 
 
@@ -95,16 +94,10 @@ def slice_indices(
         )
 
     pad = region.source_padding_cells
-    i0 = int(lat_matches.min()) - pad
-    i1 = int(lat_matches.max()) + pad + 1
-    j0 = int(lon_matches.min()) - pad
-    j1 = int(lon_matches.max()) + pad + 1
-
-    if i0 < 0 or i1 > len(lat) or j0 < 0 or j1 > len(lon):
-        raise ValueError(
-            f"Region {region.name!r} plus {pad} padding cells extends outside "
-            f"the grid (lat n={len(lat)}, lon n={len(lon)})."
-        )
+    i0 = max(0, int(lat_matches.min()) - pad)
+    i1 = min(len(lat), int(lat_matches.max()) + pad + 1)
+    j0 = max(0, int(lon_matches.min()) - pad)
+    j1 = min(len(lon), int(lon_matches.max()) + pad + 1)
 
     return slice(i0, i1), slice(j0, j1)
 
@@ -135,12 +128,3 @@ def region_title_suffix(region: PlotRegion | None) -> str:
     if region is None:
         return ""
     return f" — {region.label}"
-
-
-def region_output_dir(base_dir, region: PlotRegion | None):
-    from pathlib import Path
-
-    base = Path(base_dir)
-    if region is None:
-        return base
-    return base / region.slug

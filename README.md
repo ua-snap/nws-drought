@@ -65,9 +65,9 @@ Run scripts from the repository root so `INDICES_DIR` (`drought_outputs/` by def
 
 `<scope>` is either `full_domain` or a regional subset name (`interior_alaska`, `southeast_alaska`, `southwest_alaska`).
 
-- **`plot_<variable>.py`** — writes to `figures/by_indicator/<scope>/`.
+- **`plot_indicator.py <variable>`** — writes to `figures/by_indicator/<scope>/`.
 - **`plot_by_interval.py`** — writes to `figures/by_summary_interval/<scope>/`.
-- **`plot_by_interval_no_tp_swe.py`** — writes to `figures/by_summary_interval_five_panel/<scope>/`.
+- **`plot_by_interval.py --no-tp-swe`** — writes to `figures/by_summary_interval_five_panel/<scope>/`.
 - **`plot_single_panels.py`** — writes flat indicator-interval files to `figures/by_indicator_interval/<scope>/`.
 - **`plot_all.py`** — runs every script above for the full domain and all three regional subsets. Use `--full-domain-only`, `--regions-only`, or `--region <name>` to narrow scope.
 
@@ -85,7 +85,7 @@ Any plotting script accepts **`--region <name>`** to zoom to a rectangular lat/l
 
 ```sh
 python data_viz/plot_all.py                              # full domain + all regions
-python data_viz/plot_spi.py --region southeast_alaska
+python data_viz/plot_indicator.py spi --region southeast_alaska
 python data_viz/plot_by_interval.py --region southwest_alaska
 python data_viz/plot_single_panels.py --region interior_alaska
 python data_viz/plot_all.py --region interior_alaska     # one region only
