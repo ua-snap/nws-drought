@@ -12,7 +12,7 @@
 set -euo pipefail
 
 USAGE="Usage:
-  sbatch --array=0-5%2 baseline_data_generation_scripts/process_calibration_params.sbatch compute <spi|spei>
+  sbatch --array=0-6%2 baseline_data_generation_scripts/process_calibration_params.sbatch compute <spi|spei>
   sbatch --dependency=afterok:<array_job_id> baseline_data_generation_scripts/process_calibration_params.sbatch merge <spi|spei>"
 
 MODE="${1:-}"

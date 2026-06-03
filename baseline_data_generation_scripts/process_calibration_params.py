@@ -76,7 +76,10 @@ def load_calibration_array(index: str) -> xr.DataArray:
     # upward fluxes are negative, so adding pev gives the water budget.
     wb = tp_cal_ds["tp"] + pev_cal_ds["pev"]
 
-    # Gamma is bounded by zero: water budget must be forced to be positive
+    # If using a distribution strictly bounded by zero (like Gamma with loc=0),
+    # the water budget must be shifted to be positive.
+    # Currently, WATER_BUDGET_OFFSET_M is 0.00 because the Fisk distribution
+    # is fit with an estimated location parameter, natively supporting negative values.
     wb += WATER_BUDGET_OFFSET_M
     wb.name = "wb"
 
@@ -100,7 +103,7 @@ def compute_interval(
 
     if index == "spei":
         da = estimate_params(da, interval, SPEI_DIST)
-    if index == "spi":
+    elif index == "spi":
         da = estimate_params(da, interval, SPI_DIST)
     else:
         _require_supported_index(index)
