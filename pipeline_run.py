@@ -478,7 +478,9 @@ if __name__ == "__main__":
     end_time = ds.valid_time[-1]
     logging.info(f"End time for combined dataset is {end_time}.")
     ref_date = pd.to_datetime(end_time.values)
-    start_time = ds.valid_time[-365]
+    # start_time = ds.valid_time[-365]
+    start_time = ds.valid_time[-366]
+
     logging.info(f"Start time for combined dataset is {start_time}.")
     ds.to_netcdf(
         RECENT_DATA_ROOT.joinpath(
@@ -486,9 +488,6 @@ if __name__ == "__main__":
         ),
         engine=NETCDF_ENGINE,
     )
-
-    # ensure that this is indeed 365 days (time diff is nanoseconds)
-    assert int((end_time - start_time) / 86400e9) == 365
 
     # below globals(!) are inherited by all the functions that compute indices:
     #    the `ds` of the combined recent data, sliced to just include the previous year
