@@ -52,9 +52,9 @@ python pipeline_run.py
 
 A drought indicator netCDF dataset, one file per summary interval, will be written to the `INDICES_DIR` directory. Each file contains results for all indices for the entire area of interest. `pipeline_run.py` names outputs `drought_indices_<summary_interval>day_<YYYY>_<MM>_<DD>.nc`.
 
-### Plotting maps (`data_viz/`)
+### Figure Creation (`data_viz/`)
 Plotting scripts expect exactly one dated file per interval listed in `INTERVALS` in `config.py`.
-Run scripts from the repository root so `INDICES_DIR` (`drought_outputs/` by default) resolves. Figures are saved under **`data_viz/figures/`**, regardless of the current working directory.
+Run scripts from the repository root. Figures are saved under `data_viz/figures/`.
 
 | Directory | Contents |
 |-----------|----------|
@@ -65,32 +65,26 @@ Run scripts from the repository root so `INDICES_DIR` (`drought_outputs/` by def
 
 `<scope>` is either `full_domain` or a regional subset name (`interior_alaska`, `southeast_alaska`, `southwest_alaska`).
 
-- **`plot_indicator.py <variable>`** — writes to `figures/by_indicator/<scope>/`.
-- **`plot_by_interval.py`** — writes to `figures/by_summary_interval/<scope>/`.
-- **`plot_by_interval.py --no-tp-swe`** — writes to `figures/by_summary_interval_five_panel/<scope>/`.
-- **`plot_single_panels.py`** — writes flat indicator-interval files to `figures/by_indicator_interval/<scope>/`.
-- **`plot_all.py`** — runs every script above for the full domain and all three regional subsets. Use `--full-domain-only`, `--regions-only`, or `--region <name>` to narrow scope.
+- `plot_indicator.py <variable>` — writes to `figures/by_indicator/<scope>/`.
+- `plot_by_interval.py` — writes to `figures/by_summary_interval/<scope>/`.
+- `plot_by_interval.py --no-tp-swe` — writes to `figures/by_summary_interval_five_panel/<scope>/`.
+- `plot_single_panels.py` — writes flat indicator-interval files to `figures/by_indicator_interval/<scope>/`.
+- `plot_all.py` — runs every script above for the full domain and all three regional subsets. Use `--full-domain-only`, `--regions-only`, or `--region <name>` to narrow scope.
 
-Shared discrete colors, categorical bin labels, and human-readable indicator titles (`indicator_title`, `panel_title`, `colorbar_axis_label`) live in **`data_viz/plot_scales.py`** (SPI/SPEI bins follow the USDM SPI legend).
+Shared discrete colors, categorical bin labels, titles, etc. live in `data_viz/plot_scales.py`.
 
 #### Zoomed regional subsets
+Regional plots use a padded source-data window in Alaska Albers (EPSG:3338)
 
-Any plotting script accepts **`--region <name>`** to zoom to a rectangular lat/lon display box. Regional plots draw a buffered source-data window and frame the axes in Alaska Albers (EPSG:3338), so projected panels are filled without treating projection margins as missing data. Regional figures use the same directory layout as full-domain plots, with `<scope>` set to the region name instead of `full_domain`.
-
-| Region | Display Bounds | Coverage (approx.) |
-|--------|----------------|--------------------|
-| `interior_alaska` | 62.5–66.5°N, 151.6–142.4°W | Central Interior / Fairbanks |
-| `southeast_alaska` | 56.3–60.3°N, 138.2–130.6°W | Alaska Panhandle |
-| `southwest_alaska` | 58.8–62.8°N, 165.8–157.8°W | Yukon–Kuskokwim delta (Bethel) |
-
+Examples:
 ```sh
-python data_viz/plot_all.py                              # full domain + all regions
+python data_viz/plot_all.py # full domain + all regional subsets
 python data_viz/plot_indicator.py spi --region southeast_alaska
 python data_viz/plot_by_interval.py --region southwest_alaska
 python data_viz/plot_single_panels.py --region interior_alaska
-python data_viz/plot_all.py --region interior_alaska     # one region only
+python data_viz/plot_all.py --region interior_alaska
 ```
 
-Community markers are drawn from **`data_viz/communities_ak_filtered.json`** for all three regions (four labeled communities each). Region definitions and slice logic live in **`data_viz/region_subset.py`**.
+Names and locations for the community markers are pulled from a static JSON that was fetched from the SNAP Data API. Region definitions live in `data_viz/region_subset.py`.
 
-Major-river overlays come from Natural Earth (10 m) via **`data_viz/plot_rivers.py`**. Only **interior** and **southwest** regional figures draw the rivers. Full-domain and southeast Alaska figures omit river lines. Shapefiles are downloaded and cached by cartopy on first run.
+Major-river overlays come from Natural Earth (10 m) via `data_viz/plot_rivers.py`...cartopy sort of includes this feature. Only the Interior and Southwest regional figures draw the rivers. Shapefiles are downloaded and cached by cartopy on first run.

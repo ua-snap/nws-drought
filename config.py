@@ -35,14 +35,13 @@ DL_BBOX = [72, -180, 51, -129]
 # weights for combining soil moisture layers: prescribed during initial dev work by Brian B
 SOIL_MOISTURE_WEIGHT_LAYER1 = 0.25
 SOIL_MOISTURE_WEIGHT_LAYER2 = 0.75
-# water budget must be shifted so only positive values are allowed
-# in xclim implementation 1 mm is used
-# in ERA5 "Classic" 2 mm avoided negative values for 180, 365-day intervals
-# WATER_BUDGET_OFFSET_M = 0.002
-WATER_BUDGET_OFFSET_M = 0.00
 
+# underlying statistical ditributions
 SPI_DIST = "gamma"
 SPEI_DIST = "fisk"
+
+# SOME SPEI_DIST choices may require the water budget to be shifted to ensure positive values
+WATER_BUDGET_OFFSET_M = 0.00
 
 
 # functions to generate the baseline data directory structures

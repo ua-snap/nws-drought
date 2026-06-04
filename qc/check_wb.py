@@ -4,9 +4,9 @@ SPEI is computed using:
 
     wb = (tp + pev) + WATER_BUDGET_OFFSET_M
 
-The gamma-based SPI/SPEI calculation requires positive input values.
-This script checks whether interval-averaged shifted water balance
-still contains values <= 0, which would produce invalid SPEI values.
+Some distribution choices for SPEI (e.g., Gamma) require strictly
+positive inputs. This script reports whether the shifted (and interval-averaged)
+water balance contains values <= 0, which would be problematic for those cases.
 """
 
 import xarray as xr

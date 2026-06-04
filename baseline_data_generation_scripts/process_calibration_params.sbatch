@@ -64,16 +64,14 @@ echo "Output NetCDF: ${OUT_PATH}"
 
 if [[ "${MODE}" == "compute" ]]; then
   if [[ -z "${SLURM_ARRAY_TASK_ID:-}" ]]; then
-    echo "compute mode must be submitted as an array job, e.g. --array=0-5%2" >&2
+    echo "compute mode must be submitted as an array job, e.g. --array=0-6%2" >&2
     exit 2
   fi
 
   INTERVAL="${INTERVALS[${SLURM_ARRAY_TASK_ID}]}"
-  #PARTIAL_OUT="${PARTIAL_DIR}/${INDEX}_gamma_parameters_interval_$(printf "%03d" "${INTERVAL}").nc"
 
   echo "Array task: ${SLURM_ARRAY_TASK_ID}"
   echo "Interval: ${INTERVAL}"
-  #echo "Partial output: ${PARTIAL_OUT}"
 
   mkdir -p "${PARTIAL_DIR}"
 
@@ -81,12 +79,6 @@ if [[ "${MODE}" == "compute" ]]; then
     -i "${INDEX}" \
     --interval "${INTERVAL}"
 
-  # if [[ -f "${PARTIAL_OUT}" ]]; then
-  #   echo "Wrote ${PARTIAL_OUT}"
-  # else
-  #   echo "Error: expected partial output not found at ${PARTIAL_OUT}" >&2
-  #   exit 1
-  # fi
 else
   uv run --frozen python -m baseline_data_generation_scripts.process_calibration_params merge \
     -i "${INDEX}"
