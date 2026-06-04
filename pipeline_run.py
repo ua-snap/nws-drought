@@ -478,7 +478,6 @@ if __name__ == "__main__":
     end_time = ds.valid_time[-1]
     logging.info(f"End time for combined dataset is {end_time}.")
     ref_date = pd.to_datetime(end_time.values)
-    # start_time = ds.valid_time[-365]
     start_time = ds.valid_time[-366]
 
     logging.info(f"Start time for combined dataset is {start_time}.")
