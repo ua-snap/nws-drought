@@ -1,4 +1,4 @@
-"""Derive gamma parameters for SPI or SPEI calibration.
+"""Derive statistical distribution parameters for SPI or SPEI calibration.
 
 The compute subcommand estimates parameters for one summary interval. Intended
 for SLURM array tasks where each task writes one intermediate NetCDF file per interval.
@@ -12,23 +12,29 @@ import logging
 from pathlib import Path
 
 import xarray as xr
+from scipy.stats import rv_continuous
 from xclim.indices.stats import fit
 
 from config import (
     INTERVALS,
+    SPEI_DIST,
+    SPI_DIST,
     WATER_BUDGET_OFFSET_M,
+    _require_supported_index,
     daily_combined_file_for_var,
-    gamma_output_file_for_index,
-    gamma_partial_dir_for_index,
+    statistical_rv_output_file_for_index,
+    statistical_rv_partial_dir_for_index,
 )
 from file_helpers import NETCDF_ENGINE, setup_logging
 
 
-def estimate_params(da: xr.DataArray, window: int) -> xr.DataArray:
+def estimate_params(
+    da: xr.DataArray, window: int, distribution: str | rv_continuous
+) -> xr.DataArray:
     """Run the parameter estimation for one interval.
 
     Includes summarizing the data to a moving average before estimating the parameters
-    of a gamma distribution along the time axis (year, essentially) for each day of the year.
+    of the specified continuous random variable distribution along the time axis (year, essentially) for each day of the year.
 
     Args:
         da (xarray.DataArray): daily values, either precip or water budget, for all years in the climatology period.
@@ -39,9 +45,9 @@ def estimate_params(da: xr.DataArray, window: int) -> xr.DataArray:
     """
     # computing rolling means
     roll_da = da.rolling(valid_time=window).mean(skipna=False, keep_attrs=True)
-    # estimate parameters of gamma distribution fit to yearly values for each day of the year
+    # estimate parameters of the distribution fit to yearly values for each day of the year
     params = roll_da.groupby("valid_time.dayofyear").map(
-        lambda x: fit(x, "gamma", "APP", dim="valid_time")
+        lambda x: fit(x, distribution, "APP", dim="valid_time")
     )
     params = params.assign_coords(interval=window).expand_dims(interval=1)
     return params
@@ -70,7 +76,10 @@ def load_calibration_array(index: str) -> xr.DataArray:
     # upward fluxes are negative, so adding pev gives the water budget.
     wb = tp_cal_ds["tp"] + pev_cal_ds["pev"]
 
-    # Gamma is bounded by zero: water budget must be forced to be positive
+    # If using a distribution strictly bounded by zero (like Gamma with loc=0),
+    # the water budget must be shifted to be positive.
+    # Currently, WATER_BUDGET_OFFSET_M is 0.00 because the Fisk distribution
+    # is fit with an estimated location parameter, natively supporting negative values.
     wb += WATER_BUDGET_OFFSET_M
     wb.name = "wb"
 
@@ -82,7 +91,7 @@ def compute_interval(
     interval: int,
     output: Path,
 ) -> Path:
-    """Estimate and write gamma parameters for one summary interval."""
+    """Estimate and write statistical distribution parameters for one summary interval."""
     if interval not in INTERVALS:
         raise ValueError(
             f"Unsupported interval {interval}; expected one of {INTERVALS}"
@@ -91,7 +100,14 @@ def compute_interval(
     da = load_calibration_array(index)
 
     logging.info(f"Estimating parameters for interval {interval}...")
-    da = estimate_params(da, interval)
+
+    if index == "spei":
+        da = estimate_params(da, interval, SPEI_DIST)
+    elif index == "spi":
+        da = estimate_params(da, interval, SPI_DIST)
+    else:
+        _require_supported_index(index)
+
     da.name = "params"
     da = da.astype("float32")
     params_ds = da.to_dataset()
@@ -107,7 +123,9 @@ def compute_interval(
 
 def partial_path(partial_dir: Path, index: str, interval: int) -> Path:
     """Build the intermediate output path for one interval."""
-    return partial_dir / f"{index}_gamma_parameters_interval_{interval:03d}.nc"
+    if index == "spi":
+        return partial_dir / f"{index}_{SPI_DIST}_parameters_interval_{interval:03d}.nc"
+    return partial_dir / f"{index}_{SPEI_DIST}_parameters_interval_{interval:03d}.nc"
 
 
 def merge_intervals(index: str, partial_dir: Path, output: Path) -> Path:
@@ -178,13 +196,13 @@ def main() -> int:
     args = parse_args()
 
     if args.command == "compute":
-        partial_dir = gamma_partial_dir_for_index(args.index)
+        partial_dir = statistical_rv_partial_dir_for_index(args.index)
         output = partial_path(partial_dir, args.index, args.interval)
         logging.info(f"Resolved interval output path {output}")
         compute_interval(args.index, args.interval, output)
     elif args.command == "merge":
-        partial_dir = gamma_partial_dir_for_index(args.index)
-        output = gamma_output_file_for_index(args.index)
+        partial_dir = statistical_rv_partial_dir_for_index(args.index)
+        output = statistical_rv_output_file_for_index(args.index)
         logging.info(f"Resolved partial directory: {partial_dir}")
         logging.info(f"Resolved merged output path: {output}")
         merge_intervals(args.index, partial_dir, output)

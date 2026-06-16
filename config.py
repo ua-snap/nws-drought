@@ -28,17 +28,20 @@ INDICES_DIR.mkdir(exist_ok=True)
 # daily updates are available within ~5 days of real time, so 5 is likely the minimum
 DATA_LAG_TIME_DAYS = int(os.getenv("DATA_LAG_TIME_DAYS") or 6)
 # the summary intervals for which to compute the drought indicators
-INTERVALS = [7, 30, 60, 90, 180, 365]
+INTERVALS = [7, 14, 30, 60, 90, 180, 365]
 # the geographic bounding box of the area of interest
 DL_BBOX = [72, -180, 51, -129]
 
 # weights for combining soil moisture layers: prescribed during initial dev work by Brian B
 SOIL_MOISTURE_WEIGHT_LAYER1 = 0.25
 SOIL_MOISTURE_WEIGHT_LAYER2 = 0.75
-# water budget must be shifted so only positive values are allowed
-# in xclim implementation 1 mm is used
-# in ERA5 "Classic" 2 mm avoided negative values for 180, 365-day intervals
-WATER_BUDGET_OFFSET_M = 0.002
+
+# underlying statistical ditributions
+SPI_DIST = "gamma"
+SPEI_DIST = "fisk"
+
+# SOME SPEI_DIST choices may require the water budget to be shifted to ensure positive values
+WATER_BUDGET_OFFSET_M = 0.00
 
 
 # functions to generate the baseline data directory structures
@@ -58,14 +61,18 @@ def climo_file_for_var(varname: str) -> Path:
     return BASELINE_DATA_ROOT.joinpath(f"era5_land_{varname}_climo_1981_2020.nc")
 
 
-def gamma_partial_dir_for_index(index: str) -> Path:
+def statistical_rv_partial_dir_for_index(index: str) -> Path:
     _require_supported_index(index)
-    return BASELINE_DATA_ROOT.joinpath(f"{index}_gamma_parameter_intervals")
+    if index == "spi":
+        return BASELINE_DATA_ROOT.joinpath(f"{index}_{SPI_DIST}_parameter_intervals")
+    return BASELINE_DATA_ROOT.joinpath(f"{index}_{SPEI_DIST}_parameter_intervals")
 
 
-def gamma_output_file_for_index(index: str) -> Path:
+def statistical_rv_output_file_for_index(index: str) -> Path:
     _require_supported_index(index)
-    return BASELINE_DATA_ROOT.joinpath(f"{index}_gamma_parameters.nc")
+    if index == "spi":
+        return BASELINE_DATA_ROOT.joinpath(f"{index}_{SPI_DIST}_parameters.nc")
+    return BASELINE_DATA_ROOT.joinpath(f"{index}_{SPEI_DIST}_parameters.nc")
 
 
 # validators

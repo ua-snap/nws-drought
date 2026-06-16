@@ -9,6 +9,9 @@ docs/
 *.netcdf
 *.nc
 *.grib
+*.png
+.DS_Store
+*.DS_Store
 tmp/
 drought_outputs/
 

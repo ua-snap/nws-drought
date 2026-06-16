@@ -12,7 +12,7 @@
 set -euo pipefail
 
 USAGE="Usage:
-  sbatch --array=0-5%2 baseline_data_generation_scripts/process_calibration_params.sbatch compute <spi|spei>
+  sbatch --array=0-6%2 baseline_data_generation_scripts/process_calibration_params.sbatch compute <spi|spei>
   sbatch --dependency=afterok:<array_job_id> baseline_data_generation_scripts/process_calibration_params.sbatch merge <spi|spei>"
 
 MODE="${1:-}"
@@ -48,10 +48,10 @@ mapfile -t INTERVALS < <(
 )
 
 PARTIAL_DIR="$(
-  uv run --frozen python -c "from config import gamma_partial_dir_for_index; print(gamma_partial_dir_for_index('${INDEX}'))"
+  uv run --frozen python -c "from config import statistical_rv_partial_dir_for_index; print(statistical_rv_partial_dir_for_index('${INDEX}'))"
 )"
 OUT_PATH="$(
-  uv run --frozen python -c "from config import gamma_output_file_for_index; print(gamma_output_file_for_index('${INDEX}'))"
+  uv run --frozen python -c "from config import statistical_rv_output_file_for_index; print(statistical_rv_output_file_for_index('${INDEX}'))"
 )"
 mkdir -p "${PARTIAL_DIR}" "$(dirname "${OUT_PATH}")"
 
@@ -64,21 +64,14 @@ echo "Output NetCDF: ${OUT_PATH}"
 
 if [[ "${MODE}" == "compute" ]]; then
   if [[ -z "${SLURM_ARRAY_TASK_ID:-}" ]]; then
-    echo "compute mode must be submitted as an array job, e.g. --array=0-5%2" >&2
-    exit 2
-  fi
-
-  if ((SLURM_ARRAY_TASK_ID < 0 || SLURM_ARRAY_TASK_ID >= ${#INTERVALS[@]})); then
-    echo "SLURM_ARRAY_TASK_ID must be between 0 and 5; got ${SLURM_ARRAY_TASK_ID}." >&2
+    echo "compute mode must be submitted as an array job, e.g. --array=0-6%2" >&2
     exit 2
   fi
 
   INTERVAL="${INTERVALS[${SLURM_ARRAY_TASK_ID}]}"
-  PARTIAL_OUT="${PARTIAL_DIR}/${INDEX}_gamma_parameters_interval_$(printf "%03d" "${INTERVAL}").nc"
 
   echo "Array task: ${SLURM_ARRAY_TASK_ID}"
   echo "Interval: ${INTERVAL}"
-  echo "Partial output: ${PARTIAL_OUT}"
 
   mkdir -p "${PARTIAL_DIR}"
 
@@ -86,12 +79,6 @@ if [[ "${MODE}" == "compute" ]]; then
     -i "${INDEX}" \
     --interval "${INTERVAL}"
 
-  if [[ -f "${PARTIAL_OUT}" ]]; then
-    echo "Wrote ${PARTIAL_OUT}"
-  else
-    echo "Error: expected partial output not found at ${PARTIAL_OUT}" >&2
-    exit 1
-  fi
 else
   uv run --frozen python -m baseline_data_generation_scripts.process_calibration_params merge \
     -i "${INDEX}"

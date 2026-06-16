@@ -5,7 +5,6 @@ description = "Drought Indicators Pipeline"
 requires-python = ">=3.11,<3.13"
 dependencies = [
   "cdsapi",
-  "earthkit-data",
   "xarray",
   "xclim",
   "numpy",
@@ -16,7 +15,9 @@ dependencies = [
   "h5py",
   "eccodes",
   "eccodeslib",
-  "matplotlib"
+  "matplotlib",
+  "cartopy",
+  "cfgrib>=0.9.15.1",
 ]
 
 [dependency-groups]

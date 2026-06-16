@@ -14,6 +14,8 @@ from config import (
     RECENT_DATA_ROOT,
     SOIL_MOISTURE_WEIGHT_LAYER1,
     SOIL_MOISTURE_WEIGHT_LAYER2,
+    SPEI_DIST,
+    SPI_DIST,
     WATER_BUDGET_OFFSET_M,
 )
 from era5_land_variable_registry import VARIABLE_REGISTRY
@@ -47,13 +49,9 @@ def combine_swvl():
         "this_yr": out_dir.joinpath("swvl_current_year.nc"),
     }
 
-    try:
-        # check on data availability
-        for period_of_record in recent_swvl1.keys():
-            ds = xr.open_dataset(recent_swvl1[period_of_record])
-            ds.close()
-            recent_data_to_open = list(recent_swvl1.keys())
-    except FileNotFoundError:
+    if recent_swvl1["this_yr"].exists():
+        recent_data_to_open = list(recent_swvl1.keys())
+    else:
         # should only happen if current month is January
         recent_data_to_open = ["prev_yr", "this_month"]
 
@@ -107,7 +105,7 @@ def assemble_recent_downloads(variable_key):
         ),
     }
 
-    try:
+    if recent_data["this_yr"].exists():
         # first, majority (non-January) of analysis date cases
         data_to_merge = [
             recent_data["prev_yr"],
@@ -117,15 +115,15 @@ def assemble_recent_downloads(variable_key):
         logging.info(
             "Merging recent data for prior year, current year, current month..."
         )
-        recent_data_ds = ds_combination(data_to_merge, suffix)
-    except FileNotFoundError:
+    else:
         # should only happen if current month is January
         data_to_merge = [
             recent_data["prev_yr"],
             recent_data["this_month"],
         ]
         logging.info("Merging recent data for prior year and current month...")
-        recent_data_ds = ds_combination(data_to_merge, suffix)
+
+    recent_data_ds = ds_combination(data_to_merge, suffix)
 
     logging.info("Merging recent data complete.")
     return recent_data_ds
@@ -143,6 +141,165 @@ def subset_clim_interval(clim_ds: xr.Dataset, start_doy: float, end_doy: float):
             dim="time",
         )
     return sub_ds
+
+
+def _standardized_index(
+    values: xr.DataArray,
+    params: xr.DataArray,
+    interval: int,
+    scipy_dist: str,
+    apply_zero_precipitation_correction: bool = False,
+):
+    """Compute a standardized index from pre-fit statistical distribution parameters."""
+    recent_doy = values.valid_time.dt.dayofyear[-1]
+    params = (
+        params.sel(dayofyear=[recent_doy], interval=interval)
+        .drop_vars("interval")
+        .load()
+    )
+    params.attrs["scipy_dist"] = scipy_dist
+
+    values_i = values.sel(
+        valid_time=slice(values.valid_time[-interval], values.valid_time[-1])
+    ).mean(dim="valid_time", keep_attrs=True)
+
+    if apply_zero_precipitation_correction:
+        # For SPI, where the input variable is precipitation.
+        # Many valid observations could be exactly 0
+        # And positive precipitation amounts are continuous and likely right-skewed
+        #
+        # A gamma distribution is only defined for positive values, so we should not
+        # pass exact-zero precipitation values into the gamma CDF. Instead, evaluate
+        # the fitted distribution only where the interval precipitation is > 0.
+        positive_values_only = values_i.where(values_i > 0)
+
+        probability_from_positive_distribution = dist_method(
+            "cdf",
+            params,
+            positive_values_only,
+        )
+
+        # Track where the original interval value was exactly zero.
+        #
+        # This is SPI-specific bookkeeping. A zero precipitation amount is a valid
+        # climate observation, not missing data, but it cannot be evaluated directly
+        # by a gamma distribution. We therefore treat zero values separately from
+        # positive values.
+        #
+        # Keep missing input values as NaN so that true missing data still propagates
+        # through the calculation.
+        observed_zero_precipitation = xr.where(
+            values_i.notnull(),
+            (values_i == 0).astype("float32"),
+            np.nan,
+        )
+
+        # Combine the zero-precipitation handling with the positive-value CDF.
+        #
+        # For positive precipitation values:
+        #   observed_zero_precipitation = 0
+        #   probability = probability_from_positive_distribution
+        #
+        # For zero precipitation values:
+        #   observed_zero_precipitation = 1
+        #   probability is handled by the zero-value branch
+        #
+        # This branch should NOT be used for SPEI, because SPEI is based on water
+        # balance rather than precipitation. Water balance can legitimately be
+        # negative, so applying `values_i > 0` would incorrectly mask valid dry
+        # conditions and create artificial no-data values.
+        probability = (
+            observed_zero_precipitation
+            + (1 - observed_zero_precipitation) * probability_from_positive_distribution
+        )
+    else:
+        # This branch is intended for non-zero-inflated standardized indices,
+        # especially SPEI.
+        #
+        # SPEI is based on climatic water balance, not precipitation:
+        #
+        #     water_balance = precipitation - PET
+        #
+        # In this pipeline, because `pev` is usually negative, that is computed as:
+        #
+        #     water_balance = tp + pev
+        #
+        # Unlike precipitation, water balance can legitimately be negative.
+        # Negative values are not missing data; they represent dry water-balance
+        # conditions where evaporative demand exceeds precipitation supply.
+        #
+        # Therefore, do NOT apply `values_i.where(values_i > 0)` here.
+        # That positive-value mask is appropriate for gamma-based SPI, but it
+        # would incorrectly remove valid negative SPEI inputs and create
+        # artificial terrestrial no-data values.
+        probability = dist_method(
+            "cdf",
+            params,
+            values_i,
+        )
+
+    # Convert cumulative probabilities to standardized normal scores.
+    #
+    # The final SPI/SPEI value is produced by applying the inverse CDF, or PPF,
+    # of the standard normal distribution to the fitted-distribution probability.
+    #
+    # However, norm.ppf(0) is -inf and norm.ppf(1) is +inf. Exact 0 or 1
+    # probabilities can occur because of numerical precision, extreme fitted
+    # tails, or values outside the effective range of the fitted distribution.
+    #
+    # Clipping keeps the standardized index finite while only affecting the most
+    # extreme tail values.
+    probability_floor = np.float32(1e-6)
+    probability_ceiling = np.float32(1.0 - probability_floor)
+
+    bounded_probability = probability.clip(
+        min=probability_floor,
+        max=probability_ceiling,
+    )
+
+    # Parameters for the standard normal distribution.
+    #
+    # The fitted drought-index distribution gives us a cumulative probability.
+    # We then map that probability onto a standard normal distribution with:
+    #
+    #     mean = 0
+    #     standard deviation = 1
+    #
+    # This is what turns the fitted probability into a unitless standardized
+    # drought index value.
+    standard_normal_parameters = xr.DataArray(
+        [0, 1],
+        dims=["dparams"],
+        coords=dict(dparams=(["loc", "scale"])),
+        attrs=dict(scipy_dist="norm"),
+    )
+
+    # Transform probability to a standardized index value.
+    #
+    # Negative values indicate drier-than-normal conditions.
+    # Positive values indicate wetter-than-normal conditions.
+    #
+    # For SPI, the input probability came from the precipitation distribution.
+    # For SPEI, the input probability came from the water-balance distribution.
+    standardized_index = dist_method(
+        "ppf",
+        standard_normal_parameters,
+        bounded_probability,
+    )
+
+    # The standardized index is unitless by construction.
+    standardized_index.attrs["units"] = ""
+    standardized_index.attrs["calibration_period"] = "1981-2020"
+
+    # The parameter-selection step preserves singleton coordinates such as
+    # `dayofyear`. Once the computation is complete, these are no longer useful
+    # output dimensions/coordinates for the final map, so remove/squeeze them.
+    standardized_index = standardized_index.drop_vars(
+        "dayofyear",
+        errors="ignore",
+    ).squeeze()
+
+    return standardized_index
 
 
 def process_total_precip():
@@ -182,15 +339,8 @@ def process_total_precip_pon():
 
 
 def process_swe():
+
     indices["swe"] = {}
-    # special case for SWE: 1 day
-    temp_da = ds["sd"].copy(deep=True)
-    # and take the most recent day
-    indices["swe"][1] = (
-        temp_da.sel(valid_time=ds.valid_time.values[-1]).drop_vars("valid_time") * 100
-    )
-    indices["swe"][1].name = "swe"
-    indices["swe"][1].attrs["units"] = "cm"
 
     for i in INTERVALS:
         indices["swe"][i] = (
@@ -201,12 +351,11 @@ def process_swe():
         )  # convert from m to cm
         indices["swe"][i].name = "swe"
         indices["swe"][i].attrs["units"] = "cm"
-
-    for i in INTERVALS + [1]:
         indices["swe"][i] = np.round(indices["swe"][i], 1)
 
 
 def process_swe_pon():
+
     indices["pnswe"] = {}
     with xr.open_dataset(
         CLIM_DIR.joinpath("era5_land_swe_climo_1981_2020.nc")
@@ -215,13 +364,6 @@ def process_swe_pon():
             # just convert time dim to DOY days for consistency with tp
             time=np.arange(swe_clim_ds.time.shape[0]) + 1,
         )
-
-        # special case for SWE % of normal: 1 day
-        end_doy = pd.Timestamp(times[-1]).dayofyear
-        clim_swe = swe_clim_ds["sd"].sel(time=end_doy)
-        indices["pnswe"][1] = np.round(indices["swe"][1] / clim_swe, 1)
-        indices["pnswe"][1].name = "pnswe"
-        indices["pnswe"][1].attrs["units"] = "cm"
 
         for i in INTERVALS:
             start_doy = pd.Timestamp(times[-i]).dayofyear
@@ -243,58 +385,17 @@ def process_swe_pon():
             indices["pnswe"][i].attrs["units"] = "percent"
 
 
-def _spi(pr: xr.DataArray, params: xr.DataArray, interval: int):
-    """Computes Standardized Precipitation Index (SPI).
-    Adapted from xclim.indices._agro.standardized_precipitation_index to accept pre-fit gamma parameters.
-
-    Args:
-        pr (xr.DataArray): recent precip data
-        params (xr.DataArray): gamma parameters fit to precip data from 1981-2020, with intervals as a dimension
-        interval (int): interval length
-
-    Returns:
-        spi (xr.DataArray): the standardized precipitation index
-    """
-    # subset params to the most recent doy and interval
-    recent_doy = pr.valid_time.dt.dayofyear[-1]
-    params = (
-        params.sel(dayofyear=[recent_doy], interval=interval)
-        .drop_vars("interval")
-        .load()
-    )
-
-    # resampling precipitations
-    pr = pr.sel(valid_time=slice(pr.valid_time[-interval], pr.valid_time[-1])).mean(
-        dim="valid_time", keep_attrs=True
-    )
-
-    # ppf to cdf
-    # ensure params has this attr set
-    params.attrs["scipy_dist"] = "gamma"
-    prob_pos = dist_method("cdf", params, pr.where(pr > 0))
-    prob_zero = xr.where(pr.notnull(), (pr == 0).astype("float32"), np.nan)
-    prob = prob_zero + (1 - prob_zero) * prob_pos
-
-    # Invert to normal distribution with ppf and obtain SPI
-    params_norm = xr.DataArray(
-        [0, 1],
-        dims=["dparams"],
-        coords=dict(dparams=(["loc", "scale"])),
-        attrs=dict(scipy_dist="norm"),
-    )
-    spi = dist_method("ppf", params_norm, prob)
-    spi.attrs["units"] = ""
-    spi.attrs["calibration_period"] = "1981-2020"
-    spi = spi.drop_vars("dayofyear").squeeze()
-
-    return spi
-
-
 def process_spi():
     indices["spi"] = {}
-    with xr.open_dataset(CLIM_DIR.joinpath("spi_gamma_parameters.nc")) as spi_ds:
+    with xr.open_dataset(CLIM_DIR.joinpath(f"spi_{SPI_DIST}_parameters.nc")) as spi_ds:
         for i in INTERVALS:
-            indices["spi"][i] = _spi(ds["tp"], spi_ds["params"], i)
+            indices["spi"][i] = _standardized_index(
+                ds["tp"],
+                spi_ds["params"],
+                i,
+                scipy_dist=SPI_DIST,
+                apply_zero_precipitation_correction=True,
+            )
             indices["spi"][i].name = "spi"
             indices["spi"][i] = np.round(indices["spi"][i], 1)
             indices["spi"][i].attrs["units"] = ""
@@ -302,39 +403,31 @@ def process_spi():
 
 def process_spei():
     indices["spei"] = {}
-    with xr.open_dataset(CLIM_DIR.joinpath("spei_gamma_parameters.nc")) as spei_ds:
+    with xr.open_dataset(
+        CLIM_DIR.joinpath(f"spei_{SPEI_DIST}_parameters.nc")
+    ) as spei_ds:
         wb = (ds["tp"] + ds["pev"]) + WATER_BUDGET_OFFSET_M
 
         for i in INTERVALS:
-            indices["spei"][i] = _spi(wb, spei_ds["params"], i)
+            indices["spei"][i] = _standardized_index(
+                wb,
+                spei_ds["params"],
+                i,
+                scipy_dist=SPEI_DIST,
+                apply_zero_precipitation_correction=False,
+            )
             indices["spei"][i].name = "spei"
             indices["spei"][i] = np.round(indices["spei"][i], 1)
             indices["spei"][i].attrs["units"] = ""
 
 
 def process_smd():
+
     indices["smd"] = {}
-    # special case for SMD: a 1-day summary interval
-    # copy dataarray structure for spot to put data that will result from smoothing
-    temp_da = ds["swvl"].copy(deep=True)
 
     with xr.open_dataset(
         CLIM_DIR.joinpath("era5_land_swvl_climo_1981_2020.nc")
     ) as swvl_clim_ds:
-        # take the most recent day for the 1-day interval
-        swvl_1d = temp_da.sel(valid_time=ds.valid_time.values[-1]).drop_vars(
-            "valid_time"
-        )
-        clim_swvl = (
-            swvl_clim_ds["swvl"]
-            .sel(time=ds.valid_time.dt.dayofyear.values[-1])
-            .drop_vars("time")
-        )
-        indices["smd"][1] = np.round(((clim_swvl - swvl_1d) / clim_swvl) * 100, 1)
-
-        indices["smd"][1].name = "smd"
-        indices["smd"][1].attrs["units"] = "percent"
-
         for i in INTERVALS:
             swvl = (
                 ds["swvl"]
@@ -385,7 +478,8 @@ if __name__ == "__main__":
     end_time = ds.valid_time[-1]
     logging.info(f"End time for combined dataset is {end_time}.")
     ref_date = pd.to_datetime(end_time.values)
-    start_time = ds.valid_time[-365]
+    start_time = ds.valid_time[-366]
+
     logging.info(f"Start time for combined dataset is {start_time}.")
     ds.to_netcdf(
         RECENT_DATA_ROOT.joinpath(
@@ -393,9 +487,6 @@ if __name__ == "__main__":
         ),
         engine=NETCDF_ENGINE,
     )
-
-    # ensure that this is indeed 365 days (time diff is nanoseconds)
-    assert (end_time - start_time) / 86400e9
 
     # below globals(!) are inherited by all the functions that compute indices:
     #    the `ds` of the combined recent data, sliced to just include the previous year
@@ -422,17 +513,11 @@ if __name__ == "__main__":
     logging.info("Combining individual drought indicators and summary intervals")
 
     # write a single file for each interval
-    for i in [1] + INTERVALS:
-        if i == 1:
-            arrays = [
-                indices[varname][i].drop_vars("time", errors="ignore")
-                for varname in ["swe", "pnswe", "smd"]
-            ]
-        else:
-            arrays = [
-                indices[varname][i].drop_vars("time", errors="ignore")
-                for varname in indices
-            ]
+    for i in INTERVALS:
+        arrays = [
+            indices[varname][i].drop_vars("time", errors="ignore")
+            for varname in indices
+        ]
 
         out_ds = xr.merge(
             arrays,
@@ -442,6 +527,10 @@ if __name__ == "__main__":
         )
 
         out_ds.attrs["reference_date"] = ref_date.strftime("%Y-%m-%d")
-        out_ds.to_netcdf(INDICES_DIR.joinpath(f"drought_indices_{i}day.nc"))
+        out_ds.to_netcdf(
+            INDICES_DIR.joinpath(
+                f"drought_indices_{i}day_{ref_date.strftime('%Y_%m_%d')}.nc"
+            )
+        )
 
     logging.info("Pipeline completed.")

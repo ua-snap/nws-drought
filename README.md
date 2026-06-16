@@ -2,7 +2,7 @@
 
 This codebase computes a series of "drought indicators" for assessing drought conditions in Alaska. 
 
-It generates a dataset of seven indicators computed over retrospective intervals - "summary intervals" - from a supplied reference date with the following lengths (in days): 7, 30, 60, 90, 180, 365. The summary interval is the $n$-length sequence of days preceding and ending with the reference date $d_0$, for each interval size $n$. The seven indicators are:
+It generates a dataset of seven indicators computed over retrospective intervals - "summary intervals" - from a supplied reference date, e.g. 7 days, 30 days, 60 days, and so on. The summary interval is the $n$-length sequence of days preceding and ending with the reference date $d_0$, for each interval size $n$. The seven indicators are:
 
 * `tp`: Total precipitation. $\sum p_i$ for all days $i$ in the summary interval.
 * `pntp`: Percent of normal total precipitation. $\frac{\sum p_j}{\sum pclim_j} * 100$ for all days-of-year $j$ in the summary interval, where $pclim_j$ is the climatological daily total precip value for day-of-year $j$.
@@ -50,4 +50,41 @@ python pipeline_download.py
 python pipeline_run.py
 ```
 
-A drought indicator netCDF dataset, one file per summary interval, will be written to the `INDICES_DIR` directory. Each file contains results for all indices for the entire area of interest. The output file naming convention is: `drought_indices_<summary_interval>day.nc`.
+A drought indicator netCDF dataset, one file per summary interval, will be written to the `INDICES_DIR` directory. Each file contains results for all indices for the entire area of interest. `pipeline_run.py` names outputs `drought_indices_<summary_interval>day_<YYYY>_<MM>_<DD>.nc`.
+
+### Figure Creation (`data_viz/`)
+Plotting scripts expect exactly one dated file per interval listed in `INTERVALS` in `config.py`.
+Run scripts from the repository root. Figures are saved under `data_viz/figures/`.
+
+| Directory | Contents |
+|-----------|----------|
+| `figures/by_indicator/<scope>/` | One indicator compared across all summary intervals (`total_precipitation.png`, `spi.png`, …) |
+| `figures/by_indicator_interval/<scope>/` | One indicator for one summary interval per figure (`spi_14day.png`, `pnswe_365day.png`, …) |
+| `figures/by_summary_interval/<scope>/` | All seven indicators on one grid per interval (`7day.png`, `30day.png`, …) |
+| `figures/by_summary_interval_five_panel/<scope>/` | Five indicators per interval (omits total precipitation and SWE) |
+
+`<scope>` is either `full_domain` or a regional subset name (`interior_alaska`, `southeast_alaska`, `southwest_alaska`).
+
+- `plot_indicator.py <variable>` — writes to `figures/by_indicator/<scope>/`.
+- `plot_by_interval.py` — writes to `figures/by_summary_interval/<scope>/`.
+- `plot_by_interval.py --no-tp-swe` — writes to `figures/by_summary_interval_five_panel/<scope>/`.
+- `plot_single_panels.py` — writes flat indicator-interval files to `figures/by_indicator_interval/<scope>/`.
+- `plot_all.py` — runs every script above for the full domain and all three regional subsets. Use `--full-domain-only`, `--regions-only`, or `--region <name>` to narrow scope.
+
+Shared discrete colors, categorical bin labels, titles, etc. live in `data_viz/plot_scales.py`.
+
+#### Zoomed regional subsets
+Regional plots use a padded source-data window in Alaska Albers (EPSG:3338)
+
+Examples:
+```sh
+python data_viz/plot_all.py # full domain + all regional subsets
+python data_viz/plot_indicator.py spi --region southeast_alaska
+python data_viz/plot_by_interval.py --region southwest_alaska
+python data_viz/plot_single_panels.py --region interior_alaska
+python data_viz/plot_all.py --region interior_alaska
+```
+
+Names and locations for the community markers are pulled from a static JSON that was fetched from the SNAP Data API. Region definitions live in `data_viz/region_subset.py`.
+
+Major-river overlays come from Natural Earth (10 m) via `data_viz/plot_rivers.py`...cartopy sort of includes this feature. Only the Interior and Southwest regional figures draw the rivers. Shapefiles are downloaded and cached by cartopy on first run.
