@@ -7,6 +7,12 @@ import cdsapi
 from config import BASELINE_DATA_ROOT, DATA_LAG_TIME_DAYS, DL_BBOX, RECENT_DATA_ROOT
 from era5_land_variable_registry import VARIABLE_REGISTRY
 
+logging.basicConfig(
+    format="%(levelname)s %(name)s %(funcName)s: %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+
 _PREBAKED_DAILY_ENDPOINT = "derived-era5-land-daily-statistics"
 _HOURLY_GRIB_ENDPOINT = "reanalysis-era5-land"
 
@@ -81,7 +87,7 @@ def get_current_month_dates():
     year = str(analysis_date.year)
     month = str(analysis_date.month).zfill(2)
     days = [str(x).zfill(2) for x in range(1, analysis_date.day + 1)]
-    logging.info(
+    logger.info(
         f"Constructing date sequence for {month}/{year} for {len(days)} days between {days[0]} and {days[-1]}..."
     )
     return year, month, days
@@ -118,7 +124,7 @@ def get_all_previous_year_dates():
     previous_year = str(analysis_date.year - 1)
     months = _ALL_MONTHS
     days = _ALL_DAYS
-    logging.info(
+    logger.info(
         f"Constructing date sequence for entire calendar year of {previous_year}..."
     )
     return previous_year, months, days
@@ -161,7 +167,7 @@ def download_era5_land_climatology(
     client = cdsapi.Client()
 
     for year in range(start_year, end_year + 1):
-        logging.info(
+        logger.info(
             "Downloading %s (%s) for %s to %s",
             variable_key,
             cds_variable,
@@ -204,7 +210,7 @@ def download_recurring_era5_land_pipeline(
 
     api_credentials_check()
     client = cdsapi.Client()
-    logging.info(
+    logger.info(
         "Downloading %s (%s) for %s to %s",
         variable_key,
         cds_variable,
