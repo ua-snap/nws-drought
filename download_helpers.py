@@ -7,9 +7,7 @@ import cdsapi
 from config import BASELINE_DATA_ROOT, DATA_LAG_TIME_DAYS, DL_BBOX, RECENT_DATA_ROOT
 from era5_land_variable_registry import VARIABLE_REGISTRY
 
-logging.basicConfig(
-    format="%(levelname)s %(name)s %(funcName)s: %(message)s"
-)
+logging.basicConfig(format="%(levelname)s %(name)s %(funcName)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -106,7 +104,7 @@ def get_rest_of_current_year_dates():
     current_month = analysis_date.month
     months = [str(x).zfill(2) for x in range(1, current_month)]
     days = [str(x).zfill(2) for x in range(1, 32)]
-    logging.info(
+    logger.info(
         f"Constructing date sequence for {current_year} for {len(months)} months between {months[0]} and {months[-1]}..."
     )
     return current_year, months, days
@@ -143,7 +141,7 @@ def get_analysis_date():
         analysis_date (datetime object): date to mark and structure the data download
     """
     analysis_date = datetime.date.today() - datetime.timedelta(days=DATA_LAG_TIME_DAYS)
-    logging.info(f"Establishing the analysis date for the data as {analysis_date}")
+    logger.info(f"Establishing the analysis date for the data as {analysis_date}")
     return analysis_date
 
 
