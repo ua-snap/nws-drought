@@ -74,13 +74,13 @@ def combine_swvl():
             engine=NETCDF_ENGINE,
             encoding={"swvl": {"dtype": "float32"}},
         )
-        logging.info(f"Wrote combined recent swvl to {out_path}")
+        logger.info(f"Wrote combined recent swvl to {out_path}")
 
 
 def assemble_recent_downloads(variable_key):
     """Assemble the individual components of the recently downloaded data into a single data structure."""
 
-    logging.info(f"Assembling dataset of {variable_key} data")
+    logger.info(f"Assembling {variable_key} dataset")
 
     if variable_key == "swvl":
         prefix = "swvl_"
@@ -112,7 +112,7 @@ def assemble_recent_downloads(variable_key):
             recent_data["this_yr"],
             recent_data["this_month"],
         ]
-        logging.info(
+        logger.info(
             "Merging recent data for prior year, current year, current month..."
         )
     else:
@@ -121,11 +121,11 @@ def assemble_recent_downloads(variable_key):
             recent_data["prev_yr"],
             recent_data["this_month"],
         ]
-        logging.info("Merging recent data for prior year and current month...")
+        logger.info("Merging recent data for prior year and current month...")
 
     recent_data_ds = ds_combination(data_to_merge, suffix)
 
-    logging.info("Merging recent data complete.")
+    logger.info("Merging recent data complete.")
     return recent_data_ds
 
 
@@ -362,7 +362,8 @@ def process_swe_pon():
     ) as swe_clim_ds:
         swe_clim_ds = swe_clim_ds.assign_coords(
             # just convert time dim to DOY days for consistency with tp
-            time=np.arange(swe_clim_ds.time.shape[0]) + 1,
+            time=np.arange(swe_clim_ds.time.shape[0])
+            + 1,
         )
 
         for i in INTERVALS:
@@ -451,13 +452,16 @@ def process_smd():
 
 
 if __name__ == "__main__":
-    setup_logging()
-    logging.info("Processing drought indices...")
 
-    logging.info("Combnining recent soil moisture data")
+    setup_logging()
+    logger = logging.getLogger(__name__)
+
+    logger.info("Processing drought indices...")
+
+    logger.info("Combnining recent soil moisture data")
     combine_swvl()
 
-    logging.info("Assembling recent ERA5-Land data...")
+    logger.info("Assembling recent ERA5-Land data...")
     datasets = [
         assemble_recent_downloads(varname)
         for varname in [
@@ -476,11 +480,11 @@ if __name__ == "__main__":
         combine_attrs="drop_conflicts",
     )
     end_time = ds.valid_time[-1]
-    logging.info(f"End time for combined dataset is {end_time}.")
+    logger.info(f"End time for combined dataset is {end_time}.")
     ref_date = pd.to_datetime(end_time.values)
     start_time = ds.valid_time[-366]
 
-    logging.info(f"Start time for combined dataset is {start_time}.")
+    logger.info(f"Start time for combined dataset is {start_time}.")
     ds.to_netcdf(
         RECENT_DATA_ROOT.joinpath(
             f"combined_daily_era5_land_drought_vars_{ref_date.strftime('%Y%m%d')}.nc",
@@ -496,21 +500,21 @@ if __name__ == "__main__":
     times = ds.valid_time.values
     indices = {}
 
-    logging.info("Processing drought index: total precipitation...")
+    logger.info("Processing total precipitation...")
     process_total_precip()
-    logging.info("Processing drought index: total precipitation % of normal...")
+    logger.info("Processing total precipitation % of normal...")
     process_total_precip_pon()
-    logging.info("Processing drought index: SWE...")
+    logger.info("Processing SWE...")
     process_swe()
-    logging.info("Processing drought index: SWE % of normal...")
+    logger.info("Processing SWE % of normal...")
     process_swe_pon()
-    logging.info("Processing drought index: SPI...")
+    logger.info("Processing SPI...")
     process_spi()
-    logging.info("Processing drought index: SPEI...")
+    logger.info("Processing SPEI...")
     process_spei()
-    logging.info("Processing drought index: SMD...")
+    logger.info("Processing soil moisture % of normal...")
     process_smd()
-    logging.info("Combining individual drought indicators and summary intervals")
+    logger.info("Combining individual drought indicators and summary intervals")
 
     # write a single file for each interval
     for i in INTERVALS:
@@ -533,4 +537,4 @@ if __name__ == "__main__":
             )
         )
 
-    logging.info("Pipeline completed.")
+    logger.info("Pipeline completed.")

@@ -12,6 +12,8 @@ from download_helpers import (
 from era5_land_variable_registry import SUPPORTED_VARS
 from file_helpers import setup_logging
 
+logger = logging.getLogger(__name__)
+
 
 def run_all_downloads(variable_key: str):
     """Download all time chunks for one variable.
@@ -37,5 +39,6 @@ def run_all_downloads(variable_key: str):
 if __name__ == "__main__":
     setup_logging()
     for variable_key in SUPPORTED_VARS:
+        logger.info(f"Starting download process for {variable_key}...")
         run_all_downloads(variable_key)
-    logging.info("Pipeline download script completed.")
+    logger.info("Pipeline download script completed.")

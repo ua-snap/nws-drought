@@ -7,7 +7,6 @@ import cdsapi
 from config import BASELINE_DATA_ROOT, DATA_LAG_TIME_DAYS, DL_BBOX, RECENT_DATA_ROOT
 from era5_land_variable_registry import VARIABLE_REGISTRY
 
-logging.basicConfig(format="%(levelname)s %(name)s %(funcName)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
