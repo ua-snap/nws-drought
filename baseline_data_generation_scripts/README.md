@@ -7,23 +7,23 @@ Merge each year of daily data into one combined daily NetCDF. Launch these jobs 
 
 #### Total Precipitation
 ```sh
-sbatch baseline_data_generation_scripts/combine_annual.sbatch tp
+sbatch baseline_data_generation_scripts/combine_annual_files.sbatch tp
 ```
 #### Total Potential Evaporation
 ```sh
-sbatch baseline_data_generation_scripts/combine_annual.sbatch pev
+sbatch baseline_data_generation_scripts/combine_annual_files.sbatch pev
 ```
 #### Snow Water Equivalent
 ```sh
-sbatch baseline_data_generation_scripts/combine_annual.sbatch swe
+sbatch baseline_data_generation_scripts/combine_annual_files.sbatch swe
 ```
 #### Volumetric Soil Water, Layer 1
 ```sh
-sbatch baseline_data_generation_scripts/combine_annual.sbatch swvl1
+sbatch baseline_data_generation_scripts/combine_annual_files.sbatch swvl1
 ```
 #### Volumetric Soil Water, Layer 2
 ```sh
-sbatch baseline_data_generation_scripts/combine_annual.sbatch swvl2
+sbatch baseline_data_generation_scripts/combine_annual_files.sbatch swvl2
 ```
 
 ### Combine the Soil Moisture Layers and Construct the Day-of-Year Climatology.
