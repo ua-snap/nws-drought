@@ -7,6 +7,9 @@ import cdsapi
 from config import BASELINE_DATA_ROOT, DATA_LAG_TIME_DAYS, DL_BBOX, RECENT_DATA_ROOT
 from era5_land_variable_registry import VARIABLE_REGISTRY
 
+logger = logging.getLogger(__name__)
+
+
 _PREBAKED_DAILY_ENDPOINT = "derived-era5-land-daily-statistics"
 _HOURLY_GRIB_ENDPOINT = "reanalysis-era5-land"
 
@@ -18,13 +21,18 @@ _ALL_HOURS = [f"{hour:02d}:00" for hour in range(24)]
 _ACCUMULATION_FOR_PRIOR_24HRS = "00:00"
 
 
-def _build_hourly_grib_request(cds_variable: str, year: int) -> dict:
-    if year == 2021:
-        days = _ALL_DAYS[0]
-        months = _ALL_MONTHS[0]
-    else:
-        days = _ALL_DAYS
-        months = _ALL_MONTHS
+def _build_hourly_grib_request(
+    cds_variable: str, year: int, months: list, days: list
+) -> dict:
+    """Build a request for the hourly GRIB endpoint, scoped to the given months/days.
+
+    Note that the 00:00 UTC value on date D is the 24-hour accumulation for date
+    D-1, and CDS treats the requested day list as valid times. A request for days
+    01..N therefore yields accumulations for the last day of the previous month
+    through day N-1, each labeled by its valid_time (01..N). This matches the
+    convention used when building the climatology, so no day-window extension is
+    applied here.
+    """
     return {
         "variable": cds_variable,
         "year": str(year),
@@ -37,40 +45,8 @@ def _build_hourly_grib_request(cds_variable: str, year: int) -> dict:
     }
 
 
-def _build_prebaked_daily_request(cds_variable: str, year: int) -> dict:
-    return {
-        "variable": cds_variable,
-        "year": str(year),
-        "month": _ALL_MONTHS,
-        "day": _ALL_DAYS,
-        "daily_statistic": "daily_mean",
-        "time_zone": "utc+00:00",
-        "frequency": "6_hourly",
-        "area": DL_BBOX,
-    }
-
-
-def _pipeline_build_hourly_grib_request(cds_variable: str, year: int) -> dict:
-    if year == 2021:
-        days = _ALL_DAYS[0]
-        months = _ALL_MONTHS[0]
-    else:
-        days = _ALL_DAYS
-        months = _ALL_MONTHS
-    return {
-        "variable": cds_variable,
-        "year": str(year),
-        "month": months,
-        "day": days,
-        "time": _ACCUMULATION_FOR_PRIOR_24HRS,
-        "data_format": "grib",
-        "download_format": "unarchived",
-        "area": DL_BBOX,
-    }
-
-
-def _pipeline_build_prebaked_daily_request(
-    cds_variable: str, year: int, months, days
+def _build_prebaked_daily_request(
+    cds_variable: str, year: int, months: list, days: list
 ) -> dict:
     return {
         "variable": cds_variable,
@@ -108,7 +84,7 @@ def get_current_month_dates():
     year = str(analysis_date.year)
     month = str(analysis_date.month).zfill(2)
     days = [str(x).zfill(2) for x in range(1, analysis_date.day + 1)]
-    logging.info(
+    logger.info(
         f"Constructing date sequence for {month}/{year} for {len(days)} days between {days[0]} and {days[-1]}..."
     )
     return year, month, days
@@ -127,7 +103,7 @@ def get_rest_of_current_year_dates():
     current_month = analysis_date.month
     months = [str(x).zfill(2) for x in range(1, current_month)]
     days = [str(x).zfill(2) for x in range(1, 32)]
-    logging.info(
+    logger.info(
         f"Constructing date sequence for {current_year} for {len(months)} months between {months[0]} and {months[-1]}..."
     )
     return current_year, months, days
@@ -145,7 +121,7 @@ def get_all_previous_year_dates():
     previous_year = str(analysis_date.year - 1)
     months = _ALL_MONTHS
     days = _ALL_DAYS
-    logging.info(
+    logger.info(
         f"Constructing date sequence for entire calendar year of {previous_year}..."
     )
     return previous_year, months, days
@@ -164,7 +140,7 @@ def get_analysis_date():
         analysis_date (datetime object): date to mark and structure the data download
     """
     analysis_date = datetime.date.today() - datetime.timedelta(days=DATA_LAG_TIME_DAYS)
-    logging.info(f"Establishing the analysis date for the data as {analysis_date}")
+    logger.info(f"Establishing the analysis date for the data as {analysis_date}")
     return analysis_date
 
 
@@ -188,7 +164,7 @@ def download_era5_land_climatology(
     client = cdsapi.Client()
 
     for year in range(start_year, end_year + 1):
-        logging.info(
+        logger.info(
             "Downloading %s (%s) for %s to %s",
             variable_key,
             cds_variable,
@@ -197,10 +173,18 @@ def download_era5_land_climatology(
         )
         if summary_method == "sum":
             cds_endpoint = _HOURLY_GRIB_ENDPOINT
-            request = _build_hourly_grib_request(cds_variable, year)
+            if year == 2021:
+                # only Jan 1 at 00:00 is needed for the final climatology year:
+                # it holds the 24-hour accumulation for Dec 31 of the prior year
+                months, days = [_ALL_MONTHS[0]], [_ALL_DAYS[0]]
+            else:
+                months, days = _ALL_MONTHS, _ALL_DAYS
+            request = _build_hourly_grib_request(cds_variable, year, months, days)
         if summary_method == "mean":
             cds_endpoint = _PREBAKED_DAILY_ENDPOINT
-            request = _build_prebaked_daily_request(cds_variable, year)
+            request = _build_prebaked_daily_request(
+                cds_variable, year, _ALL_MONTHS, _ALL_DAYS
+            )
 
         dst = download_dir / f"{prefix}{year}{suffix}"
 
@@ -223,7 +207,7 @@ def download_recurring_era5_land_pipeline(
 
     api_credentials_check()
     client = cdsapi.Client()
-    logging.info(
+    logger.info(
         "Downloading %s (%s) for %s to %s",
         variable_key,
         cds_variable,
@@ -232,12 +216,10 @@ def download_recurring_era5_land_pipeline(
     )
     if summary_method == "sum":
         cds_endpoint = _HOURLY_GRIB_ENDPOINT
-        request = _pipeline_build_hourly_grib_request(cds_variable, year)
+        request = _build_hourly_grib_request(cds_variable, year, months, days)
     if summary_method == "mean":
         cds_endpoint = _PREBAKED_DAILY_ENDPOINT
-        request = _pipeline_build_prebaked_daily_request(
-            cds_variable, year, months, days
-        )
+        request = _build_prebaked_daily_request(cds_variable, year, months, days)
 
     dst = download_dir / f"{prefix}{time_chunk_tag}{suffix}"
     client.retrieve(cds_endpoint, request, target=dst)

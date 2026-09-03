@@ -14,8 +14,9 @@ def setup_logging() -> None:
     """Configure logging."""
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s | %(levelname)s | %(message)s",
+        format="%(levelname)s %(name)s %(funcName)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
+        force=True,
     )
 
 
@@ -81,7 +82,3 @@ def ds_combination(fps_to_open: list, suffix: str) -> xr.Dataset:
             compat="override",
         ).sortby("valid_time")
     return ds
-
-
-# helper function
-# for the year 1981, we should drop the first time slice because that value will actually be for the last day of the prior-year

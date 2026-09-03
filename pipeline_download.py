@@ -1,9 +1,7 @@
 """Download the necessary recent ERA5-Land data for drought indicator computation."""
 
 import logging
-import shutil
 
-from config import RECENT_DATA_ROOT
 from download_helpers import (
     analysis_date_not_in_january,
     download_recurring_era5_land_pipeline,
@@ -14,13 +12,7 @@ from download_helpers import (
 from era5_land_variable_registry import SUPPORTED_VARS
 from file_helpers import setup_logging
 
-
-def wipe_pipeline_directory():
-    """Wipe the current set of pipeline data."""
-    try:
-        shutil.rmtree(RECENT_DATA_ROOT)
-    except OSError:
-        pass
+logger = logging.getLogger(__name__)
 
 
 def run_all_downloads(variable_key: str):
@@ -47,5 +39,6 @@ def run_all_downloads(variable_key: str):
 if __name__ == "__main__":
     setup_logging()
     for variable_key in SUPPORTED_VARS:
+        logger.info(f"Starting download process for {variable_key}...")
         run_all_downloads(variable_key)
-    logging.info("Pipeline download script completed.")
+    logger.info("Pipeline download script completed.")

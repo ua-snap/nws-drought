@@ -23,4 +23,9 @@ dependencies = [
 [dependency-groups]
 dev = [
   "black",
+  "pytest",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
