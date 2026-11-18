@@ -64,6 +64,10 @@ def discover_year_files(
     return dict(sorted(year_to_path.items()))
 
 
+def _valid_time_as_dimension(ds: xr.Dataset) -> xr.Dataset:
+    return ds if "valid_time" in ds.dims else ds.expand_dims("valid_time")
+
+
 def ds_combination(fps_to_open: list, suffix: str) -> xr.Dataset:
     if suffix == ".grib":
         ds = xr.open_mfdataset(
@@ -73,6 +77,9 @@ def ds_combination(fps_to_open: list, suffix: str) -> xr.Dataset:
             coords="minimal",
             compat="override",
             backend_kwargs=GRIB_BACKEND_KWARGS,
+            # a file holding one date decodes to a scalar valid_time, which
+            # cannot be concatenated until it is a dimension again
+            preprocess=_valid_time_as_dimension,
         )
     else:
         ds = xr.open_mfdataset(

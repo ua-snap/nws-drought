@@ -91,3 +91,36 @@ def test_grib_holding_one_date_passes(tmp_path, monkeypatch):
     monkeypatch.setattr(file_helpers.xr, "open_dataset", lambda path, **kw: stub)
     ok, reason = check_output_file(fp, "tp", ["2021-01-01"])
     assert ok, reason
+
+
+def _write_tp_grib(path, dates):
+    import eccodes
+
+    with open(path, "wb") as f:
+        for date in dates:
+            handle = eccodes.codes_grib_new_from_samples("regular_ll_sfc_grib1")
+            eccodes.codes_set(handle, "shortName", "tp")
+            eccodes.codes_set(handle, "dataDate", int(date.replace("-", "")))
+            eccodes.codes_set(handle, "dataTime", 0)
+            size = eccodes.codes_get(handle, "numberOfValues")
+            eccodes.codes_set_values(handle, np.full(size, 0.001))
+            f.write(eccodes.codes_get_message(handle))
+            eccodes.codes_release(handle)
+
+
+def test_grib_files_combine_when_the_last_holds_one_date(tmp_path):
+    # on the first of a month the current-month file holds one 00 UTC message
+    october = tmp_path / "tp_2026-10.grib"
+    november = tmp_path / "tp_2026-11.grib"
+    _write_tp_grib(october, ["2026-10-29", "2026-10-30", "2026-10-31"])
+    _write_tp_grib(november, ["2026-11-01"])
+
+    with file_helpers.ds_combination([october, november], ".grib") as ds:
+        times = pd.DatetimeIndex(np.atleast_1d(ds["valid_time"].values))
+
+    assert list(times.strftime("%Y-%m-%d")) == [
+        "2026-10-29",
+        "2026-10-30",
+        "2026-10-31",
+        "2026-11-01",
+    ]
