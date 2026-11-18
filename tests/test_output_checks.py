@@ -78,3 +78,16 @@ def test_grib_midnight_valid_times_pass(tmp_path, monkeypatch):
     assert ok, reason
     assert seen["engine"] == "cfgrib"
     assert seen["backend_kwargs"] == file_helpers.GRIB_BACKEND_KWARGS
+
+
+def test_grib_holding_one_date_passes(tmp_path, monkeypatch):
+    # cfgrib decodes a file with a single 00 UTC message to a scalar valid_time
+    fp = tmp_path / "tp.grib"
+    fp.write_bytes(b"")
+    stub = xr.Dataset(
+        {"tp": ((), 1.0)},
+        coords={"valid_time": np.datetime64("2021-01-01T00:00")},
+    )
+    monkeypatch.setattr(file_helpers.xr, "open_dataset", lambda path, **kw: stub)
+    ok, reason = check_output_file(fp, "tp", ["2021-01-01"])
+    assert ok, reason

@@ -105,7 +105,9 @@ def check_output_file(
             ds = xr.open_dataset(path, engine=NETCDF_ENGINE)
         with ds:
             has_variable = short_name in ds.data_vars
-            found = set(ds["valid_time"].values.astype("datetime64[D]"))
+            # a file holding one date (e.g. a single 00 UTC accumulation)
+            # decodes to a scalar valid_time
+            found = set(np.atleast_1d(ds["valid_time"].values).astype("datetime64[D]"))
     except Exception as exc:
         return False, f"{path.name} could not be opened or read: {exc}"
 
