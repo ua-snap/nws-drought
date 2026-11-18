@@ -1,5 +1,7 @@
 import calendar
+import contextlib
 import datetime
+import fcntl
 import itertools
 import logging
 import os
@@ -457,7 +459,10 @@ class ClimatologyRequest:
         return (
             BASELINE_DATA_ROOT
             / _BUNDLE_DIR
-            / f"{self.dataset}_{self.year}{bundle_suffix(self.dataset)}"
+            / (
+                f"{self.dataset}_{self.year}_{'-'.join(self.variable_keys)}"
+                f"{bundle_suffix(self.dataset)}"
+            )
         )
 
 
@@ -510,30 +515,31 @@ def download_era5_land_climatology(
         client: datastores client for the request runner (default: built from
             cdsapi's configuration).
     """
-    requests = plan_climatology_requests(variable_keys, start_year, end_year)
-    logger.info(
-        "Climatology download %d-%d: %d %s CDS requests",
-        start_year,
-        end_year,
-        len(requests),
-        CLIMATOLOGY_REQUEST_SHAPE,
-    )
-    for request in requests:
-        target = request.bundle_target()
-        target.parent.mkdir(parents=True, exist_ok=True)
+    with exclusive_download_lock(BASELINE_DATA_ROOT / _BUNDLE_DIR):
+        requests = plan_climatology_requests(variable_keys, start_year, end_year)
         logger.info(
-            "Requesting %s (%s) for %d",
-            request.dataset,
-            ",".join(request.variable_keys),
-            request.year,
+            "Climatology download %d-%d: %d %s CDS requests",
+            start_year,
+            end_year,
+            len(requests),
+            CLIMATOLOGY_REQUEST_SHAPE,
         )
-        run_request(
-            request.dataset,
-            request.cds_request(),
-            target,
-            split_then_install(request.targets(), request.expected_dates()),
-            client=client,
-        )
+        for request in requests:
+            target = request.bundle_target()
+            target.parent.mkdir(parents=True, exist_ok=True)
+            logger.info(
+                "Requesting %s (%s) for %d",
+                request.dataset,
+                ",".join(request.variable_keys),
+                request.year,
+            )
+            run_request(
+                request.dataset,
+                request.cds_request(),
+                target,
+                split_then_install(request.targets(), request.expected_dates()),
+                client=client,
+            )
 
 
 # Recurring download: one file per variable per month, covering January 1 of
@@ -544,6 +550,30 @@ def download_era5_land_climatology(
 # the output check.
 _RECURRING_WINDOW_MONTHS = 3
 _BUNDLE_DIR = "cds_downloads"
+
+
+@contextlib.contextmanager
+def exclusive_download_lock(directory: Path):
+    """Hold an exclusive lock on ``directory`` for one download run.
+
+    Two runs sharing a download directory would reuse each other's saved
+    request IDs and delete each other's CDS jobs, and ECMWF asks for one
+    request at a time per account, so a second run stops before submitting.
+    """
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    with open(directory / ".lock", "w") as lock_file:
+        try:
+            fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise RuntimeError(
+                f"Another CDS download is already running in {directory}; "
+                "wait for it to finish before starting this one."
+            ) from None
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
 
 
 def coverage_months(analysis_date: datetime.date) -> list[tuple[int, int]]:
@@ -693,30 +723,31 @@ def download_recurring_era5_land(
     """
     if analysis_date is None:
         analysis_date = get_analysis_date()
-    requests = plan_recurring_requests(analysis_date)
-    logger.info(
-        "Recurring download for analysis date %s: %d CDS requests",
-        analysis_date,
-        len(requests),
-    )
-    for request in requests:
-        target = request.bundle_target()
-        target.parent.mkdir(parents=True, exist_ok=True)
+    with exclusive_download_lock(RECENT_DATA_ROOT / _BUNDLE_DIR):
+        requests = plan_recurring_requests(analysis_date)
         logger.info(
-            "Requesting %s (%s) for %d, months %s, days %s-%s",
-            request.dataset,
-            ",".join(request.variable_keys),
-            request.year,
-            ",".join(f"{m:02d}" for m in request.months),
-            request.days[0],
-            request.days[-1],
+            "Recurring download for analysis date %s: %d CDS requests",
+            analysis_date,
+            len(requests),
         )
-        run_request(
-            request.dataset,
-            request.cds_request(),
-            target,
-            split_months_then_install(
-                request.month_targets(), request.expected_dates()
-            ),
-            client=client,
-        )
+        for request in requests:
+            target = request.bundle_target()
+            target.parent.mkdir(parents=True, exist_ok=True)
+            logger.info(
+                "Requesting %s (%s) for %d, months %s, days %s-%s",
+                request.dataset,
+                ",".join(request.variable_keys),
+                request.year,
+                ",".join(f"{m:02d}" for m in request.months),
+                request.days[0],
+                request.days[-1],
+            )
+            run_request(
+                request.dataset,
+                request.cds_request(),
+                target,
+                split_months_then_install(
+                    request.month_targets(), request.expected_dates()
+                ),
+                client=client,
+            )

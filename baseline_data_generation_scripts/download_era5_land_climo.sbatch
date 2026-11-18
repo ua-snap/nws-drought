@@ -19,6 +19,10 @@
 # Optionally restrict to one variable:
 #   VARIABLE=tp sbatch baseline_data_generation_scripts/download_era5_land_climo.sbatch
 # Allowed VARIABLE values: tp, pev, swe, swvl1, swvl2
+#
+# Run one of these jobs at a time, and never alongside the recurring download:
+# ECMWF asks for one request at a time per account. A second climatology job
+# started while one is running stops before sending anything.
 
 set -euo pipefail
 

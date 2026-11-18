@@ -933,3 +933,26 @@ def test_restarted_climatology_reattaches_to_the_saved_2010_job(
 
     assert client.reattached == ["saved-2010"]
     assert [(d, r["year"]) for d, r in client.submits] == [(DAILY, "2010")]
+
+
+def test_climatology_bundles_differ_for_different_variable_sets(baseline_root):
+    tp_only = download_helpers.ClimatologyRequest(_HOURLY_GRIB_ENDPOINT, ("tp",), 1981)
+    pev_only = download_helpers.ClimatologyRequest(
+        _HOURLY_GRIB_ENDPOINT, ("pev",), 1981
+    )
+    both = download_helpers.ClimatologyRequest(
+        _HOURLY_GRIB_ENDPOINT, ("tp", "pev"), 1981
+    )
+
+    names = {r.bundle_target().name for r in (tp_only, pev_only, both)}
+    assert len(names) == 3
+
+
+def test_second_download_run_in_the_same_directory_stops_before_submitting(tmp_path):
+    with download_helpers.exclusive_download_lock(tmp_path):
+        with pytest.raises(RuntimeError, match="already running"):
+            with download_helpers.exclusive_download_lock(tmp_path):
+                pass
+    # released when the first run ends
+    with download_helpers.exclusive_download_lock(tmp_path):
+        pass
