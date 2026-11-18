@@ -141,6 +141,36 @@ def _split_grib(bundle: Path, staged: dict[str, Path]) -> set[str]:
     )
 
 
+def build_cds_request(
+    dataset: str, variable_keys, year: int, months: list, days: list
+) -> dict:
+    """The CDS request for registry variables of one dataset."""
+    cds_variables = [VARIABLE_REGISTRY[key]["cds_variable"] for key in variable_keys]
+    build = (
+        _build_hourly_grib_request
+        if dataset == _HOURLY_GRIB_ENDPOINT
+        else _build_prebaked_daily_request
+    )
+    return build(cds_variables, year, months, days)
+
+
+def bundle_suffix(dataset: str) -> str:
+    """File suffix of a combined download: hourly data arrives as GRIB, daily
+    statistics as a zip of netCDF files."""
+    return ".grib" if dataset == _HOURLY_GRIB_ENDPOINT else ".zip"
+
+
+def _file_needs_download(path: Path, short_name: str, expected_dates) -> bool:
+    ok, reason = check_output_file(path, short_name, expected_dates)
+    if ok:
+        return False
+    if path.exists():
+        logger.warning("%s failed its check (%s); will replace it", path, reason)
+    else:
+        logger.info("%s is missing; will download it", path)
+    return True
+
+
 def _grib_valid_month(handle: int) -> tuple[int, int]:
     # validityDate is the date cfgrib reports as valid_time (YYYYMMDD)
     validity_date = eccodes.codes_get(handle, "validityDate")
@@ -196,10 +226,8 @@ def _split_bundle(bundle: Path, staged: dict[str, Path]) -> set[str]:
     if _is_grib(bundle):
         return _split_grib(bundle, staged)
     found: set[str] = set()
-    with tempfile.TemporaryDirectory(dir=bundle.parent) as work_dir:
-        copy = Path(work_dir) / "single.nc"
-        shutil.copyfile(bundle, copy)
-        _place_netcdf(copy, staged, found)
+    # the download is a throwaway temporary file, so it can be moved as is
+    _place_netcdf(bundle, staged, found)
     return found
 
 
@@ -401,16 +429,10 @@ class ClimatologyRequest:
     year: int
 
     def cds_request(self) -> dict:
-        cds_variables = [
-            VARIABLE_REGISTRY[key]["cds_variable"] for key in self.variable_keys
-        ]
-        build = (
-            _build_hourly_grib_request
-            if self.dataset == _HOURLY_GRIB_ENDPOINT
-            else _build_prebaked_daily_request
-        )
         months, days = _climatology_months_and_days(self.dataset, self.year)
-        return build(cds_variables, self.year, months, days)
+        return build_cds_request(
+            self.dataset, self.variable_keys, self.year, months, days
+        )
 
     def expected_dates(self) -> list[str]:
         """Valid dates each yearly file holds: every day of the year (for the
@@ -432,8 +454,11 @@ class ClimatologyRequest:
     def bundle_target(self) -> Path:
         """Download name, stable for a dataset and year so a restarted job
         finds the request it saved."""
-        suffix = ".grib" if self.dataset == _HOURLY_GRIB_ENDPOINT else ".zip"
-        return BASELINE_DATA_ROOT / _BUNDLE_DIR / f"{self.dataset}_{self.year}{suffix}"
+        return (
+            BASELINE_DATA_ROOT
+            / _BUNDLE_DIR
+            / f"{self.dataset}_{self.year}{bundle_suffix(self.dataset)}"
+        )
 
 
 def plan_climatology_requests(
@@ -452,21 +477,15 @@ def plan_climatology_requests(
         for dataset, keys in group_variables_by_dataset(variable_keys).items():
             request = ClimatologyRequest(dataset, tuple(keys), year)
             expected = request.expected_dates()
-            needed = []
-            for key in keys:
-                path = climatology_file_path(key, year)
-                ok, reason = check_output_file(
-                    path, VARIABLE_REGISTRY[key]["short_name"], expected
+            needed = [
+                key
+                for key in keys
+                if _file_needs_download(
+                    climatology_file_path(key, year),
+                    VARIABLE_REGISTRY[key]["short_name"],
+                    expected,
                 )
-                if ok:
-                    continue
-                needed.append(key)
-                if path.exists():
-                    logger.warning(
-                        "%s failed its check (%s); will replace it", path, reason
-                    )
-                else:
-                    logger.info("%s is missing; will download it", path)
+            ]
             if needed:
                 requests.append(ClimatologyRequest(dataset, tuple(needed), year))
     return requests
@@ -580,16 +599,10 @@ class MonthlyRequest:
     days: tuple[str, ...]
 
     def cds_request(self) -> dict:
-        cds_variables = [
-            VARIABLE_REGISTRY[key]["cds_variable"] for key in self.variable_keys
-        ]
-        build = (
-            _build_hourly_grib_request
-            if self.dataset == _HOURLY_GRIB_ENDPOINT
-            else _build_prebaked_daily_request
-        )
         months = [f"{month:02d}" for month in self.months]
-        return build(cds_variables, self.year, months, list(self.days))
+        return build_cds_request(
+            self.dataset, self.variable_keys, self.year, months, list(self.days)
+        )
 
     def expected_dates(self) -> dict[tuple[int, int], list[str]]:
         last_day = int(self.days[-1])
@@ -611,31 +624,26 @@ class MonthlyRequest:
         """Download name, stable for a dataset and month set so a restarted run
         finds the request it saved."""
         months = "-".join(f"{month:02d}" for month in self.months)
-        suffix = ".grib" if self.dataset == _HOURLY_GRIB_ENDPOINT else ".zip"
         return (
             RECENT_DATA_ROOT
             / _BUNDLE_DIR
-            / f"{self.dataset}_{self.year}_{months}{suffix}"
+            / f"{self.dataset}_{self.year}_{months}{bundle_suffix(self.dataset)}"
         )
 
 
 def _month_needs_download(variable_keys, year: int, month: int) -> bool:
     """True if any variable's file for the month is missing or fails the check.
     Every failing file is logged."""
-    needed = False
-    for key in variable_keys:
-        path = monthly_file_path(key, year, month)
-        ok, reason = check_output_file(
-            path, VARIABLE_REGISTRY[key]["short_name"], month_dates(year, month)
+    # check every variable (no short-circuit) so each failing file is logged
+    results = [
+        _file_needs_download(
+            monthly_file_path(key, year, month),
+            VARIABLE_REGISTRY[key]["short_name"],
+            month_dates(year, month),
         )
-        if ok:
-            continue
-        needed = True
-        if path.exists():
-            logger.warning("%s failed its check (%s); will replace it", path, reason)
-        else:
-            logger.info("%s is missing; will download it", path)
-    return needed
+        for key in variable_keys
+    ]
+    return any(results)
 
 
 def plan_recurring_requests(analysis_date: datetime.date) -> list[MonthlyRequest]:

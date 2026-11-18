@@ -30,13 +30,12 @@ from config import BASELINE_DATA_ROOT
 from download_helpers import (
     _ALL_DAYS,
     _ALL_MONTHS,
-    _HOURLY_GRIB_ENDPOINT,
-    _build_hourly_grib_request,
-    _build_prebaked_daily_request,
     api_credentials_check,
+    build_cds_request,
+    bundle_suffix,
     group_variables_by_dataset,
 )
-from era5_land_variable_registry import VARIABLE_REGISTRY
+from file_helpers import setup_logging
 
 logger = logging.getLogger(__name__)
 
@@ -56,23 +55,16 @@ class BenchmarkRequest:
     months: tuple[str, ...]
 
     def cds_request(self) -> dict:
-        cds_variables = [
-            VARIABLE_REGISTRY[key]["cds_variable"] for key in self.variable_keys
-        ]
-        build = (
-            _build_hourly_grib_request
-            if self.dataset == _HOURLY_GRIB_ENDPOINT
-            else _build_prebaked_daily_request
+        return build_cds_request(
+            self.dataset, self.variable_keys, self.year, list(self.months), _ALL_DAYS
         )
-        return build(cds_variables, self.year, list(self.months), _ALL_DAYS)
 
     def label(self) -> str:
         months = "all" if len(self.months) == 12 else self.months[0]
         return f"round{self.round}_{self.shape}_{self.dataset}_{self.year}_{months}"
 
     def target(self, output_dir: Path) -> Path:
-        suffix = ".grib" if self.dataset == _HOURLY_GRIB_ENDPOINT else ".zip"
-        return Path(output_dir) / f"{self.label()}{suffix}"
+        return Path(output_dir) / f"{self.label()}{bundle_suffix(self.dataset)}"
 
 
 @dataclass
@@ -275,7 +267,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO)
+    setup_logging()
     api_credentials_check()
     rows = run_benchmark(args.year, args.output_dir)
     args.report.write_text(render_report(args.year, rows))

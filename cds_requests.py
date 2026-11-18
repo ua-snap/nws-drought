@@ -139,8 +139,6 @@ def run_request(
         try:
             saved = _load_state(state_path).get(key)
             if saved and saved["request_hash"] != wanted_hash:
-                # A job for an older version of this request: remove it at
-                # CDS so it never sits queued beside the new one.
                 logger.info("Deleting stale CDS job %s", saved["request_id"])
                 try:
                     client.delete(saved["request_id"])
@@ -178,6 +176,13 @@ def run_request(
                     f"{_failure_message(remote)}"
                 )
 
+            # read the job's timestamps before installing anything, so a
+            # network error here retries the request instead of resubmitting
+            # one whose files are already in place
+            created_at = remote.created_at
+            started_at = remote.started_at
+            finished_at = remote.finished_at
+
             transfer_start = time.monotonic()
             try:
                 remote.download(str(temp_path))
@@ -188,20 +193,18 @@ def run_request(
             try:
                 finalize(temp_path)
             except OutputCheckError:
-                # Resubmit rather than re-download the same result.
                 clear_saved()
                 raise
             finally:
                 temp_path.unlink(missing_ok=True)
             clear_saved()
 
-            started_at = remote.started_at
             logger.info(
                 "CDS request dataset=%s target=%s queue=%s run=%s transfer=%s cache_hit=%s",
                 dataset,
                 target,
-                _fmt(_seconds(remote.created_at, started_at)),
-                _fmt(_seconds(started_at, remote.finished_at)),
+                _fmt(_seconds(created_at, started_at)),
+                _fmt(_seconds(started_at, finished_at)),
                 _fmt(transfer),
                 started_at is None,
             )

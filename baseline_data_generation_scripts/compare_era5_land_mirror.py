@@ -31,7 +31,8 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from config import BASELINE_DATA_ROOT, DL_BBOX
+from config import DL_BBOX
+from download_helpers import climatology_file_path
 from era5_land_variable_registry import VARIABLE_REGISTRY
 from file_helpers import ds_combination, setup_logging
 
@@ -341,16 +342,9 @@ def fetch_mirror_year(store: xr.Dataset, short_name: str, year: int) -> xr.DataA
     return normalize(da.sel(latitude=lat_slice, longitude=slice(west, east)).load())
 
 
-def cds_year_file(var: str, year: int) -> Path:
-    entry = VARIABLE_REGISTRY[var]
-    return BASELINE_DATA_ROOT.joinpath(
-        entry["climatology_dir"], f"{entry['prefix']}{year}{entry['suffix']}"
-    )
-
-
 def load_cds_year(var: str, year: int) -> xr.DataArray:
     entry = VARIABLE_REGISTRY[var]
-    ds = ds_combination([cds_year_file(var, year)], entry["suffix"])
+    ds = ds_combination([climatology_file_path(var, year)], entry["suffix"])
     return ds[entry["short_name"]].load()
 
 
@@ -399,7 +393,7 @@ def main(argv=None) -> None:
     results, skipped = {}, {}
     fetch_seconds = 0.0
     for var, entry in VARIABLE_REGISTRY.items():
-        path = cds_year_file(var, args.year)
+        path = climatology_file_path(var, args.year)
         if not path.exists():
             skipped[var] = f"CDS file not found: {path}"
             continue
