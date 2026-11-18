@@ -1,11 +1,20 @@
 import datetime
 import logging
 import os
+import shutil
+import tempfile
+import zipfile
+from pathlib import Path
+from typing import Callable
 
 import cdsapi
+import eccodes
+import xarray as xr
 
+from cds_requests import OutputCheckError
 from config import BASELINE_DATA_ROOT, DATA_LAG_TIME_DAYS, DL_BBOX, RECENT_DATA_ROOT
 from era5_land_variable_registry import VARIABLE_REGISTRY
+from file_helpers import NETCDF_ENGINE, check_output_file
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +29,33 @@ _ALL_HOURS = [f"{hour:02d}:00" for hour in range(24)]
 # the 00:00 UTC value on date D+1 is the 24-hour accumulation for date D
 _ACCUMULATION_FOR_PRIOR_24HRS = "00:00"
 
+# daily totals are built from the hourly accumulations; daily means come
+# ready-made from the daily-statistics dataset
+_DATASET_FOR_DAILY_OP = {
+    "sum": _HOURLY_GRIB_ENDPOINT,
+    "mean": _PREBAKED_DAILY_ENDPOINT,
+}
+
+
+def group_variables_by_dataset(variable_keys=None) -> dict[str, list[str]]:
+    """Group registry keys by the CDS dataset that serves them, so one request
+    per dataset can fetch every variable it holds.
+
+    Args:
+        variable_keys: registry keys to group (default: every registry variable).
+    Returns:
+        {dataset name: [registry keys in registry order]}
+    """
+    keys = VARIABLE_REGISTRY if variable_keys is None else variable_keys
+    groups: dict[str, list[str]] = {}
+    for key in keys:
+        dataset = _DATASET_FOR_DAILY_OP[VARIABLE_REGISTRY[key]["daily_op"]]
+        groups.setdefault(dataset, []).append(key)
+    return groups
+
 
 def _build_hourly_grib_request(
-    cds_variable: str, year: int, months: list, days: list
+    cds_variables: list, year: int, months: list, days: list
 ) -> dict:
     """Build a request for the hourly GRIB endpoint, scoped to the given months/days.
 
@@ -34,7 +67,7 @@ def _build_hourly_grib_request(
     applied here.
     """
     return {
-        "variable": cds_variable,
+        "variable": list(cds_variables),
         "year": str(year),
         "month": months,
         "day": days,
@@ -46,10 +79,10 @@ def _build_hourly_grib_request(
 
 
 def _build_prebaked_daily_request(
-    cds_variable: str, year: int, months: list, days: list
+    cds_variables: list, year: int, months: list, days: list
 ) -> dict:
     return {
-        "variable": cds_variable,
+        "variable": list(cds_variables),
         "year": str(year),
         "month": months,
         "day": days,
@@ -58,6 +91,136 @@ def _build_prebaked_daily_request(
         "frequency": "6_hourly",
         "area": DL_BBOX,
     }
+
+
+def _split_grib(bundle: Path, staged: dict[str, Path]) -> set[str]:
+    """Copy each GRIB message whose shortName is in ``staged`` to that file.
+
+    Messages are copied as raw bytes, never decoded and re-encoded, so values
+    stay bit-identical to the download. Returns the shortNames found.
+    """
+    found = set()
+    outputs = {}
+    try:
+        with open(bundle, "rb") as source:
+            while (handle := eccodes.codes_grib_new_from_file(source)) is not None:
+                try:
+                    short_name = eccodes.codes_get(handle, "shortName")
+                    if short_name not in staged:
+                        logger.warning(
+                            "%s holds unexpected variable %s; skipping it",
+                            bundle.name,
+                            short_name,
+                        )
+                        continue
+                    if short_name not in outputs:
+                        outputs[short_name] = open(staged[short_name], "wb")
+                    outputs[short_name].write(eccodes.codes_get_message(handle))
+                    found.add(short_name)
+                finally:
+                    eccodes.codes_release(handle)
+    finally:
+        for output in outputs.values():
+            output.close()
+    return found
+
+
+def _netcdf_variables(path: Path) -> set[str]:
+    with xr.open_dataset(path, engine=NETCDF_ENGINE) as ds:
+        return set(ds.data_vars)
+
+
+def _place_netcdf(path: Path, staged: dict[str, Path], found: set[str]) -> None:
+    """Move a single-variable netCDF to the staged path for the variable it holds,
+    identified by opening it rather than trusting its name."""
+    matches = _netcdf_variables(path) & staged.keys()
+    if len(matches) != 1:
+        logger.warning(
+            "%s holds none or several of %s; skipping it", path.name, sorted(staged)
+        )
+        return
+    short_name = matches.pop()
+    shutil.move(path, staged[short_name])
+    found.add(short_name)
+
+
+def _split_zip(bundle: Path, staged: dict[str, Path]) -> set[str]:
+    """Unpack a zip of one netCDF per variable into the staged paths."""
+    found: set[str] = set()
+    with tempfile.TemporaryDirectory(dir=bundle.parent) as work_dir:
+        with zipfile.ZipFile(bundle) as archive:
+            for index, member in enumerate(archive.infolist()):
+                if member.is_dir():
+                    continue
+                # write under our own name so a member path cannot escape work_dir
+                extracted = Path(work_dir) / f"member_{index}.nc"
+                with archive.open(member) as src, open(extracted, "wb") as dst:
+                    shutil.copyfileobj(src, dst)
+                _place_netcdf(extracted, staged, found)
+    return found
+
+
+def _split_bundle(bundle: Path, staged: dict[str, Path]) -> set[str]:
+    """Split a download into the staged per-variable files, choosing GRIB, zip or
+    bare netCDF from the file's content (a one-variable daily-statistics request
+    may come back as a bare netCDF rather than a zip)."""
+    if zipfile.is_zipfile(bundle):
+        return _split_zip(bundle, staged)
+    with open(bundle, "rb") as f:
+        is_grib = f.read(4) == b"GRIB"
+    if is_grib:
+        return _split_grib(bundle, staged)
+    found: set[str] = set()
+    with tempfile.TemporaryDirectory(dir=bundle.parent) as work_dir:
+        copy = Path(work_dir) / "single.nc"
+        shutil.copyfile(bundle, copy)
+        _place_netcdf(copy, staged, found)
+    return found
+
+
+def split_then_install(
+    targets: dict[str, Path], expected_dates: list
+) -> Callable[[Path], None]:
+    """Build a finalize step for a combined (several-variable) download.
+
+    The step splits the downloaded bundle into one file per variable, checks
+    every split file for its variable and ``expected_dates`` and, only if every
+    expected variable is present and passes, moves each into place. Otherwise it
+    removes the split files and raises ``OutputCheckError`` (so the request runner
+    resubmits) without installing anything.
+
+    Args:
+        targets: {registry short_name (GRIB shortName or netCDF variable name):
+            final path for that variable's file}
+        expected_dates: valid dates each split file must hold exactly.
+    """
+    targets = {name: Path(path) for name, path in targets.items()}
+
+    def finalize(bundle: Path) -> None:
+        bundle = Path(bundle)
+        staged = {}
+        for short_name, target in targets.items():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            staged[short_name] = target.with_name(f"{target.stem}.split{target.suffix}")
+        try:
+            found = _split_bundle(bundle, staged)
+            missing = sorted(targets.keys() - found)
+            if missing:
+                raise OutputCheckError(
+                    f"{bundle.name} is missing expected variables {missing}"
+                )
+            for short_name, path in staged.items():
+                ok, reason = check_output_file(path, short_name, expected_dates)
+                if not ok:
+                    raise OutputCheckError(f"{targets[short_name]}: {reason}")
+            for short_name, path in staged.items():
+                path.replace(targets[short_name])
+                logger.info("Installed %s", targets[short_name])
+        finally:
+            for path in staged.values():
+                path.unlink(missing_ok=True)
+
+    return finalize
 
 
 def analysis_date_not_in_january():
@@ -179,11 +342,11 @@ def download_era5_land_climatology(
                 months, days = [_ALL_MONTHS[0]], [_ALL_DAYS[0]]
             else:
                 months, days = _ALL_MONTHS, _ALL_DAYS
-            request = _build_hourly_grib_request(cds_variable, year, months, days)
+            request = _build_hourly_grib_request([cds_variable], year, months, days)
         if summary_method == "mean":
             cds_endpoint = _PREBAKED_DAILY_ENDPOINT
             request = _build_prebaked_daily_request(
-                cds_variable, year, _ALL_MONTHS, _ALL_DAYS
+                [cds_variable], year, _ALL_MONTHS, _ALL_DAYS
             )
 
         dst = download_dir / f"{prefix}{year}{suffix}"
@@ -216,10 +379,10 @@ def download_recurring_era5_land_pipeline(
     )
     if summary_method == "sum":
         cds_endpoint = _HOURLY_GRIB_ENDPOINT
-        request = _build_hourly_grib_request(cds_variable, year, months, days)
+        request = _build_hourly_grib_request([cds_variable], year, months, days)
     if summary_method == "mean":
         cds_endpoint = _PREBAKED_DAILY_ENDPOINT
-        request = _build_prebaked_daily_request(cds_variable, year, months, days)
+        request = _build_prebaked_daily_request([cds_variable], year, months, days)
 
     dst = download_dir / f"{prefix}{time_chunk_tag}{suffix}"
     client.retrieve(cds_endpoint, request, target=dst)
