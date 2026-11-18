@@ -25,6 +25,11 @@ dev = [
   "black",
   "pytest",
 ]
+# reads the DestinE Earth Data Hub ERA5-Land Zarr for the cloud-mirror comparison
+mirror = [
+  "zarr",
+  "aiohttp",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
