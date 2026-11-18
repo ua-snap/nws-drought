@@ -18,112 +18,69 @@ from config import (
     SPI_DIST,
     WATER_BUDGET_OFFSET_M,
 )
+from download_helpers import get_analysis_date, recurring_monthly_files
 from era5_land_variable_registry import VARIABLE_REGISTRY
 from file_helpers import NETCDF_ENGINE, ds_combination, setup_logging
 
+logger = logging.getLogger(__name__)
 
-def combine_swvl():
-    swvl1_prefix = VARIABLE_REGISTRY["swvl1"]["prefix"]
-    recent_swvl1_dir = RECENT_DATA_ROOT.joinpath(
-        VARIABLE_REGISTRY["swvl1"]["recent_dir"]
-    )
-    recent_swvl1 = {
-        "prev_yr": recent_swvl1_dir.joinpath(f"{swvl1_prefix}previous_year.nc"),
-        "this_month": recent_swvl1_dir.joinpath(f"{swvl1_prefix}current_month.nc"),
-        "this_yr": recent_swvl1_dir.joinpath(f"{swvl1_prefix}current_year.nc"),
-    }
-    swvl2_prefix = VARIABLE_REGISTRY["swvl2"]["prefix"]
-    recent_swvl2_dir = RECENT_DATA_ROOT.joinpath(
-        VARIABLE_REGISTRY["swvl2"]["recent_dir"]
-    )
-    recent_swvl2 = {
-        "prev_yr": recent_swvl2_dir.joinpath(f"{swvl2_prefix}previous_year.nc"),
-        "this_month": recent_swvl2_dir.joinpath(f"{swvl2_prefix}current_month.nc"),
-        "this_yr": recent_swvl2_dir.joinpath(f"{swvl2_prefix}current_year.nc"),
-    }
+COMBINED_SWVL_FILENAME = "swvl_combined.nc"
+
+
+def _require_files(files):
+    """Fail with the month of every missing monthly file named."""
+    missing = [f for f in files if not f.exists()]
+    if missing:
+        raise FileNotFoundError(
+            "Missing monthly recent data files: "
+            + ", ".join(f"{f.name} ({f})" for f in missing)
+        )
+    return files
+
+
+def combine_swvl(analysis_date):
+    """Weight and sum the two soil moisture layers over the full coverage range."""
+    layer1_files = _require_files(recurring_monthly_files("swvl1", analysis_date))
+    layer2_files = _require_files(recurring_monthly_files("swvl2", analysis_date))
+    suffix = VARIABLE_REGISTRY["swvl1"]["suffix"]
+
+    swvl1_da = ds_combination(layer1_files, suffix)[
+        VARIABLE_REGISTRY["swvl1"]["short_name"]
+    ]
+    swvl2_da = ds_combination(layer2_files, suffix)[
+        VARIABLE_REGISTRY["swvl2"]["short_name"]
+    ]
+    swvl1_a, swvl2_a = xr.align(swvl1_da, swvl2_da, join="inner")
+    swvl = (
+        swvl1_a * SOIL_MOISTURE_WEIGHT_LAYER1 + swvl2_a * SOIL_MOISTURE_WEIGHT_LAYER2
+    ).astype("float32")
+    swvl.name = "swvl"
+    swvl.attrs["source"] = "Weighted combination of swvl1 and swvl2 UTC daily means."
+
     out_dir = RECENT_DATA_ROOT.joinpath("era5_land_daily_swvl")
     out_dir.mkdir(exist_ok=True)
-    recent_swvl_combined = {
-        "prev_yr": out_dir.joinpath("swvl_previous_year.nc"),
-        "this_month": out_dir.joinpath("swvl_current_month.nc"),
-        "this_yr": out_dir.joinpath("swvl_current_year.nc"),
-    }
-
-    if recent_swvl1["this_yr"].exists():
-        recent_data_to_open = list(recent_swvl1.keys())
-    else:
-        # should only happen if current month is January
-        recent_data_to_open = ["prev_yr", "this_month"]
-
-    for period_of_record in recent_data_to_open:
-        swvl1_da = xr.open_dataset(recent_swvl1[period_of_record])["swvl1"]
-        swvl2_da = xr.open_dataset(recent_swvl2[period_of_record])["swvl2"]
-        swvl1_a, swvl2_a = xr.align(swvl1_da, swvl2_da, join="inner")
-        swvl = (
-            swvl1_a * SOIL_MOISTURE_WEIGHT_LAYER1
-            + swvl2_a * SOIL_MOISTURE_WEIGHT_LAYER2
-        ).astype("float32")
-        swvl.name = "swvl"
-        swvl.attrs["source"] = (
-            "Weighted combination of swvl1 and swvl2 UTC daily means."
-        )
-
-        out_path = recent_swvl_combined[period_of_record]
-        swvl.to_netcdf(
-            out_path,
-            engine=NETCDF_ENGINE,
-            encoding={"swvl": {"dtype": "float32"}},
-        )
-        logger.info(f"Wrote combined recent swvl to {out_path}")
+    out_path = out_dir.joinpath(COMBINED_SWVL_FILENAME)
+    swvl.to_netcdf(
+        out_path,
+        engine=NETCDF_ENGINE,
+        encoding={"swvl": {"dtype": "float32"}},
+    )
+    logger.info(f"Wrote combined recent swvl to {out_path}")
 
 
-def assemble_recent_downloads(variable_key):
-    """Assemble the individual components of the recently downloaded data into a single data structure."""
+def assemble_recent_downloads(variable_key, analysis_date):
+    """Open the monthly files covering the previous year through the analysis month as one dataset."""
 
     logger.info(f"Assembling {variable_key} dataset")
 
     if variable_key == "swvl":
-        prefix = "swvl_"
-        recent_data_dir_for_variable = RECENT_DATA_ROOT.joinpath("era5_land_daily_swvl")
+        files = [RECENT_DATA_ROOT / "era5_land_daily_swvl" / COMBINED_SWVL_FILENAME]
         suffix = ".nc"
     else:
-        prefix = VARIABLE_REGISTRY[variable_key]["prefix"]
-        recent_data_dir_for_variable = RECENT_DATA_ROOT.joinpath(
-            VARIABLE_REGISTRY[variable_key]["recent_dir"]
-        )
+        files = recurring_monthly_files(variable_key, analysis_date)
         suffix = VARIABLE_REGISTRY[variable_key]["suffix"]
 
-    recent_data = {
-        "prev_yr": recent_data_dir_for_variable.joinpath(
-            f"{prefix}previous_year{suffix}"
-        ),
-        "this_month": recent_data_dir_for_variable.joinpath(
-            f"{prefix}current_month{suffix}"
-        ),
-        "this_yr": recent_data_dir_for_variable.joinpath(
-            f"{prefix}current_year{suffix}"
-        ),
-    }
-
-    if recent_data["this_yr"].exists():
-        # first, majority (non-January) of analysis date cases
-        data_to_merge = [
-            recent_data["prev_yr"],
-            recent_data["this_yr"],
-            recent_data["this_month"],
-        ]
-        logger.info(
-            "Merging recent data for prior year, current year, current month..."
-        )
-    else:
-        # should only happen if current month is January
-        data_to_merge = [
-            recent_data["prev_yr"],
-            recent_data["this_month"],
-        ]
-        logger.info("Merging recent data for prior year and current month...")
-
-    recent_data_ds = ds_combination(data_to_merge, suffix)
+    recent_data_ds = ds_combination(_require_files(files), suffix)
 
     logger.info("Merging recent data complete.")
     return recent_data_ds
@@ -454,16 +411,16 @@ def process_smd():
 if __name__ == "__main__":
 
     setup_logging()
-    logger = logging.getLogger(__name__)
+    analysis_date = get_analysis_date()
 
     logger.info("Processing drought indices...")
 
     logger.info("Combnining recent soil moisture data")
-    combine_swvl()
+    combine_swvl(analysis_date)
 
     logger.info("Assembling recent ERA5-Land data...")
     datasets = [
-        assemble_recent_downloads(varname)
+        assemble_recent_downloads(varname, analysis_date)
         for varname in [
             "swe",
             "swvl",
