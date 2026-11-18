@@ -3,11 +3,17 @@
 import logging
 from pathlib import Path
 
+import numpy as np
 import xarray as xr
 
 from era5_land_variable_registry import VARIABLE_REGISTRY
 
 NETCDF_ENGINE = "h5netcdf"
+GRIB_BACKEND_KWARGS = {
+    "time_dims": ["valid_time"],
+    "coords_as_attributes": ["surface", "number"],
+    "indexpath": "",  # grib can spew auxillary .idx files, this halts that behavior
+}
 
 
 def setup_logging() -> None:
@@ -66,11 +72,7 @@ def ds_combination(fps_to_open: list, suffix: str) -> xr.Dataset:
             data_vars="minimal",
             coords="minimal",
             compat="override",
-            backend_kwargs={
-                "time_dims": ["valid_time"],
-                "coords_as_attributes": ["surface", "number"],
-                "indexpath": "",  # grib can spew auxillary .idx files, this halts that behavior
-            },
+            backend_kwargs=GRIB_BACKEND_KWARGS,
         )
     else:
         ds = xr.open_mfdataset(
@@ -82,3 +84,43 @@ def ds_combination(fps_to_open: list, suffix: str) -> xr.Dataset:
             compat="override",
         ).sortby("valid_time")
     return ds
+
+
+def check_output_file(
+    path: Path, short_name: str, expected_dates: list
+) -> tuple[bool, str]:
+    """Check that a downloaded file holds the variable and exactly the dates expected.
+
+    ``expected_dates`` are the valid dates (for 00:00 accumulations, the valid_time
+    label, per the download convention). Dates compare at day resolution.
+    Returns (passed, reason); never raises for an unreadable file.
+    """
+    path = Path(path)
+    try:
+        if path.suffix == ".grib":
+            ds = xr.open_dataset(
+                path, engine="cfgrib", backend_kwargs=GRIB_BACKEND_KWARGS
+            )
+        else:
+            ds = xr.open_dataset(path, engine=NETCDF_ENGINE)
+        with ds:
+            has_variable = short_name in ds.data_vars
+            found = set(ds["valid_time"].values.astype("datetime64[D]"))
+    except Exception as exc:
+        return False, f"{path.name} could not be opened or read: {exc}"
+
+    if not has_variable:
+        return False, f"{path.name} does not contain variable {short_name!r}"
+    expected = set(np.array(expected_dates, dtype="datetime64[D]"))
+    if found != expected:
+        missing = sorted(str(d) for d in expected - found)
+        extra = sorted(str(d) for d in found - expected)
+        return False, (
+            f"{path.name} dates differ from expected: "
+            f"missing {missing[:3]}{'...' if len(missing) > 3 else ''}, "
+            f"unexpected {extra[:3]}{'...' if len(extra) > 3 else ''}"
+        )
+    return (
+        True,
+        f"{path.name} holds {short_name} for all {len(expected)} expected dates",
+    )
