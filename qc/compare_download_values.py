@@ -6,9 +6,10 @@ directories, then point this script at both:
 
     python -m qc.compare_download_values OLD_RECENT_DATA_DIR NEW_RECENT_DATA_DIR
 
-For each variable it opens both copies, keeps the dates they share, and
-compares every value exactly (missing values must sit in the same places).
-It exits non-zero if any variable differs or shares no dates.
+For each variable it opens both copies, checks that they hold the same dates,
+and compares every value exactly (missing values must sit in the same places).
+It exits non-zero if any variable differs, has dates the other lacks, or
+shares no dates.
 """
 
 import argparse
@@ -41,8 +42,11 @@ def new_monthly_files(root: Path, variable_key: str) -> list[Path]:
 
 
 def compare_arrays(old: xr.DataArray, new: xr.DataArray) -> dict:
-    """Compare two arrays over the dates they share."""
-    shared = np.intersect1d(old["valid_time"].values, new["valid_time"].values)
+    """Compare two arrays: the dates each holds, and every value on the dates
+    they share."""
+    old_dates = old["valid_time"].values
+    new_dates = new["valid_time"].values
+    shared = np.intersect1d(old_dates, new_dates)
     old_s = old.sel(valid_time=shared)
     new_s = new.sel(valid_time=shared)
     old_s, new_s = xr.align(old_s, new_s, join="exact")
@@ -54,10 +58,24 @@ def compare_arrays(old: xr.DataArray, new: xr.DataArray) -> dict:
     max_abs = float(np.max(np.abs(a[both] - b[both]))) if both.any() else 0.0
     return {
         "shared_dates": len(shared),
+        "dates_only_in_old": len(np.setdiff1d(old_dates, new_dates)),
+        "dates_only_in_new": len(np.setdiff1d(new_dates, old_dates)),
         "differing_values": differing,
         "missing_value_mismatches": nan_mismatch,
         "max_abs_difference": max_abs,
     }
+
+
+def is_identical(result: dict) -> bool:
+    """True when both downloads hold the same dates and every value matches."""
+    return (
+        "error" not in result
+        and result["shared_dates"] > 0
+        and not result["dates_only_in_old"]
+        and not result["dates_only_in_new"]
+        and not result["differing_values"]
+        and not result["missing_value_mismatches"]
+    )
 
 
 def compare_variable(old_root: Path, new_root: Path, variable_key: str) -> dict:
@@ -86,12 +104,7 @@ def main() -> int:
     for variable_key in VARIABLE_REGISTRY:
         result = compare_variable(args.old_root, args.new_root, variable_key)
         print(f"{variable_key}: {result}")
-        if (
-            "error" in result
-            or result["shared_dates"] == 0
-            or result["differing_values"]
-            or result["missing_value_mismatches"]
-        ):
+        if not is_identical(result):
             all_equal = False
 
     print("All values identical." if all_equal else "Differences found.")
