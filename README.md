@@ -50,6 +50,20 @@ python pipeline_download.py
 python pipeline_run.py
 ```
 
+#### How the download works
+`pipeline_download.py` keeps one file per variable per month under `recent_data/`, named `<prefix><YYYY>-<MM>.<grib|nc>`, covering January 1 of the previous year through the analysis date.
+ - Each run downloads the current month and re-downloads the three months before it. Recent ERA5-Land data is first released as a preliminary version and replaced with final values about two months later.
+ - Older months are reused if their file holds the expected variable and every expected date. Missing or damaged months are downloaded again.
+ - Variables from the same CDS dataset are requested together (precipitation with potential evaporation, and snow water equivalent with both soil-moisture layers), and the result is split back into one file per variable.
+ - Requests are sent one at a time, as ECMWF asks. A normal run makes 4 requests (6 when the re-download window crosses into a new year).
+ - Each request logs its queue, run and transfer time, and the script logs its total run time.
+ - If a job is stopped, rerunning it picks up a request still queued at CDS instead of submitting a duplicate.
+ - Files from the old chunked layout (`*_current_month`, `*_previous_year`, `*_current_year`) are ignored and can be deleted by hand.
+
+**Never run two CDS jobs at once on the same account.** Do not start the climatology download, the request-size benchmark, or a manual test download while `pipeline_download.py` is queued or running, and pause the recurring download during a climatology rebuild. ECMWF can suspend accounts that submit requests in parallel.
+
+To confirm the new layout returns the same values as the old one, run the old download (from a checkout before this change) and the new one on the same day into two directories, then run `python -m qc.compare_download_values OLD_DIR NEW_DIR`.
+
 A drought indicator netCDF dataset, one file per summary interval, will be written to the `INDICES_DIR` directory. Each file contains results for all indices for the entire area of interest. `pipeline_run.py` names outputs `drought_indices_<summary_interval>day_<YYYY>_<MM>_<DD>.nc`.
 
 ### Figure Creation (`data_viz/`)
