@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-import cdsapi
 import eccodes
 import xarray as xr
 
@@ -359,51 +358,163 @@ def get_analysis_date():
     return analysis_date
 
 
-def download_era5_land_climatology(
-    variable_key: str,
-    start_year: int = 1981,
-    end_year: int = 2021,
-) -> None:
-    """Download ERA5-Land for one variable over [start_year, end_year]."""
-    variable_meta = VARIABLE_REGISTRY[variable_key]
-    cds_variable = variable_meta["cds_variable"]
-    prefix = variable_meta["prefix"]
-    summary_method = variable_meta["daily_op"]
-    dst_dir = variable_meta["climatology_dir"]
-    suffix = variable_meta["suffix"]
+# Climatology: one yearly file per variable, 1981 through 2021, fetched by one
+# job that sends one request per dataset per year with the variables combined.
+_CLIMATOLOGY_START_YEAR = 1981
+_CLIMATOLOGY_END_YEAR = 2021
+# Only January 1 is fetched for the summed variables in the final year: its
+# 00:00 value is the total for December 31 of the year before. The mean
+# variables fetch the whole final year.
+_FINAL_CLIMATOLOGY_YEAR = 2021
 
-    download_dir = BASELINE_DATA_ROOT / dst_dir
-    download_dir.mkdir(parents=True, exist_ok=True)
+# One request per dataset per calendar year. This shape is kept unless the
+# request-size benchmark (baseline_data_generation_scripts/
+# benchmark_request_shapes.py) shows 12 monthly requests finishing sooner in
+# both of its rounds; a single queue swing should not switch the rebuild to
+# 12 times as many requests.
+CLIMATOLOGY_REQUEST_SHAPE = "yearly"
 
-    api_credentials_check()
-    client = cdsapi.Client()
 
-    for year in range(start_year, end_year + 1):
-        logger.info(
-            "Downloading %s (%s) for %s to %s",
-            variable_key,
-            cds_variable,
-            year,
-            download_dir,
+def climatology_file_path(variable_key: str, year: int) -> Path:
+    """Yearly climatology file for one variable:
+    ``<climatology_dir>/<prefix><YYYY><suffix>`` under BASELINE_DATA_ROOT."""
+    meta = VARIABLE_REGISTRY[variable_key]
+    return (
+        BASELINE_DATA_ROOT
+        / meta["climatology_dir"]
+        / f"{meta['prefix']}{year}{meta['suffix']}"
+    )
+
+
+def _climatology_months_and_days(dataset: str, year: int) -> tuple[list, list]:
+    if dataset == _HOURLY_GRIB_ENDPOINT and year == _FINAL_CLIMATOLOGY_YEAR:
+        return [_ALL_MONTHS[0]], [_ALL_DAYS[0]]
+    return _ALL_MONTHS, _ALL_DAYS
+
+
+@dataclass(frozen=True)
+class ClimatologyRequest:
+    """One CDS request for some variables of a dataset over one year."""
+
+    dataset: str
+    variable_keys: tuple[str, ...]
+    year: int
+
+    def cds_request(self) -> dict:
+        cds_variables = [
+            VARIABLE_REGISTRY[key]["cds_variable"] for key in self.variable_keys
+        ]
+        build = (
+            _build_hourly_grib_request
+            if self.dataset == _HOURLY_GRIB_ENDPOINT
+            else _build_prebaked_daily_request
         )
-        if summary_method == "sum":
-            cds_endpoint = _HOURLY_GRIB_ENDPOINT
-            if year == 2021:
-                # only Jan 1 at 00:00 is needed for the final climatology year:
-                # it holds the 24-hour accumulation for Dec 31 of the prior year
-                months, days = [_ALL_MONTHS[0]], [_ALL_DAYS[0]]
-            else:
-                months, days = _ALL_MONTHS, _ALL_DAYS
-            request = _build_hourly_grib_request([cds_variable], year, months, days)
-        if summary_method == "mean":
-            cds_endpoint = _PREBAKED_DAILY_ENDPOINT
-            request = _build_prebaked_daily_request(
-                [cds_variable], year, _ALL_MONTHS, _ALL_DAYS
-            )
+        months, days = _climatology_months_and_days(self.dataset, self.year)
+        return build(cds_variables, self.year, months, days)
 
-        dst = download_dir / f"{prefix}{year}{suffix}"
+    def expected_dates(self) -> list[str]:
+        """Valid dates each yearly file holds: every day of the year (for the
+        summed variables, January 1 holds the previous year's December 31
+        total), or only January 1 for the summed variables' final year."""
+        _, days = _climatology_months_and_days(self.dataset, self.year)
+        if days == [_ALL_DAYS[0]]:
+            return [datetime.date(self.year, 1, 1).isoformat()]
+        return [
+            date for month in range(1, 13) for date in month_dates(self.year, month)
+        ]
 
-        client.retrieve(cds_endpoint, request, target=dst)
+    def targets(self) -> dict[str, Path]:
+        return {
+            VARIABLE_REGISTRY[key]["short_name"]: climatology_file_path(key, self.year)
+            for key in self.variable_keys
+        }
+
+    def bundle_target(self) -> Path:
+        """Download name, stable for a dataset and year so a restarted job
+        finds the request it saved."""
+        suffix = ".grib" if self.dataset == _HOURLY_GRIB_ENDPOINT else ".zip"
+        return BASELINE_DATA_ROOT / _BUNDLE_DIR / f"{self.dataset}_{self.year}{suffix}"
+
+
+def plan_climatology_requests(
+    variable_keys=None,
+    start_year: int = _CLIMATOLOGY_START_YEAR,
+    end_year: int = _CLIMATOLOGY_END_YEAR,
+) -> list[ClimatologyRequest]:
+    """The climatology requests still needed, oldest year first.
+
+    For each year and dataset, variables whose yearly file passes the output
+    check are skipped; the rest are fetched in one combined request. Every
+    failing file is logged.
+    """
+    requests = []
+    for year in range(start_year, end_year + 1):
+        for dataset, keys in group_variables_by_dataset(variable_keys).items():
+            request = ClimatologyRequest(dataset, tuple(keys), year)
+            expected = request.expected_dates()
+            needed = []
+            for key in keys:
+                path = climatology_file_path(key, year)
+                ok, reason = check_output_file(
+                    path, VARIABLE_REGISTRY[key]["short_name"], expected
+                )
+                if ok:
+                    continue
+                needed.append(key)
+                if path.exists():
+                    logger.warning(
+                        "%s failed its check (%s); will replace it", path, reason
+                    )
+                else:
+                    logger.info("%s is missing; will download it", path)
+            if needed:
+                requests.append(ClimatologyRequest(dataset, tuple(needed), year))
+    return requests
+
+
+def download_era5_land_climatology(
+    variable_keys=None,
+    start_year: int = _CLIMATOLOGY_START_YEAR,
+    end_year: int = _CLIMATOLOGY_END_YEAR,
+    *,
+    client=None,
+) -> None:
+    """Download the ERA5-Land climatology, one CDS request at a time.
+
+    Yearly files that already pass the output check are kept, so running the
+    job again after a stop continues where it stopped, and a job still queued
+    at CDS is reattached rather than submitted again.
+
+    Args:
+        variable_keys: registry keys to download (default: every variable).
+        start_year, end_year: inclusive range of years.
+        client: datastores client for the request runner (default: built from
+            cdsapi's configuration).
+    """
+    requests = plan_climatology_requests(variable_keys, start_year, end_year)
+    logger.info(
+        "Climatology download %d-%d: %d %s CDS requests",
+        start_year,
+        end_year,
+        len(requests),
+        CLIMATOLOGY_REQUEST_SHAPE,
+    )
+    for request in requests:
+        target = request.bundle_target()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        logger.info(
+            "Requesting %s (%s) for %d",
+            request.dataset,
+            ",".join(request.variable_keys),
+            request.year,
+        )
+        run_request(
+            request.dataset,
+            request.cds_request(),
+            target,
+            split_then_install(request.targets(), request.expected_dates()),
+            client=client,
+        )
 
 
 # Recurring download: one file per variable per month, covering January 1 of

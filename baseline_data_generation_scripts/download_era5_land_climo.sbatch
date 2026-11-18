@@ -10,25 +10,30 @@
 #SBATCH --error=logs/%x-%j.err
 #SBATCH --signal=B:TERM@300
 #
-# Submit with a variable key, for example:
-#   VARIABLE=tp sbatch baseline_data_generation_scripts/download_era5_land_climo.sbatch
-# Optional distinct job names in the queue:
-#   VARIABLE=pev sbatch --job-name=pev_era5_climo baseline_data_generation_scripts/download_era5_land_climo.sbatch
+# Downloads the climatology for all variables, one CDS request at a time:
+#   sbatch baseline_data_generation_scripts/download_era5_land_climo.sbatch
+# If the job stops (for example at the time limit), submit it again: finished
+# yearly files are checked and kept, and a request still queued at CDS is
+# picked up rather than sent again, so it continues where it stopped.
 #
+# Optionally restrict to one variable:
+#   VARIABLE=tp sbatch baseline_data_generation_scripts/download_era5_land_climo.sbatch
 # Allowed VARIABLE values: tp, pev, swe, swvl1, swvl2
 
 set -euo pipefail
-
-: "${VARIABLE:?Set VARIABLE to one of: tp, pev, swe, swvl1, swvl2}"
 
 mkdir -p logs
 
 echo "Host: $(hostname)"
 echo "Start: $(date)"
-echo "VARIABLE=${VARIABLE}"
+echo "VARIABLE=${VARIABLE:-all}"
 
 echo "Working directory: $(pwd)"
 
-uv run --frozen python -m baseline_data_generation_scripts.download_era5_land_climo -v "${VARIABLE}"
+if [[ -n "${VARIABLE:-}" ]]; then
+  uv run --frozen python -m baseline_data_generation_scripts.download_era5_land_climo -v "${VARIABLE}"
+else
+  uv run --frozen python -m baseline_data_generation_scripts.download_era5_land_climo
+fi
 
 echo "End: $(date)"
