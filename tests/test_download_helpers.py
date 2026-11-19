@@ -436,20 +436,38 @@ def test_month_failing_the_check_joins_the_backfill_for_its_year(
     )
 
 
-def test_first_run_backfills_each_older_year_in_one_request_per_dataset(
+def test_first_run_backfills_each_older_year_within_the_cost_limit(
     recent_root,
 ):
     requests = plan_recurring_requests(datetime.date(2026, 11, 18))
     assert _summary(requests) == {
         (HOURLY, 2025, tuple(range(1, 13)), "01", "31"),
-        (DAILY, 2025, tuple(range(1, 13)), "01", "31"),
+        (DAILY, 2025, (1, 2, 3, 4), "01", "31"),
+        (DAILY, 2025, (5, 6, 7, 8), "01", "31"),
+        (DAILY, 2025, (9, 10, 11, 12), "01", "31"),
         (HOURLY, 2026, tuple(range(1, 8)), "01", "31"),
-        (DAILY, 2026, tuple(range(1, 8)), "01", "31"),
+        (DAILY, 2026, (1, 2, 3, 4), "01", "31"),
+        (DAILY, 2026, (5, 6, 7), "01", "31"),
         (HOURLY, 2026, (8, 9, 10), "01", "31"),
         (DAILY, 2026, (8, 9, 10), "01", "31"),
         (HOURLY, 2026, (11,), "01", "18"),
         (DAILY, 2026, (11,), "01", "18"),
     }
+
+
+def test_no_daily_statistics_request_passes_the_cds_cost_limit(recent_root):
+    # CDS refused swe, swvl1 and swvl2 for all of 2025 in one request ("cost
+    # limits exceeded"); one variable for a whole year is the largest
+    # accepted.
+    for analysis_date in (datetime.date(2026, 11, 18), datetime.date(2027, 2, 10)):
+        for request in plan_recurring_requests(analysis_date):
+            if request.dataset == DAILY:
+                assert len(request.variable_keys) * len(request.months) <= 12
+    for request in download_helpers.plan_climatology_requests(
+        start_year=2005, end_year=2005
+    ):
+        if request.dataset == DAILY:
+            assert len(request.variable_keys) == 1
 
 
 def test_every_coverage_month_is_requested_once_and_nothing_outside_it(
@@ -815,7 +833,7 @@ def test_climatology_file_keeps_its_yearly_name(baseline_root):
     )
 
 
-def test_climatology_with_no_files_sends_82_requests_in_order_one_at_a_time(
+def test_climatology_with_no_files_sends_every_request_in_order_one_at_a_time(
     baseline_root, monkeypatch, no_split, tmp_path
 ):
     _stub_check(monkeypatch, lambda path: False)
@@ -823,8 +841,18 @@ def test_climatology_with_no_files_sends_82_requests_in_order_one_at_a_time(
 
     download_helpers.download_era5_land_climatology(client=client)
 
-    assert [(int(r["year"]), d) for d, r in client.submits] == [
-        (year, dataset) for year in CLIMATOLOGY_YEARS for dataset in (HOURLY, DAILY)
+    # Per year: the summed variables together, then each daily-statistics
+    # variable alone (CDS refuses all three over a whole year).
+    per_year = [
+        (HOURLY, ["total_precipitation", "potential_evaporation"]),
+        (DAILY, ["snow_depth_water_equivalent"]),
+        (DAILY, ["volumetric_soil_water_layer_1"]),
+        (DAILY, ["volumetric_soil_water_layer_2"]),
+    ]
+    assert [(int(r["year"]), d, r["variable"]) for d, r in client.submits] == [
+        (year, dataset, variables)
+        for year in CLIMATOLOGY_YEARS
+        for dataset, variables in per_year
     ]
     assert client.max_active == 1
 
@@ -837,7 +865,7 @@ def test_climatology_plan_starts_at_the_first_year_with_a_failing_file(
     plan = download_helpers.plan_climatology_requests()
 
     assert plan[0].year == 2000
-    assert len(plan) == 2 * (2021 - 2000 + 1)
+    assert len(plan) == 4 * (2021 - 2000 + 1)
 
 
 def test_climatology_refetches_only_the_failing_variable(
@@ -932,7 +960,7 @@ def test_restarted_climatology_reattaches_to_the_saved_2010_job(
     download_helpers.download_era5_land_climatology(client=client)
 
     assert client.reattached == ["saved-2010"]
-    assert [(d, r["year"]) for d, r in client.submits] == [(DAILY, "2010")]
+    assert [(d, r["year"]) for d, r in client.submits] == [(DAILY, "2010")] * 3
 
 
 def test_climatology_bundles_differ_for_different_variable_sets(baseline_root):

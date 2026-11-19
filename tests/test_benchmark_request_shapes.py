@@ -29,14 +29,22 @@ def test_requests_interleave_yearly_and_monthly_over_two_rounds():
     plan = bench.plan_benchmark(2000)
 
     assert [(r.round, r.shape) for r in plan] == (
-        [(1, "yearly")] * 2
+        [(1, "yearly")] * 4
         + [(1, "monthly")] * 24
-        + [(2, "yearly")] * 2
+        + [(2, "yearly")] * 4
         + [(2, "monthly")] * 24
     )
-    yearly = [r.cds_request() for r in plan[:2]]
-    assert [len(r["month"]) for r in yearly] == [12, 12]
-    assert {tuple(r["month"]) for r in (p.cds_request() for p in plan[2:26])} == {
+    yearly = [r.cds_request() for r in plan[:4]]
+    assert [len(r["month"]) for r in yearly] == [12, 12, 12, 12]
+    # CDS refuses three daily-statistics variables over a whole year, so the
+    # yearly shape asks for them one at a time.
+    assert [r.variable_keys for r in plan[:4]] == [
+        ("tp", "pev"),
+        ("swe",),
+        ("swvl1",),
+        ("swvl2",),
+    ]
+    assert {tuple(r["month"]) for r in (p.cds_request() for p in plan[4:28])} == {
         (f"{m:02d}",) for m in range(1, 13)
     }
     assert {r.dataset for r in plan} == {
@@ -73,17 +81,17 @@ class _Client:
     def submit(self, dataset, request):
         self.submits.append(dataset)
         # every request after the first round is served from the cache
-        return _Job(f"job-{len(self.submits)}", cached=len(self.submits) > 26)
+        return _Job(f"job-{len(self.submits)}", cached=len(self.submits) > 28)
 
 
 def test_benchmark_records_queue_and_run_time_and_flags_cache_hits(tmp_path):
     rows = bench.run_benchmark(2000, tmp_path, client=_Client())
 
-    assert len(rows) == 52
+    assert len(rows) == 56
     first = rows[0]
     assert (first.queue, first.run, first.cache_hit) == (40.0, 60.0, False)
     assert first.transfer is not None and first.total is not None
     assert rows[-1].cache_hit and rows[-1].queue is None
     report = bench.render_report(2000, rows)
     assert "Verdict" in report
-    assert "26 of 52 requests were served from the CDS cache" in report
+    assert "28 of 56 requests were served from the CDS cache" in report

@@ -4,9 +4,11 @@
 A sample year is fetched in both shapes, then the following year again in both
 shapes, interleaved so that swings in the CDS queue over the day hit both:
 yearly, then 12 monthly, then yearly, then 12 monthly. The second round uses a
-different year so CDS cannot answer it from its cache of the first round. Each shape sends one request per dataset with the
-variables combined, as the climatology job does, and every request goes
-through the sequential request runner, one at a time.
+different year so CDS cannot answer it from its cache of the first round. Each
+shape requests its variables as the climatology job would: combined per
+dataset, except that a yearly daily-statistics request holds one variable
+(CDS refuses three variables over a whole year). Every request goes through
+the sequential request runner, one at a time.
 
 Downloads go to a scratch directory, never the climatology directories. The
 markdown report lists, per request, the time queued and running at CDS (from
@@ -34,6 +36,7 @@ from download_helpers import (
     build_cds_request,
     bundle_suffix,
     group_variables_by_dataset,
+    variable_groups_per_request,
 )
 from file_helpers import setup_logging
 
@@ -61,7 +64,11 @@ class BenchmarkRequest:
 
     def label(self) -> str:
         months = "all" if len(self.months) == 12 else self.months[0]
-        return f"round{self.round}_{self.shape}_{self.dataset}_{self.year}_{months}"
+        variables = "-".join(self.variable_keys)
+        return (
+            f"round{self.round}_{self.shape}_{self.dataset}_{variables}"
+            f"_{self.year}_{months}"
+        )
 
     def target(self, output_dir: Path) -> Path:
         return Path(output_dir) / f"{self.label()}{bundle_suffix(self.dataset)}"
@@ -79,7 +86,8 @@ class Timing:
 
 def plan_benchmark(year: int) -> list[BenchmarkRequest]:
     """Requests in the order sent: per round, the yearly shape then the
-    monthly shape, each covering both datasets with variables combined.
+    monthly shape, each covering both datasets with variables combined (one
+    daily-statistics variable per yearly request, for the CDS cost limit).
 
     Each round uses its own year (the sample year, then the year after), so a
     later round never repeats an earlier request that CDS could serve from
@@ -89,16 +97,17 @@ def plan_benchmark(year: int) -> list[BenchmarkRequest]:
     for offset, round_ in enumerate(ROUNDS):
         round_year = year + offset
         for dataset, keys in groups.items():
-            plan.append(
-                BenchmarkRequest(
-                    round_,
-                    "yearly",
-                    dataset,
-                    tuple(keys),
-                    round_year,
-                    tuple(_ALL_MONTHS),
+            for group in variable_groups_per_request(dataset, keys, 12):
+                plan.append(
+                    BenchmarkRequest(
+                        round_,
+                        "yearly",
+                        dataset,
+                        group,
+                        round_year,
+                        tuple(_ALL_MONTHS),
+                    )
                 )
-            )
         for month in _ALL_MONTHS:
             for dataset, keys in groups.items():
                 plan.append(

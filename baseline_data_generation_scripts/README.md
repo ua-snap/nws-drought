@@ -3,7 +3,7 @@
 The bulk of the data downloaded here are used to construct a set of "baseline reference" data: climatologies and statistical distribution parameters against which the recent conditions may be compared to understand whether or not drought conditions are present with respect to climate normals, i.e. baselines. Constructing these climatologies / computing these parameters requires a few steps.
 
 ### Download the ERA5-Land Climatology
-One job downloads every variable for 1981–2021, one CDS request at a time, with variables from the same dataset combined into one request per year:
+One job downloads every variable for 1981–2021, one CDS request at a time, with precipitation and potential evaporation combined into one request per year. Snow water equivalent and the two soil-moisture layers are requested one variable per year, because CDS refuses all three over a whole year ("cost limits exceeded"):
 
 ```sh
 sbatch baseline_data_generation_scripts/download_era5_land_climo.sbatch

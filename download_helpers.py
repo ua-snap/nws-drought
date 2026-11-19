@@ -58,6 +58,37 @@ def group_variables_by_dataset(variable_keys=None) -> dict[str, list[str]]:
     return groups
 
 
+# CDS refuses a daily-statistics request for three variables over a whole
+# year ("cost limits exceeded"); one variable over a whole year is accepted.
+# Requests to a capped dataset hold at most this many variables x months.
+_MAX_VARIABLE_MONTHS = {_PREBAKED_DAILY_ENDPOINT: 12}
+
+
+def _chunks(items, size: int) -> list[tuple]:
+    items = tuple(items)
+    return [items[i : i + size] for i in range(0, len(items), size)]
+
+
+def months_per_request(dataset: str, n_variables: int, n_months: int) -> int:
+    """Most months one request for ``n_variables`` can hold without passing
+    the dataset's CDS cost limit (at least 1)."""
+    cap = _MAX_VARIABLE_MONTHS.get(dataset)
+    if cap is None:
+        return n_months
+    return max(1, cap // n_variables)
+
+
+def variable_groups_per_request(
+    dataset: str, variable_keys, n_months: int
+) -> list[tuple[str, ...]]:
+    """Split variables into groups small enough to request ``n_months`` months
+    together within the dataset's CDS cost limit."""
+    cap = _MAX_VARIABLE_MONTHS.get(dataset)
+    if cap is None:
+        return [tuple(variable_keys)] if variable_keys else []
+    return _chunks(variable_keys, max(1, cap // n_months))
+
+
 def _build_hourly_grib_request(
     cds_variables: list, year: int, months: list, days: list
 ) -> dict:
@@ -389,7 +420,8 @@ def get_analysis_date():
 
 
 # Climatology: one yearly file per variable, 1981 through 2021, fetched by one
-# job that sends one request per dataset per year with the variables combined.
+# job that sends one request per dataset per year with the variables combined,
+# except where a dataset's CDS cost limit splits them (_MAX_VARIABLE_MONTHS).
 _CLIMATOLOGY_START_YEAR = 1981
 _CLIMATOLOGY_END_YEAR = 2021
 # Only January 1 is fetched for the summed variables in the final year: its
@@ -474,8 +506,9 @@ def plan_climatology_requests(
     """The climatology requests still needed, oldest year first.
 
     For each year and dataset, variables whose yearly file passes the output
-    check are skipped; the rest are fetched in one combined request. Every
-    failing file is logged.
+    check are skipped; the rest are fetched in one combined request, or in
+    several where the dataset's CDS cost limit requires it (one variable per
+    request for daily statistics). Every failing file is logged.
     """
     requests = []
     for year in range(start_year, end_year + 1):
@@ -491,8 +524,8 @@ def plan_climatology_requests(
                     expected,
                 )
             ]
-            if needed:
-                requests.append(ClimatologyRequest(dataset, tuple(needed), year))
+            for group in variable_groups_per_request(dataset, needed, 12):
+                requests.append(ClimatologyRequest(dataset, group, year))
     return requests
 
 
@@ -681,7 +714,9 @@ def plan_recurring_requests(analysis_date: datetime.date) -> list[MonthlyRequest
 
     Per dataset: older months whose files are missing or fail the check, one
     request per calendar year; the completed months inside the re-download
-    window, one request per calendar year; and the current month, days 01
+    window, one request per calendar year; a year's months are split further
+    into blocks where the dataset's CDS cost limit requires it (4 months for
+    the three daily-statistics variables); and the current month, days 01
     through the analysis day, on its own (CDS errors on days not yet
     available). When one variable's file for a month fails, the month is
     requested for every variable of that dataset.
@@ -698,15 +733,14 @@ def plan_recurring_requests(analysis_date: datetime.date) -> list[MonthlyRequest
         backfill = [m for m in older if _month_needs_download(keys, *m)]
         for group in (backfill, window):
             for group_year, in_year in itertools.groupby(group, key=lambda m: m[0]):
-                requests.append(
-                    MonthlyRequest(
-                        dataset,
-                        keys,
-                        group_year,
-                        tuple(m for _, m in in_year),
-                        tuple(_ALL_DAYS),
+                in_year = [m for _, m in in_year]
+                size = months_per_request(dataset, len(keys), len(in_year))
+                for block in _chunks(in_year, size):
+                    requests.append(
+                        MonthlyRequest(
+                            dataset, keys, group_year, block, tuple(_ALL_DAYS)
+                        )
                     )
-                )
         requests.append(MonthlyRequest(dataset, keys, year, (month,), current_days))
     return requests
 

@@ -54,7 +54,7 @@ python pipeline_run.py
 `pipeline_download.py` keeps one file per variable per month under `recent_data/`, named `<prefix><YYYY>-<MM>.<grib|nc>`, covering January 1 of the previous year through the analysis date.
  - Each run downloads the current month and re-downloads the three months before it. Recent ERA5-Land data is first released as a preliminary version and replaced with final values about two months later.
  - Older months are reused if their file holds the expected variable and every expected date. Missing or damaged months are downloaded again.
- - Variables from the same CDS dataset are requested together (precipitation with potential evaporation, and snow water equivalent with both soil-moisture layers), and the result is split back into one file per variable.
+ - Variables from the same CDS dataset are requested together (precipitation with potential evaporation, and snow water equivalent with both soil-moisture layers), and the result is split back into one file per variable. CDS refuses a daily-statistics request for all three variables over a whole year ("cost limits exceeded"), so those requests cover at most 4 months; a first run with no files on disk therefore makes more requests than a normal run.
  - Requests are sent one at a time, as ECMWF asks. A normal run makes 4 requests (6 when the re-download window crosses into a new year).
  - Each request logs its queue, run and transfer time, and the script logs its total run time.
  - If a job is stopped, rerunning it picks up a request still queued at CDS instead of submitting a duplicate.
