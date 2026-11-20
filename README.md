@@ -60,7 +60,7 @@ python pipeline_run.py
  - If a job is stopped, rerunning it picks up a request still queued at CDS instead of submitting a duplicate.
  - Files from the old chunked layout (`*_current_month`, `*_previous_year`, `*_current_year`) are ignored and can be deleted by hand.
 
-**Never run two CDS jobs at once on the same account.** Do not start the climatology download, the request-size benchmark, or a manual test download while `pipeline_download.py` is queued or running, and pause the recurring download during a climatology rebuild. ECMWF can suspend accounts that submit requests in parallel.
+**Never run two CDS jobs at once on the same account.** Do not start a manual test download (such as `compare_era5_land_mirror.py --from-cds`) while `pipeline_download.py` is queued or running. ECMWF can suspend accounts that submit requests in parallel. The climatology download reads the Earth Data Hub mirror, not CDS, so it can run alongside the recurring download.
 
 To confirm the new layout returns the same values as the old one, run the old download (from a checkout before this change) and the new one on the same day into two directories, then run `python -m qc.compare_download_values OLD_DIR NEW_DIR`.
 
