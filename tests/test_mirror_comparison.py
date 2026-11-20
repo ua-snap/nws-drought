@@ -322,3 +322,57 @@ def test_dateline_column_wraps_to_minus_180_however_it_is_stored(
 
     assert lon_idx.size == 511
     assert mirror.wrap_longitudes([stored])[0] == -180.0
+
+
+def test_evaporation_uses_the_form_detected_from_precipitation(monkeypatch, tmp_path):
+    # Evaporation running totals that change sign during the day shrink in
+    # magnitude, which on their own look like hourly increments. The store's form
+    # is read from precipitation and used for evaporation.
+    hours = pd.date_range("1999-12-31T00:00", "2000-01-31T23:00", freq="h")
+    rng = np.random.default_rng(3)
+    since_midnight = (hours.hour.values - 1) % 24 + 1  # 01:00 -> 1 ... 00:00 -> 24
+    flux = rng.uniform(-2e-4, 1e-4, size=(hours.size, 1, 1))
+    pev_hourly = np.zeros_like(flux)
+    for i, step in enumerate(since_midnight):
+        pev_hourly[i] = flux[i] if step == 1 else pev_hourly[i - 1] + flux[i]
+    increments = rng.uniform(0, 1e-3, size=flux.shape)
+    tp_hourly = np.zeros_like(flux)
+    for i, step in enumerate(since_midnight):
+        tp_hourly[i] = increments[i] if step == 1 else tp_hourly[i - 1] + increments[i]
+
+    def wrap(values):
+        return xr.DataArray(
+            values,
+            dims=("valid_time", "latitude", "longitude"),
+            coords={"valid_time": hours, "latitude": [61.0], "longitude": [-150.0]},
+        )
+
+    hourly = {"tp": wrap(tp_hourly), "pev": wrap(pev_hourly)}
+    assert mirror.detect_accumulation_convention(hourly["pev"]) == "increments"
+
+    monkeypatch.setenv(mirror.API_KEY_ENV_VAR, "test-key")
+    monkeypatch.setattr(mirror, "open_mirror_store", lambda key: None)
+    monkeypatch.setattr(
+        mirror,
+        "fetch_mirror",
+        lambda store, name, s, e: hourly[name].sel(
+            valid_time=slice(f"{s - datetime.timedelta(days=1)}", f"{e}T23:00")
+        ),
+    )
+    monkeypatch.setattr(
+        mirror, "fetch_cds", lambda var, s, e, d, *, client=None: (tmp_path, 1.0)
+    )
+    cds = mirror.daily_totals_from_accumulated(hourly["pev"]).sel(
+        valid_time=slice("2000-01-01", "2000-01-31")
+    )
+    monkeypatch.setattr(mirror, "load_cds", lambda path, var, s, e: cds)
+    report = tmp_path / "report.md"
+
+    mirror.main(
+        ["--year", "2000", "--months", "1", "--variable", "pev", "--from-cds",
+         "--cds-dir", str(tmp_path), "--report", str(report)]
+    )
+
+    text = report.read_text()
+    assert "accumulated, detected from tp" in text
+    assert "| exact match |" in text

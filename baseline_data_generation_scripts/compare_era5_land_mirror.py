@@ -13,7 +13,8 @@ run to some variables. The result is a markdown report.
 Daily values are rebuilt as CDS builds them:
   - summed variables (tp, pev): the 00:00 UTC value of day D+1 is the total for
     day D. If the store holds hourly increments instead of running totals, the 24
-    increments ending at 00:00 of day D+1 are summed.
+    increments ending at 00:00 of day D+1 are summed. Which form the store uses is
+    detected once, from a week of tp, and applied to pev too.
   - mean variables (swe, swvl1, swvl2): the mean of the 00, 06, 12 and 18 UTC values.
 
 The API key is read from the environment variable named by API_KEY_ENV_VAR. Without
@@ -465,6 +466,30 @@ def bbox_indices(latitudes, longitudes) -> tuple[np.ndarray, np.ndarray]:
     return lat_idx, lon_idx
 
 
+# Days of precipitation read to tell how the store holds its summed variables.
+_CONVENTION_SAMPLE_DAYS = 7
+
+
+def store_accumulation_convention(store: xr.Dataset, start: datetime.date) -> str:
+    """How the store holds its summed variables, detected from precipitation.
+
+    One store uses one form for every summed variable, so it is read from tp, whose
+    running totals never shrink within a day. Potential evaporation cannot be used:
+    its running totals shrink whenever the flux changes sign (dew or frost
+    deposition), which looks like hourly increments.
+    """
+    end = start + datetime.timedelta(days=_CONVENTION_SAMPLE_DAYS - 1)
+    sample = fetch_mirror(store, VARIABLE_REGISTRY["tp"]["short_name"], start, end)
+    convention = detect_accumulation_convention(sample)
+    logger.info(
+        "The store holds summed variables as %s (detected from tp, %s to %s)",
+        convention,
+        start,
+        end,
+    )
+    return convention
+
+
 def load_cds(path: Path, var: str, start: datetime.date, end: datetime.date):
     """The CDS daily values in ``path`` from ``start`` through ``end``."""
     entry = VARIABLE_REGISTRY[var]
@@ -579,7 +604,7 @@ def parse_args(argv=None) -> argparse.Namespace:
         default="auto",
         help=(
             "How the store holds tp and pev: running totals since 00 UTC, hourly "
-            "increments, or detect from the data (default)."
+            "increments, or detect from a week of tp and use it for both (default)."
         ),
     )
     return parser.parse_args(argv)
@@ -600,9 +625,15 @@ def main(argv=None, *, client=None) -> None:
         return
 
     store = open_mirror_store(api_key)
+    variables = args.variable or list(VARIABLE_REGISTRY)
+    convention = args.accumulation
+    if convention == "auto" and any(
+        VARIABLE_REGISTRY[var]["daily_op"] == "sum" for var in variables
+    ):
+        convention = store_accumulation_convention(store, start)
     results, skipped, timings = {}, {}, {}
     fetch_seconds = 0.0
-    for var in args.variable or VARIABLE_REGISTRY:
+    for var in variables:
         entry = VARIABLE_REGISTRY[var]
         cds_seconds = None
         if args.from_cds:
@@ -621,11 +652,9 @@ def main(argv=None, *, client=None) -> None:
             timings[var] = (mirror_seconds, cds_seconds)
 
         if entry["daily_op"] == "sum":
-            convention = args.accumulation
-            if convention == "auto":
-                convention = detect_accumulation_convention(hourly)
             daily = daily_totals(hourly, convention)
-            rebuild = f"00:00 next day ({convention})"
+            how = "detected from tp" if args.accumulation == "auto" else "as given"
+            rebuild = f"00:00 next day ({convention}, {how})"
         else:
             daily = daily_mean_6_hourly(hourly)
             rebuild = "mean of 00/06/12/18 UTC"
