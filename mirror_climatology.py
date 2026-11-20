@@ -13,11 +13,14 @@ is written. Years outside the requested range are left alone.
 """
 
 import datetime
+import functools
+import json
 import logging
 import os
 import time
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import xarray as xr
 
@@ -35,6 +38,38 @@ _FINAL_CLIMATOLOGY_YEAR = 2021
 CLIMATOLOGY_SUFFIX = ".nc"
 ARCHIVE_DIR_NAME = "cds_climatology_archive"
 SOURCE_ATTR = "mirror_source"
+
+
+_CDS_GRID_FILE = Path(__file__).resolve().parent / "era5_land_cds_grid.json"
+# Mirror coordinates rounded to 4 decimals sit within float noise of the CDS values
+_GRID_TOLERANCE = 1e-6
+
+
+@functools.cache
+def cds_grid() -> dict[str, list[float]]:
+    """Latitudes and longitudes over the download box exactly as the CDS
+    downloads store them (for example 71.80000000000001)."""
+    return json.loads(_CDS_GRID_FILE.read_text())
+
+
+def _on_cds_grid(daily: xr.DataArray) -> xr.DataArray:
+    """Replace the rounded mirror coordinates with the CDS floats, so the
+    climatology aligns exactly with the recurring CDS files."""
+    grid = cds_grid()
+    exact = {}
+    for dim in ("latitude", "longitude"):
+        values = daily[dim].values
+        cds = np.asarray(grid[dim])
+        gap = np.abs(values[:, None] - cds[None, :])
+        nearest = gap.argmin(axis=1)
+        off = gap[np.arange(values.size), nearest] > _GRID_TOLERANCE
+        if off.any():
+            raise RuntimeError(
+                f"Mirror {dim} values {values[off][:3].tolist()} are not on the "
+                "CDS grid"
+            )
+        exact[dim] = cds[nearest]
+    return daily.assign_coords(exact)
 
 
 class MirrorKeyMissing(RuntimeError):
@@ -59,7 +94,8 @@ def climatology_file_path(variable_key: str, year: int) -> Path:
 
 
 def staged_path(target: Path) -> Path:
-    return target.with_name(f"{target.stem}.partial{target.suffix}")
+    # not "*.nc", so a file left by a killed run is never taken for a year
+    return target.with_name(f"{target.name}.partial")
 
 
 def _archive_path(path: Path) -> Path:
@@ -150,7 +186,9 @@ def _daily_year(store, variable_key: str, year: int, convention: str | None):
         .floor("D")
         .isin(pd.DatetimeIndex(dates))
     )
-    daily = daily.isel(valid_time=keep).sortby("latitude", ascending=False)
+    daily = _on_cds_grid(
+        daily.isel(valid_time=keep).sortby("latitude", ascending=False)
+    )
     daily = daily.rename(entry["short_name"])
     source_attrs = store[entry["short_name"]].attrs
     daily.attrs = {

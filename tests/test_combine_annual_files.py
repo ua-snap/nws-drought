@@ -37,6 +37,8 @@ def test_precipitation_years_combine_in_order_and_grib_files_are_ignored(
             annual / f"total_precipitation_daily_{year}{CLIMATOLOGY_SUFFIX}", year
         )
     (annual / "total_precipitation_daily_1999.grib").write_bytes(b"old CDS file")
+    # what a download killed mid-write leaves behind
+    (annual / "total_precipitation_daily_2002.nc.partial").write_bytes(b"partial")
     combined = tmp_path / "tp_daily_1981_2020_combined.nc"
     monkeypatch.setattr(
         combine_annual_files, "daily_year_dir_for_var", lambda var: annual

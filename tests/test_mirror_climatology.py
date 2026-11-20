@@ -195,8 +195,8 @@ def test_grid_matches_the_cds_box_and_order(baseline_root, use_store):
     with xr.open_dataset(yearly("swvl1", 2000), engine="h5netcdf") as ds:
         # 72 stored a hair high and the dateline column stored just below 180 are
         # kept; 73 and 50 N and the columns outside the box are dropped
-        assert list(ds["latitude"].values) == [72.0, 60.0, 51.0]
-        assert list(ds["longitude"].values) == [-180.0, -160.0, -129.0]
+        assert np.round(ds["latitude"].values, 4).tolist() == [72.0, 60.0, 51.0]
+        assert np.round(ds["longitude"].values, 4).tolist() == [-180.0, -160.0, -129.0]
         assert ds["swvl1"].dims == ("valid_time", "latitude", "longitude")
 
 
@@ -386,3 +386,59 @@ def test_summed_form_is_read_from_precipitation_even_when_only_evaporation_runs(
 
     assert asked == [datetime.date(2000, 1, 1)]
     assert mirror_climatology.is_mirror_built("pev", 2000)
+
+
+def test_grid_coordinates_are_the_cds_floats_so_files_align_exactly(
+    baseline_root, use_store
+):
+    # CDS stores coordinates such as 71.80000000000001; the indices divide
+    # recent CDS data by the climatology, which needs identical coordinates
+    use_store(make_store("1999-12-31", "2000-12-31"))
+    grid = mirror_climatology.cds_grid()
+    cds_lat = [v for v in grid["latitude"] if round(v, 4) in (72.0, 60.0, 51.0)]
+    cds_lon = [v for v in grid["longitude"] if round(v, 4) in (-180.0, -160.0, -129.0)]
+
+    run(["swvl1"], 2000, 2000)
+
+    with xr.open_dataset(yearly("swvl1", 2000), engine="h5netcdf") as ds:
+        assert ds["latitude"].values.tolist() == cds_lat
+        assert ds["longitude"].values.tolist() == cds_lon
+        recent = xr.DataArray(
+            np.ones((3, 3)),
+            dims=("latitude", "longitude"),
+            coords={"latitude": cds_lat, "longitude": cds_lon},
+        )
+        xr.align(ds["swvl1"].isel(valid_time=0), recent, join="exact")
+
+
+def test_pinned_grid_holds_the_whole_cds_box():
+    grid = mirror_climatology.cds_grid()
+    assert len(grid["latitude"]) == 211 and len(grid["longitude"]) == 511
+    assert grid["latitude"][2] == 71.80000000000001
+    assert round(grid["longitude"][0], 4) == -180.0
+    assert round(grid["longitude"][-1], 4) == -129.0
+
+
+def test_mirror_point_off_the_cds_grid_stops_the_year(baseline_root, use_store):
+    store = make_store("1999-12-31", "2000-12-31")
+    use_store(store.assign_coords(latitude=STORE_LAT + np.array([0, 0, 0.03, 0, 0])))
+
+    with pytest.raises(RuntimeError, match="CDS grid"):
+        run(["swvl1"], 2000, 2000)
+
+    assert not yearly("swvl1", 2000).exists()
+
+
+def test_staged_file_is_never_found_as_a_yearly_file(baseline_root, use_store):
+    from file_helpers import discover_year_files
+
+    use_store(make_store("1999-12-31", "2000-12-31"))
+    run(["swvl1"], 2000, 2000)
+    staged = mirror_climatology.staged_path(yearly("swvl1", 2001))
+    staged.write_bytes(b"left by a killed run")
+
+    found = discover_year_files(
+        yearly("swvl1", 2000).parent, "swvl1", mirror_climatology.CLIMATOLOGY_SUFFIX
+    )
+
+    assert list(found) == [2000]
