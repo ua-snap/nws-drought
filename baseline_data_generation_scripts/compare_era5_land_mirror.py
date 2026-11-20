@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Compare a cloud copy of ERA5-Land with the CDS yearly files already on disk.
+"""Compare a cloud copy of ERA5-Land with CDS, by value and by download time.
 
-For one sample year over the download bounding box, this script reads the DestinE
-Earth Data Hub ERA5-Land Zarr store, rebuilds the daily values the way the CDS
-requests produce them, and compares them value by value with the CDS yearly files.
-It makes no CDS requests. The result is a markdown report.
+For a sample period over the download bounding box (a whole year by default, or
+some of its months with --months), this script reads the DestinE Earth Data Hub
+ERA5-Land Zarr store, rebuilds the daily values the way the CDS requests produce
+them, and compares them value by value with the CDS values. The CDS values come
+from the climatology yearly files on disk, which makes no CDS request, or, with
+--from-cds, from a fresh CDS request for the same variable and months, timed so
+the report can set the CDS wall time beside the mirror's. --variable limits the
+run to some variables. The result is a markdown report.
 
 Daily values are rebuilt as CDS builds them:
   - summed variables (tp, pev): the 00:00 UTC value of day D+1 is the total for
@@ -18,6 +22,10 @@ A mirror should replace CDS only if every value matches exactly.
 
 Needs the optional `mirror` dependency group for remote access:
     uv run --group mirror python -m baseline_data_generation_scripts.compare_era5_land_mirror
+
+A small timed test, one variable over three months:
+    uv run --frozen --group mirror python -m baseline_data_generation_scripts.compare_era5_land_mirror \
+        --year 2000 --months 1-3 --variable swvl1 --from-cds
 """
 
 import argparse
@@ -31,8 +39,19 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from config import DL_BBOX
-from download_helpers import climatology_file_path
+from cds_requests import run_request
+from config import BASELINE_DATA_ROOT, DL_BBOX
+from download_helpers import (
+    _ALL_DAYS,
+    build_cds_request,
+    bundle_suffix,
+    climatology_file_path,
+    exclusive_download_lock,
+    group_variables_by_dataset,
+    month_dates,
+    split_then_install,
+)
+from file_helpers import check_output_file
 from era5_land_variable_registry import VARIABLE_REGISTRY
 from file_helpers import ds_combination, setup_logging
 
@@ -41,6 +60,7 @@ logger = logging.getLogger(__name__)
 API_KEY_ENV_VAR = "EDH_API_KEY"
 EDH_STORE_URL = "https://data.earthdatahub.destine.eu/era5/era5-land-v0.zarr"
 DEFAULT_REPORT = Path(__file__).resolve().parent / "mirror_comparison.md"
+DEFAULT_CDS_DIR = BASELINE_DATA_ROOT / "mirror_comparison"
 MEAN_HOURS = (0, 6, 12, 18)
 # share of varying pixel-days whose magnitude never falls within the accumulation
 # period; above this the store is taken to hold running totals
@@ -224,27 +244,31 @@ def render_variable_row(var: str, stats: dict) -> str:
 
 def render_report(
     *,
-    year: int,
+    period: str,
     tested: bool,
     results: dict | None = None,
     skipped: dict | None = None,
     fetch_seconds: float | None = None,
     cds_request_seconds: float | None = None,
+    timings: dict | None = None,
 ) -> str:
+    """Markdown report. ``timings`` is {variable: (mirror seconds, CDS seconds or
+    None)} for a run that timed a fresh CDS request per variable."""
     results = results or {}
     skipped = skipped or {}
     lines = [
         "# ERA5-Land cloud mirror comparison",
         "",
         f"Generated {datetime.datetime.now(datetime.timezone.utc):%Y-%m-%d %H:%M} UTC "
-        f"by `compare_era5_land_mirror.py`. Sample year: {year}. "
+        f"by `compare_era5_land_mirror.py`. Sample period: {period}. "
         f"Bounding box (N, W, S, E): {DL_BBOX}.",
         "",
         "Daily values are rebuilt the way the CDS requests produce them: the 00:00 UTC "
         "value of the next day for tp and pev (or the sum of the day's 24 hourly "
         "increments if the store is de-accumulated), and the mean of the 00, 06, 12 "
         "and 18 UTC values for swe, swvl1 and swvl2. They are compared with the CDS "
-        "yearly files on disk. A mirror replaces CDS only if every value matches exactly.",
+        "values for the same period. A mirror replaces CDS only if every value "
+        "matches exactly.",
         "",
         "## DestinE Earth Data Hub (ERA5-Land Zarr)",
         "",
@@ -287,22 +311,41 @@ def render_report(
         lines.append("")
         lines.append("### Fetch time")
         lines.append("")
+        if timings:
+            lines += [
+                "| Variable | Mirror fetch (hourly data) | CDS request, wall time "
+                "(queue + run + transfer) | CDS / mirror |",
+                "|---|---|---|---|",
+            ]
+            for var, (mirror_s, cds_s) in timings.items():
+                cds_cell = "not timed (file already on disk)"
+                ratio = ""
+                if cds_s is not None:
+                    cds_cell = f"{cds_s:.1f} s"
+                    ratio = f"{cds_s / mirror_s:.1f}x" if mirror_s else ""
+                lines.append(f"| {var} | {mirror_s:.1f} s | {cds_cell} | {ratio} |")
+            lines.append("")
+            lines.append(
+                "The CDS request log in the run's output splits each CDS time into "
+                "queue, run and transfer, and flags requests served from the CDS cache."
+            )
         if fetch_seconds is not None:
             lines.append(
-                f"- Mirror fetch for the sample year: {fetch_seconds:.1f} s "
+                f"- Mirror fetch for the sample period: {fetch_seconds:.1f} s "
                 "(all compared variables, hourly data)."
             )
         if cds_request_seconds is not None:
             lines.append(
-                f"- CDS request time for the same year: {cds_request_seconds:.1f} s."
+                f"- CDS request time for the same period: {cds_request_seconds:.1f} s."
             )
             if fetch_seconds:
                 lines.append(
                     f"- Ratio CDS / mirror: {cds_request_seconds / fetch_seconds:.1f}x."
                 )
-        else:
+        elif not timings:
             lines.append(
-                "- CDS request time not supplied (pass `--cds-request-seconds`)."
+                "- CDS request time not supplied (pass `--cds-request-seconds`, "
+                "or `--from-cds` to time a fresh request)."
             )
         lines.append("")
     lines.append(UNTESTED_CANDIDATES)
@@ -328,13 +371,24 @@ def open_mirror_store(api_key: str) -> xr.Dataset:
     )
 
 
-def fetch_mirror_year(store: xr.Dataset, short_name: str, year: int) -> xr.DataArray:
-    """Load the hourly values for one year over the bounding box, starting at 00:00 on
-    31 Dec of the previous year so the first day's total can be rebuilt."""
+def period_bounds(year: int, months: tuple[int, int]) -> tuple[datetime.date, datetime.date]:
+    """First and last day of the months ``months[0]`` through ``months[1]`` of ``year``."""
+    first, last = months
+    end = datetime.date(year, last, 1) + datetime.timedelta(days=32)
+    return datetime.date(year, first, 1), end.replace(day=1) - datetime.timedelta(days=1)
+
+
+def fetch_mirror(
+    store: xr.Dataset, short_name: str, start: datetime.date, end: datetime.date
+) -> xr.DataArray:
+    """Load the hourly values from ``start`` through ``end`` over the bounding box,
+    starting at 00:00 on the day before ``start`` so the first day's total can be
+    rebuilt."""
     north, west, south, east = DL_BBOX
     da = store[short_name]
     time_dim = "valid_time" if "valid_time" in da.dims else "time"
-    da = da.sel({time_dim: slice(f"{year - 1}-12-31T00:00", f"{year}-12-31T23:00")})
+    first = start - datetime.timedelta(days=1)
+    da = da.sel({time_dim: slice(f"{first}T00:00", f"{end}T23:00")})
     lat = da.latitude.values
     lat_slice = slice(north, south) if lat[0] > lat[-1] else slice(south, north)
     if float(da.longitude.max()) > 180:
@@ -342,10 +396,66 @@ def fetch_mirror_year(store: xr.Dataset, short_name: str, year: int) -> xr.DataA
     return normalize(da.sel(latitude=lat_slice, longitude=slice(west, east)).load())
 
 
-def load_cds_year(var: str, year: int) -> xr.DataArray:
+def load_cds(path: Path, var: str, start: datetime.date, end: datetime.date):
+    """The CDS daily values in ``path`` from ``start`` through ``end``."""
     entry = VARIABLE_REGISTRY[var]
-    ds = ds_combination([climatology_file_path(var, year)], entry["suffix"])
-    return ds[entry["short_name"]].load()
+    da = ds_combination([path], entry["suffix"])[entry["short_name"]]
+    return da.sel(valid_time=slice(str(start), f"{end}T23:00")).load()
+
+
+def expected_cds_dates(start: datetime.date, end: datetime.date) -> list[str]:
+    """Valid dates a CDS file for whole months ``start`` through ``end`` holds."""
+    return [
+        date
+        for month in range(start.month, end.month + 1)
+        for date in month_dates(start.year, month)
+    ]
+
+
+def cds_file_path(cds_dir: Path, var: str, start, end) -> Path:
+    entry = VARIABLE_REGISTRY[var]
+    return (
+        Path(cds_dir)
+        / f"{entry['prefix']}{start:%Y-%m}_to_{end:%Y-%m}{entry['suffix']}"
+    )
+
+
+def fetch_cds(
+    var: str, start: datetime.date, end: datetime.date, cds_dir: Path, *, client=None
+) -> tuple[Path, float | None]:
+    """Request ``var`` for the whole months ``start`` through ``end`` from CDS, one
+    request, into ``cds_dir``. Returns the installed file and the request's wall
+    time, or None for the time when a file that passes the output check is
+    already there (nothing is requested)."""
+    entry = VARIABLE_REGISTRY[var]
+    target = cds_file_path(cds_dir, var, start, end)
+    expected = expected_cds_dates(start, end)
+    if target.exists() and check_output_file(target, entry["short_name"], expected)[0]:
+        logger.info("Reusing %s; the CDS time is not measured", target)
+        return target, None
+    (dataset,) = group_variables_by_dataset([var])
+    months = [f"{m:02d}" for m in range(start.month, end.month + 1)]
+    request = build_cds_request(dataset, (var,), start.year, months, _ALL_DAYS)
+    bundle = target.with_name(f"{target.stem}_download{bundle_suffix(dataset)}")
+    logger.info("Requesting %s %s through %s from CDS", var, start, end)
+    started = time.perf_counter()
+    with exclusive_download_lock(Path(cds_dir)):
+        run_request(
+            dataset,
+            request,
+            bundle,
+            split_then_install({entry["short_name"]: target}, expected),
+            client=client,
+        )
+    return target, time.perf_counter() - started
+
+
+def _month_range(text: str) -> tuple[int, int]:
+    first, _, last = text.partition("-")
+    months = (int(first), int(last or first))
+    if not 1 <= months[0] <= months[1] <= 12:
+        raise argparse.ArgumentTypeError(f"not a month range within one year: {text}")
+    return months
 
 
 def parse_args(argv=None) -> argparse.Namespace:
@@ -354,6 +464,32 @@ def parse_args(argv=None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--year", type=int, default=2000, help="Sample year to compare."
+    )
+    parser.add_argument(
+        "--months",
+        type=_month_range,
+        default=(1, 12),
+        help="Months of the sample year to compare, as FIRST-LAST (default 1-12).",
+    )
+    parser.add_argument(
+        "--variable",
+        action="append",
+        choices=sorted(VARIABLE_REGISTRY),
+        help="Variable to compare; repeat for several (default: every variable).",
+    )
+    parser.add_argument(
+        "--from-cds",
+        action="store_true",
+        help=(
+            "Request the CDS values fresh, one request per variable, and time each "
+            "request, instead of reading the climatology yearly files."
+        ),
+    )
+    parser.add_argument(
+        "--cds-dir",
+        type=Path,
+        default=DEFAULT_CDS_DIR,
+        help="Where --from-cds puts its CDS files (never the climatology directories).",
     )
     parser.add_argument(
         "--report",
@@ -379,28 +515,40 @@ def parse_args(argv=None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv=None) -> None:
+def main(argv=None, *, client=None) -> None:
     setup_logging()
     args = parse_args(argv)
     api_key = os.getenv(API_KEY_ENV_VAR)
+    start, end = period_bounds(args.year, args.months)
+    period = (
+        str(args.year) if args.months == (1, 12) else f"{start} through {end}"
+    )
 
     if not api_key:
         logger.warning("%s is not set; writing a 'not tested' report", API_KEY_ENV_VAR)
-        args.report.write_text(render_report(year=args.year, tested=False))
+        args.report.write_text(render_report(period=period, tested=False))
         return
 
     store = open_mirror_store(api_key)
-    results, skipped = {}, {}
+    results, skipped, timings = {}, {}, {}
     fetch_seconds = 0.0
-    for var, entry in VARIABLE_REGISTRY.items():
-        path = climatology_file_path(var, args.year)
-        if not path.exists():
-            skipped[var] = f"CDS file not found: {path}"
-            continue
-        logger.info("Fetching %s for %s from the mirror", var, args.year)
-        start = time.perf_counter()
-        hourly = fetch_mirror_year(store, entry["short_name"], args.year)
-        fetch_seconds += time.perf_counter() - start
+    for var in args.variable or VARIABLE_REGISTRY:
+        entry = VARIABLE_REGISTRY[var]
+        cds_seconds = None
+        if args.from_cds:
+            path, cds_seconds = fetch_cds(var, start, end, args.cds_dir, client=client)
+        else:
+            path = climatology_file_path(var, args.year)
+            if not path.exists():
+                skipped[var] = f"CDS file not found: {path}"
+                continue
+        logger.info("Fetching %s for %s from the mirror", var, period)
+        started = time.perf_counter()
+        hourly = fetch_mirror(store, entry["short_name"], start, end)
+        mirror_seconds = time.perf_counter() - started
+        fetch_seconds += mirror_seconds
+        if args.from_cds:
+            timings[var] = (mirror_seconds, cds_seconds)
 
         if entry["daily_op"] == "sum":
             convention = args.accumulation
@@ -412,19 +560,20 @@ def main(argv=None) -> None:
             daily = daily_mean_6_hourly(hourly)
             rebuild = "mean of 00/06/12/18 UTC"
 
-        stats = compare_values(daily, load_cds_year(var, args.year))
+        stats = compare_values(daily, load_cds(path, var, start, end))
         stats["rebuild"] = rebuild
         results[var] = stats
         logger.info("%s: %s", var, stats)
 
     args.report.write_text(
         render_report(
-            year=args.year,
+            period=period,
             tested=True,
             results=results,
             skipped=skipped,
             fetch_seconds=fetch_seconds if results else None,
             cds_request_seconds=args.cds_request_seconds,
+            timings=timings,
         )
     )
     logger.info("Report written to %s", args.report)

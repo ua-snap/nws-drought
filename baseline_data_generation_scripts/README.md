@@ -19,10 +19,17 @@ uv run --frozen python -m baseline_data_generation_scripts.benchmark_request_sha
 ```
 
 #### Cloud mirror comparison
-`compare_era5_land_mirror.py` checks whether the DestinE Earth Data Hub copy of ERA5-Land reproduces the CDS climatology values for one sample year, and writes `mirror_comparison.md`. It makes no CDS requests. It needs a free Earth Data Hub API key in `EDH_API_KEY` and the optional `mirror` dependency group:
+`compare_era5_land_mirror.py` checks whether the DestinE Earth Data Hub copy of ERA5-Land reproduces the CDS climatology values for one sample year, and writes `mirror_comparison.md`. By default it reads the climatology files on disk and makes no CDS requests. It needs a free Earth Data Hub API key in `EDH_API_KEY` and the optional `mirror` dependency group:
 
 ```sh
 EDH_API_KEY=... uv run --group mirror python -m baseline_data_generation_scripts.compare_era5_land_mirror --year 2000
+```
+
+For a quick timed test, compare one variable over a few months and fetch the CDS values fresh with `--from-cds`. The script makes one CDS request for that variable and period, times it, times the mirror fetch for the same data, and puts both times beside the value comparison in the report. CDS files go to `baseline_data/mirror_comparison/`, never the climatology directories. Like any CDS download, don't run it while another CDS job is running.
+
+```sh
+EDH_API_KEY=... uv run --frozen --group mirror python -m baseline_data_generation_scripts.compare_era5_land_mirror \
+  --year 2000 --months 1-3 --variable swvl1 --from-cds
 ```
 
 The climatology keeps coming from CDS unless every value matches exactly.

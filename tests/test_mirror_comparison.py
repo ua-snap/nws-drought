@@ -1,6 +1,8 @@
 """Tests for the cloud-mirror comparison: daily rebuilds, difference statistics, and
 the no-API-key path. Synthetic arrays only; nothing here touches the network."""
 
+import datetime
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -164,3 +166,93 @@ def test_without_api_key_report_says_not_tested_and_no_remote_open(
     # the untested candidates are still described
     assert "potential evaporation" in text
     assert "24-hour" in text
+
+
+def test_month_range_and_period_bounds_cover_whole_months():
+    assert mirror._month_range("1-3") == (1, 3)
+    assert mirror._month_range("2") == (2, 2)
+    with pytest.raises(Exception):
+        mirror._month_range("3-1")
+    assert mirror.period_bounds(2000, (1, 3)) == (
+        datetime.date(2000, 1, 1),
+        datetime.date(2000, 3, 31),
+    )
+    assert mirror.period_bounds(2000, (12, 12))[1] == datetime.date(2000, 12, 31)
+    # 2000 is a leap year
+    assert len(mirror.expected_cds_dates(*mirror.period_bounds(2000, (1, 3)))) == 91
+
+
+def test_fresh_cds_request_asks_for_one_variable_and_the_chosen_months(
+    monkeypatch, tmp_path
+):
+    sent = []
+
+    def fake_run_request(dataset, request, target, finalize, *, client=None):
+        sent.append((dataset, request, target))
+
+    monkeypatch.setattr(mirror, "run_request", fake_run_request)
+    start, end = mirror.period_bounds(2000, (1, 3))
+
+    path, seconds = mirror.fetch_cds("swvl1", start, end, tmp_path)
+
+    (dataset, request, bundle), = sent
+    assert dataset == "derived-era5-land-daily-statistics"
+    assert request["variable"] == ["volumetric_soil_water_layer_1"]
+    assert request["year"] == "2000"
+    assert request["month"] == ["01", "02", "03"]
+    assert bundle.parent == tmp_path and path.parent == tmp_path
+    assert seconds is not None and seconds >= 0
+
+
+def test_cds_file_already_passing_the_check_is_reused_untimed(monkeypatch, tmp_path):
+    start, end = mirror.period_bounds(2000, (1, 3))
+    existing = mirror.cds_file_path(tmp_path, "swvl1", start, end)
+    existing.write_bytes(b"checked elsewhere")
+    monkeypatch.setattr(mirror, "check_output_file", lambda *a: (True, ""))
+
+    def no_request(*args, **kwargs):
+        raise AssertionError("a passing file must not be requested again")
+
+    monkeypatch.setattr(mirror, "run_request", no_request)
+
+    assert mirror.fetch_cds("swvl1", start, end, tmp_path) == (existing, None)
+
+
+def test_timed_run_compares_one_variable_and_reports_both_times(
+    monkeypatch, tmp_path
+):
+    days = pd.date_range("2000-01-01", "2000-03-31", freq="D")
+    hours = pd.date_range("1999-12-31T00:00", "2000-03-31T23:00", freq="h")
+    hourly = xr.DataArray(
+        np.full((hours.size, 1, 1), 0.25),
+        dims=("valid_time", "latitude", "longitude"),
+        coords={"valid_time": hours, "latitude": [61.0], "longitude": [-150.0]},
+    )
+    cds = hourly.sel(valid_time=days)  # daily means of a constant field
+    requested = []
+
+    monkeypatch.setenv(mirror.API_KEY_ENV_VAR, "test-key")
+    monkeypatch.setattr(mirror, "open_mirror_store", lambda key: None)
+    monkeypatch.setattr(mirror, "fetch_mirror", lambda store, name, s, e: hourly)
+
+    def fake_fetch_cds(var, start, end, cds_dir, *, client=None):
+        requested.append((var, start, end))
+        return tmp_path / "cds.nc", 3600.0
+
+    monkeypatch.setattr(mirror, "fetch_cds", fake_fetch_cds)
+    monkeypatch.setattr(mirror, "load_cds", lambda path, var, s, e: cds)
+    report = tmp_path / "report.md"
+
+    mirror.main(
+        ["--year", "2000", "--months", "1-3", "--variable", "swvl1", "--from-cds",
+         "--cds-dir", str(tmp_path), "--report", str(report)]
+    )
+
+    assert requested == [
+        ("swvl1", datetime.date(2000, 1, 1), datetime.date(2000, 3, 31))
+    ]
+    text = report.read_text()
+    assert "2000-01-01 through 2000-03-31" in text
+    assert "| exact match |" in text
+    assert "| swvl1 |" in text and "| swe |" not in text
+    assert "3600.0 s" in text
