@@ -151,14 +151,15 @@ def normalize(da: xr.DataArray) -> xr.DataArray:
     }
     da = da.rename(renames)
     da = da.drop_vars([c for c in da.coords if c not in da.dims])
-    return (
-        da.assign_coords(
-            longitude=wrap_longitudes(da.longitude.values),
-            latitude=np.round(da.latitude.values, 4),
-        )
-        .sortby("longitude")
-        .sortby("latitude")
+    da = da.assign_coords(
+        longitude=wrap_longitudes(da.longitude.values),
+        latitude=np.round(da.latitude.values, 4),
     )
+    # sorting copies the whole array, so skip it when the order is already right
+    for dim in ("longitude", "latitude"):
+        if not da.indexes[dim].is_monotonic_increasing:
+            da = da.sortby(dim)
+    return da
 
 
 # ---------------------------------------------------------------------------
@@ -191,6 +192,12 @@ def fetch_mirror(
     first = start - datetime.timedelta(days=1)
     da = da.sel({time_dim: slice(f"{first}T00:00", f"{end}T23:00")})
     lat_idx, lon_idx = bbox_indices(da.latitude.values, da.longitude.values)
+    # select the box in the order normalize returns, so the multi-GB hourly array
+    # is gathered once while loading instead of copied again by a sort
+    lat_idx = lat_idx[np.argsort(da.latitude.values[lat_idx], kind="stable")]
+    lon_idx = lon_idx[
+        np.argsort(wrap_longitudes(da.longitude.values[lon_idx]), kind="stable")
+    ]
     da = da.isel(latitude=lat_idx, longitude=lon_idx)
     return normalize(da.load(scheduler="threads", num_workers=MAX_CONCURRENT_FETCHES))
 

@@ -31,13 +31,9 @@ logger = logging.getLogger(__name__)
 
 CLIMATOLOGY_START_YEAR = 1981
 CLIMATOLOGY_END_YEAR = 2021
-# Only January 1 is kept for the summed variables in the final year: its value is
-# the total for December 31 of the year before. The mean variables keep the whole
-# final year.
 _FINAL_CLIMATOLOGY_YEAR = 2021
 CLIMATOLOGY_SUFFIX = ".nc"
 ARCHIVE_DIR_NAME = "cds_climatology_archive"
-# Global attribute that marks a file built from the mirror; its value is the store.
 SOURCE_ATTR = "mirror_source"
 
 
@@ -91,21 +87,23 @@ def _has_mirror_mark(path: Path) -> bool:
         return False
 
 
-def _passes(path: Path, variable_key: str, year: int) -> bool:
-    ok, _ = check_output_file(
+def _check(path: Path, variable_key: str, year: int) -> tuple[bool, str]:
+    """Whether ``path`` is a finished mirror-built year, and why not. The mark is
+    read first, so CDS-built files (GRIB included) skip the full date check."""
+    if not _has_mirror_mark(path):
+        return False, f"{path.name} is missing or carries no mirror mark"
+    return check_output_file(
         path,
         VARIABLE_REGISTRY[variable_key]["short_name"],
         expected_dates(variable_key, year),
     )
-    return ok and _has_mirror_mark(path)
 
 
 def is_mirror_built(variable_key: str, year: int) -> bool:
-    return _passes(climatology_file_path(variable_key, year), variable_key, year)
+    return _check(climatology_file_path(variable_key, year), variable_key, year)[0]
 
 
 def _cds_built_files(variable_key: str, year: int) -> list[Path]:
-    """The year's CDS-built files still in the climatology directory."""
     target = climatology_file_path(variable_key, year)
     cds = target.with_suffix(VARIABLE_REGISTRY[variable_key]["suffix"])
     found = []
@@ -176,10 +174,8 @@ def _install_year(daily: xr.DataArray, variable_key: str, year: int) -> Path:
             engine=NETCDF_ENGINE,
             encoding={name: {"dtype": "float32", "zlib": True, "complevel": 4}},
         )
-        if not _passes(staged, variable_key, year):
-            _, reason = check_output_file(
-                staged, name, expected_dates(variable_key, year)
-            )
+        ok, reason = _check(staged, variable_key, year)
+        if not ok:
             raise RuntimeError(f"{target}: rebuilt year failed its check ({reason})")
         for cds_file in _cds_built_files(variable_key, year):
             archived = _archive_path(cds_file)

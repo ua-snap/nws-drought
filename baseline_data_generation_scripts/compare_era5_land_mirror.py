@@ -88,10 +88,6 @@ UNTESTED_CANDIDATES = """\
 """
 
 
-
-
-
-
 def _unmatched(full: xr.DataArray, aligned: xr.DataArray) -> list:
     values = np.setdiff1d(full.values, aligned.values)
     if np.issubdtype(values.dtype, np.floating):
