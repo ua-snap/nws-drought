@@ -1,15 +1,26 @@
-"""Download the ERA5-Land climatology (1981-2021) for every variable, or the
-variables given with --variable.
+"""Build the ERA5-Land climatology (1981-2021) from the DestinE Earth Data Hub
+mirror, for every variable or the variables given with --variable.
 
-Requests go to CDS one at a time. Yearly files that already pass their check
-are kept, so running this again after a stop continues where it stopped.
+Needs an Earth Data Hub API key in EDH_API_KEY and the `mirror` dependency group.
+Yearly files the mirror already built are kept, so running this again after a stop
+continues where it stopped. Each CDS-built yearly file is moved to the climatology
+archive just before its mirror replacement is written.
 """
 
 import argparse
 import logging
+import sys
 
-from download_helpers import api_credentials_check, download_era5_land_climatology
 from era5_land_variable_registry import VARIABLE_REGISTRY
+from file_helpers import setup_logging
+from mirror_climatology import (
+    CLIMATOLOGY_END_YEAR,
+    CLIMATOLOGY_START_YEAR,
+    ArchiveClash,
+    MirrorKeyMissing,
+    MirrorUnavailable,
+    download_era5_land_climatology,
+)
 
 
 def main() -> None:
@@ -18,8 +29,11 @@ def main() -> None:
         description=__doc__,
         epilog=(
             "Examples:\n"
-            "  python -m baseline_data_generation_scripts.download_era5_land_climo\n"
-            "  python -m baseline_data_generation_scripts.download_era5_land_climo -v tp -v pev"
+            "  uv run --frozen --group mirror python -m "
+            "baseline_data_generation_scripts.download_era5_land_climo\n"
+            "  uv run --frozen --group mirror python -m "
+            "baseline_data_generation_scripts.download_era5_land_climo "
+            "--start-year 2000 --end-year 2000"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -35,24 +49,27 @@ def main() -> None:
     parser.add_argument(
         "--start-year",
         type=int,
-        default=1981,
-        help="First calendar year to retrieve (inclusive).",
+        default=CLIMATOLOGY_START_YEAR,
+        help="First calendar year to build (inclusive).",
     )
     parser.add_argument(
         "--end-year",
         type=int,
-        default=2021,
-        help="Last calendar year to retrieve (inclusive).",
+        default=CLIMATOLOGY_END_YEAR,
+        help="Last calendar year to build (inclusive).",
     )
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO)
-    api_credentials_check()
-    download_era5_land_climatology(
-        args.variables,
-        start_year=args.start_year,
-        end_year=args.end_year,
-    )
+    setup_logging()
+    try:
+        download_era5_land_climatology(
+            args.variables,
+            start_year=args.start_year,
+            end_year=args.end_year,
+        )
+    except (MirrorKeyMissing, MirrorUnavailable, ArchiveClash) as exc:
+        logging.getLogger(__name__).error("%s", exc)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

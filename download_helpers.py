@@ -16,7 +16,7 @@ import eccodes
 import xarray as xr
 
 from cds_requests import OutputCheckError, run_request
-from config import BASELINE_DATA_ROOT, DATA_LAG_TIME_DAYS, DL_BBOX, RECENT_DATA_ROOT
+from config import DATA_LAG_TIME_DAYS, DL_BBOX, RECENT_DATA_ROOT
 from era5_land_variable_registry import VARIABLE_REGISTRY
 from file_helpers import NETCDF_ENGINE, check_output_file
 
@@ -76,17 +76,6 @@ def months_per_request(dataset: str, n_variables: int, n_months: int) -> int:
     if cap is None:
         return n_months
     return max(1, cap // n_variables)
-
-
-def variable_groups_per_request(
-    dataset: str, variable_keys, n_months: int
-) -> list[tuple[str, ...]]:
-    """Split variables into groups small enough to request ``n_months`` months
-    together within the dataset's CDS cost limit."""
-    cap = _MAX_VARIABLE_MONTHS.get(dataset)
-    if cap is None:
-        return [tuple(variable_keys)] if variable_keys else []
-    return _chunks(variable_keys, max(1, cap // n_months))
 
 
 def _build_hourly_grib_request(
@@ -417,162 +406,6 @@ def get_analysis_date():
     analysis_date = datetime.date.today() - datetime.timedelta(days=DATA_LAG_TIME_DAYS)
     logger.info(f"Establishing the analysis date for the data as {analysis_date}")
     return analysis_date
-
-
-# Climatology: one yearly file per variable, 1981 through 2021, fetched by one
-# job that sends one request per dataset per year with the variables combined,
-# except where a dataset's CDS cost limit splits them (_MAX_VARIABLE_MONTHS).
-_CLIMATOLOGY_START_YEAR = 1981
-_CLIMATOLOGY_END_YEAR = 2021
-# Only January 1 is fetched for the summed variables in the final year: its
-# 00:00 value is the total for December 31 of the year before. The mean
-# variables fetch the whole final year.
-_FINAL_CLIMATOLOGY_YEAR = 2021
-
-# One request per dataset per calendar year. This shape is kept unless the
-# request-size benchmark (baseline_data_generation_scripts/
-# benchmark_request_shapes.py) shows 12 monthly requests finishing sooner in
-# both of its rounds; a single queue swing should not switch the rebuild to
-# 12 times as many requests.
-CLIMATOLOGY_REQUEST_SHAPE = "yearly"
-
-
-def climatology_file_path(variable_key: str, year: int) -> Path:
-    """Yearly climatology file for one variable:
-    ``<climatology_dir>/<prefix><YYYY><suffix>`` under BASELINE_DATA_ROOT."""
-    meta = VARIABLE_REGISTRY[variable_key]
-    return (
-        BASELINE_DATA_ROOT
-        / meta["climatology_dir"]
-        / f"{meta['prefix']}{year}{meta['suffix']}"
-    )
-
-
-def _climatology_months_and_days(dataset: str, year: int) -> tuple[list, list]:
-    if dataset == _HOURLY_GRIB_ENDPOINT and year == _FINAL_CLIMATOLOGY_YEAR:
-        return [_ALL_MONTHS[0]], [_ALL_DAYS[0]]
-    return _ALL_MONTHS, _ALL_DAYS
-
-
-@dataclass(frozen=True)
-class ClimatologyRequest:
-    """One CDS request for some variables of a dataset over one year."""
-
-    dataset: str
-    variable_keys: tuple[str, ...]
-    year: int
-
-    def cds_request(self) -> dict:
-        months, days = _climatology_months_and_days(self.dataset, self.year)
-        return build_cds_request(
-            self.dataset, self.variable_keys, self.year, months, days
-        )
-
-    def expected_dates(self) -> list[str]:
-        """Valid dates each yearly file holds: every day of the year (for the
-        summed variables, January 1 holds the previous year's December 31
-        total), or only January 1 for the summed variables' final year."""
-        _, days = _climatology_months_and_days(self.dataset, self.year)
-        if days == [_ALL_DAYS[0]]:
-            return [datetime.date(self.year, 1, 1).isoformat()]
-        return [
-            date for month in range(1, 13) for date in month_dates(self.year, month)
-        ]
-
-    def targets(self) -> dict[str, Path]:
-        return {
-            VARIABLE_REGISTRY[key]["short_name"]: climatology_file_path(key, self.year)
-            for key in self.variable_keys
-        }
-
-    def bundle_target(self) -> Path:
-        """Download name, stable for a dataset and year so a restarted job
-        finds the request it saved."""
-        return (
-            BASELINE_DATA_ROOT
-            / _BUNDLE_DIR
-            / (
-                f"{self.dataset}_{self.year}_{'-'.join(self.variable_keys)}"
-                f"{bundle_suffix(self.dataset)}"
-            )
-        )
-
-
-def plan_climatology_requests(
-    variable_keys=None,
-    start_year: int = _CLIMATOLOGY_START_YEAR,
-    end_year: int = _CLIMATOLOGY_END_YEAR,
-) -> list[ClimatologyRequest]:
-    """The climatology requests still needed, oldest year first.
-
-    For each year and dataset, variables whose yearly file passes the output
-    check are skipped; the rest are fetched in one combined request, or in
-    several where the dataset's CDS cost limit requires it (one variable per
-    request for daily statistics). Every failing file is logged.
-    """
-    requests = []
-    for year in range(start_year, end_year + 1):
-        for dataset, keys in group_variables_by_dataset(variable_keys).items():
-            request = ClimatologyRequest(dataset, tuple(keys), year)
-            expected = request.expected_dates()
-            needed = [
-                key
-                for key in keys
-                if _file_needs_download(
-                    climatology_file_path(key, year),
-                    VARIABLE_REGISTRY[key]["short_name"],
-                    expected,
-                )
-            ]
-            for group in variable_groups_per_request(dataset, needed, 12):
-                requests.append(ClimatologyRequest(dataset, group, year))
-    return requests
-
-
-def download_era5_land_climatology(
-    variable_keys=None,
-    start_year: int = _CLIMATOLOGY_START_YEAR,
-    end_year: int = _CLIMATOLOGY_END_YEAR,
-    *,
-    client=None,
-) -> None:
-    """Download the ERA5-Land climatology, one CDS request at a time.
-
-    Yearly files that already pass the output check are kept, so running the
-    job again after a stop continues where it stopped, and a job still queued
-    at CDS is reattached rather than submitted again.
-
-    Args:
-        variable_keys: registry keys to download (default: every variable).
-        start_year, end_year: inclusive range of years.
-        client: datastores client for the request runner (default: built from
-            cdsapi's configuration).
-    """
-    with exclusive_download_lock(BASELINE_DATA_ROOT / _BUNDLE_DIR):
-        requests = plan_climatology_requests(variable_keys, start_year, end_year)
-        logger.info(
-            "Climatology download %d-%d: %d %s CDS requests",
-            start_year,
-            end_year,
-            len(requests),
-            CLIMATOLOGY_REQUEST_SHAPE,
-        )
-        for request in requests:
-            target = request.bundle_target()
-            target.parent.mkdir(parents=True, exist_ok=True)
-            logger.info(
-                "Requesting %s (%s) for %d",
-                request.dataset,
-                ",".join(request.variable_keys),
-                request.year,
-            )
-            run_request(
-                request.dataset,
-                request.cds_request(),
-                target,
-                split_then_install(request.targets(), request.expected_dates()),
-                client=client,
-            )
 
 
 # Recurring download: one file per variable per month, covering January 1 of
