@@ -81,6 +81,12 @@ def assemble_recent_downloads(variable_key, analysis_date):
         suffix = VARIABLE_REGISTRY[variable_key]["suffix"]
 
     recent_data_ds = ds_combination(_require_files(files), suffix)
+    if VARIABLE_REGISTRY.get(variable_key, {}).get("daily_op") == "sum":
+        # A recurring file labels each total by its 00:00 reading on the next
+        # day; label it by the day it measures, as the climatology is.
+        recent_data_ds = recent_data_ds.assign_coords(
+            valid_time=recent_data_ds.valid_time - np.timedelta64(1, "D")
+        )
 
     logger.info("Merging recent data complete.")
     return recent_data_ds
@@ -439,7 +445,9 @@ if __name__ == "__main__":
     end_time = ds.valid_time[-1]
     logger.info(f"End time for combined dataset is {end_time}.")
     ref_date = pd.to_datetime(end_time.values)
-    start_time = ds.valid_time[-366]
+    # the longest interval needs this many days; with precipitation and evaporation
+    # labeled by the day measured, a 1 January run has only 365 days to offer
+    start_time = ds.valid_time[-max(INTERVALS)]
 
     logger.info(f"Start time for combined dataset is {start_time}.")
     ds.to_netcdf(

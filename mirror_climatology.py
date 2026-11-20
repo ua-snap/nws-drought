@@ -1,9 +1,12 @@
-"""Build the ERA5-Land climatology (1981-2021) from the DestinE Earth Data Hub mirror.
+"""Build the ERA5-Land climatology (1981-2020) from the DestinE Earth Data Hub mirror.
 
 One netCDF file per variable per year, in each variable's climatology directory,
 named ``<prefix><YYYY>.nc``. Daily values are rebuilt from the mirror's hourly data
-the way the CDS requests produce them (see era5_land_mirror). Small differences
-from CDS values are accepted: the mirror stores roughly 12 significant bits.
+the way the CDS requests produce them (see era5_land_mirror), and every daily value
+is labeled by the day it measures: a precipitation or evaporation total for day D
+is the 00:00 reading on D+1, so the 2020 files read 1 January 2021. Small
+differences from CDS values are accepted: the mirror stores roughly 12 significant
+bits.
 
 A year counts as done when its file passes the date-and-variable check and carries
 the mirror mark, so running again after a stop continues where it stopped. A
@@ -33,11 +36,16 @@ from file_helpers import NETCDF_ENGINE, check_output_file
 logger = logging.getLogger(__name__)
 
 CLIMATOLOGY_START_YEAR = 1981
-CLIMATOLOGY_END_YEAR = 2021
-_FINAL_CLIMATOLOGY_YEAR = 2021
+CLIMATOLOGY_END_YEAR = 2020
 CLIMATOLOGY_SUFFIX = ".nc"
 ARCHIVE_DIR_NAME = "cds_climatology_archive"
 SOURCE_ATTR = "mirror_source"
+# Files from before daily totals were labeled by the day measured lack this.
+DAY_LABEL_ATTR = "day_label"
+MIRROR_ATTRS = {
+    SOURCE_ATTR: era5_land_mirror.EDH_STORE_URL,
+    DAY_LABEL_ATTR: "day measured",
+}
 
 
 _CDS_GRID_FILE = Path(__file__).resolve().parent / "era5_land_cds_grid.json"
@@ -103,14 +111,7 @@ def _archive_path(path: Path) -> Path:
 
 
 def expected_dates(variable_key: str, year: int) -> list[str]:
-    """Valid dates a yearly file holds: every day of the year (for the summed
-    variables, January 1 holds the previous year's December 31 total), or only
-    January 1 for the summed variables' final year."""
-    if (
-        VARIABLE_REGISTRY[variable_key]["daily_op"] == "sum"
-        and year == _FINAL_CLIMATOLOGY_YEAR
-    ):
-        return [datetime.date(year, 1, 1).isoformat()]
+    """Every day of the year, each labeled by the day it measures."""
     days = pd.date_range(f"{year}-01-01", f"{year}-12-31", freq="D")
     return [day.date().isoformat() for day in days]
 
@@ -128,6 +129,9 @@ def check_year_file(path: Path, variable_key: str, year: int) -> tuple[bool, str
     read first, so CDS-built files (GRIB included) skip the full date check."""
     if not _has_mirror_mark(path):
         return False, f"{path.name} is missing or carries no mirror mark"
+    with xr.open_dataset(path, engine=NETCDF_ENGINE) as ds:
+        if ds.attrs.get(DAY_LABEL_ATTR) != MIRROR_ATTRS[DAY_LABEL_ATTR]:
+            return False, f"{path.name} labels days the old way"
     return check_output_file(
         path,
         VARIABLE_REGISTRY[variable_key]["short_name"],
@@ -178,9 +182,16 @@ def _daily_year(store, variable_key: str, year: int, convention: str | None):
     entry = VARIABLE_REGISTRY[variable_key]
     dates = expected_dates(variable_key, year)
     first, last = (datetime.date.fromisoformat(d) for d in (dates[0], dates[-1]))
+    if entry["daily_op"] == "sum":
+        # the total for the year's last day is the 00:00 reading the next day
+        last += datetime.timedelta(days=1)
     hourly = era5_land_mirror.fetch_mirror(store, entry["short_name"], first, last)
     if entry["daily_op"] == "sum":
+        # rebuilt totals sit at 00:00 on the day after the one they measure
         daily = era5_land_mirror.daily_totals(hourly, convention)
+        daily = daily.assign_coords(
+            valid_time=daily.valid_time - np.timedelta64(1, "D")
+        )
     else:
         daily = era5_land_mirror.daily_mean_6_hourly(hourly)
     keep = (
@@ -207,7 +218,7 @@ def _install_year(daily: xr.DataArray, variable_key: str, year: int) -> Path:
     staged = staged_path(target)
     name = daily.name
     ds = daily.to_dataset()
-    ds.attrs[SOURCE_ATTR] = era5_land_mirror.EDH_STORE_URL
+    ds.attrs.update(MIRROR_ATTRS)
     try:
         ds.to_netcdf(
             staged,

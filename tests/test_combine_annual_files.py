@@ -14,7 +14,7 @@ from mirror_climatology import (
     CLIMATOLOGY_END_YEAR,
     CLIMATOLOGY_START_YEAR,
     CLIMATOLOGY_SUFFIX,
-    SOURCE_ATTR,
+    MIRROR_ATTRS,
 )
 
 YEARS = range(CLIMATOLOGY_START_YEAR, CLIMATOLOGY_END_YEAR + 1)
@@ -36,7 +36,7 @@ def _yearly_tp(path, year, *, mirror=True):
         },
     )
     if mirror:
-        ds.attrs[SOURCE_ATTR] = "test store"
+        ds.attrs.update(MIRROR_ATTRS)
     ds.to_netcdf(path, engine="h5netcdf")
 
 
@@ -78,7 +78,7 @@ def test_complete_mirror_years_combine_in_order_and_other_files_are_ignored(
     with xr.open_dataset(combined, engine="h5netcdf") as ds:
         days = pd.DatetimeIndex(ds["valid_time"].values)
         assert days[0] == pd.Timestamp("1981-01-01")
-        assert days[-1] == pd.Timestamp("2021-01-01")
+        assert days[-1] == pd.Timestamp("2020-12-31")
         assert days.is_monotonic_increasing
         assert ds["tp"].dtype == np.float32
         assert float(ds["tp"].sel(valid_time="2001-06-01").max()) == 2001.0

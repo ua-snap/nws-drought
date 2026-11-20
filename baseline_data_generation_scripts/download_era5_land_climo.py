@@ -1,4 +1,4 @@
-"""Build the ERA5-Land climatology (1981-2021) from the DestinE Earth Data Hub
+"""Build the ERA5-Land climatology (1981-2020) from the DestinE Earth Data Hub
 mirror, for every variable or the variables given with --variable.
 
 Needs an Earth Data Hub API key in EDH_API_KEY and the `mirror` dependency group.

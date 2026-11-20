@@ -109,7 +109,7 @@ def cds_named(root, var, year, suffix=None):
     )
 
 
-def test_precipitation_year_holds_each_day_labeled_as_cds_labels_it(
+def test_precipitation_year_labels_each_total_by_the_day_it_measures(
     baseline_root, use_store
 ):
     use_store(make_store("1999-12-30", "2001-01-01"))
@@ -122,18 +122,22 @@ def test_precipitation_year_holds_each_day_labeled_as_cds_labels_it(
     with xr.open_dataset(path, engine="h5netcdf") as ds:
         days = pd.DatetimeIndex(ds["valid_time"].values)
         assert days[0] == pd.Timestamp("2000-01-01") and days.size == 366
-        # labeled 2000-03-01: the store's 00:00 value that day, the total for 29 Feb
-        march_1 = ds["tp"].sel(valid_time="2000-03-01").values
-        np.testing.assert_allclose(march_1, 24 * 60 * 1e-5, rtol=1e-6)
-        # labeled 2000-01-01: the total for 31 Dec 1999
+        # every hour of accumulation day D adds doy(D) * 1e-5, so the day's total
+        # is 24 * doy(D) * 1e-5: 1 Mar 2000 is day 61
         np.testing.assert_allclose(
-            ds["tp"].sel(valid_time="2000-01-01").values, 24 * 365 * 1e-5, rtol=1e-6
+            ds["tp"].sel(valid_time="2000-03-01").values, 24 * 61 * 1e-5, rtol=1e-6
+        )
+        np.testing.assert_allclose(
+            ds["tp"].sel(valid_time="2000-01-01").values, 24 * 1 * 1e-5, rtol=1e-6
+        )
+        # 31 Dec 2000, read from the store's 00:00 value on 1 Jan 2001
+        np.testing.assert_allclose(
+            ds["tp"].sel(valid_time="2000-12-31").values, 24 * 366 * 1e-5, rtol=1e-6
         )
         assert ds["tp"].dtype == np.float32
         assert ds["tp"].attrs["units"] == "m"
-        assert (
-            ds.attrs[mirror_climatology.SOURCE_ATTR] == era5_land_mirror.EDH_STORE_URL
-        )
+        for name, value in mirror_climatology.MIRROR_ATTRS.items():
+            assert ds.attrs[name] == value
     assert check_output_file(path, "tp", mirror_climatology.expected_dates("tp", 2000))[
         0
     ]
@@ -170,21 +174,41 @@ def test_soil_moisture_day_is_the_mean_of_the_four_six_hourly_values(
         )
 
 
-def test_final_year_holds_only_january_1_for_sums_and_every_day_for_means(
+def test_climatology_ends_with_2020_for_every_variable(baseline_root, use_store):
+    use_store(make_store("2019-12-30", "2021-01-01"))
+
+    run(["tp", "swvl1"], 2020, mirror_climatology.CLIMATOLOGY_END_YEAR)
+
+    assert mirror_climatology.CLIMATOLOGY_END_YEAR == 2020
+    for var in ("tp", "swvl1"):
+        with xr.open_dataset(yearly(var, 2020), engine="h5netcdf") as ds:
+            days = pd.DatetimeIndex(ds["valid_time"].values)
+            assert days[0] == pd.Timestamp("2020-01-01")
+            assert days[-1] == pd.Timestamp("2020-12-31") and days.size == 366
+        assert not yearly(var, 2021).exists()
+
+
+def test_year_written_with_the_old_valid_time_labels_is_rebuilt(
     baseline_root, use_store
 ):
-    use_store(make_store("2020-12-30", "2021-12-31"))
+    fetched = use_store(make_store("1999-12-30", "2001-01-01"))
+    run(["tp"], 2000, 2000)
+    path = yearly("tp", 2000)
+    with xr.open_dataset(path, engine="h5netcdf") as ds:
+        old = ds.load()
+    del old.attrs[mirror_climatology.DAY_LABEL_ATTR]
+    old.to_netcdf(path, engine="h5netcdf")
+    fetched.clear()
 
-    run(["tp", "swvl1"], 2021, 2021)
+    run(["tp"], 2000, 2000)
 
-    with xr.open_dataset(yearly("tp", 2021), engine="h5netcdf") as ds:
-        assert list(pd.DatetimeIndex(np.atleast_1d(ds["valid_time"].values))) == [
-            pd.Timestamp("2021-01-01")
-        ]
-        # the total for 31 Dec 2020 (day 366 of a leap year)
-        np.testing.assert_allclose(ds["tp"].values, 24 * 366 * 1e-5, rtol=1e-6)
-    with xr.open_dataset(yearly("swvl1", 2021), engine="h5netcdf") as ds:
-        assert ds.sizes["valid_time"] == 365
+    assert [name for name, _, _ in fetched if name == "tp"]
+    assert mirror_climatology.is_mirror_built("tp", 2000)
+    assert (
+        not (baseline_root / mirror_climatology.ARCHIVE_DIR_NAME)
+        .joinpath("era5_land_daily_tp_1981_2020", path.name)
+        .exists()
+    )
 
 
 def test_grid_matches_the_cds_box_and_order(baseline_root, use_store):

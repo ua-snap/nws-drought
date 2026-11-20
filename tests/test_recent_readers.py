@@ -116,3 +116,25 @@ def test_january_analysis_date_assembles_previous_year_and_january(root):
     assert times[0] == pd.Timestamp("2025-01-01")
     assert times[-1] == pd.Timestamp("2026-01-20")
     assert times.is_unique
+
+
+def test_summed_variables_are_labeled_by_the_day_they_measure(root, monkeypatch):
+    # a recurring file labels each total by its 00:00 reading on the next day;
+    # the fake files are netCDF, which the reader handles like the real GRIB
+    monkeypatch.setitem(pipeline_run.VARIABLE_REGISTRY["tp"], "suffix", ".nc")
+    analysis_date = datetime.date(2026, 3, 10)
+    for year, month in download_helpers.coverage_months(analysis_date):
+        last_day = (
+            analysis_date.day
+            if (year, month) == (analysis_date.year, analysis_date.month)
+            else pd.Period(f"{year}-{month:02d}").days_in_month
+        )
+        write_month("tp", year, month, last_day, "tp")
+    stored = download_helpers_open("tp", analysis_date)
+
+    ds = pipeline_run.assemble_recent_downloads("tp", analysis_date)
+
+    times = pd.DatetimeIndex(ds.valid_time.values)
+    assert times[0] == pd.Timestamp("2024-12-31")
+    assert times[-1] == pd.Timestamp("2026-03-09")
+    np.testing.assert_array_equal(ds["tp"].values, stored.values)
