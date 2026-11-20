@@ -177,6 +177,14 @@ def daily_mean_6_hourly(hourly: xr.DataArray) -> xr.DataArray:
 # ---------------------------------------------------------------------------
 
 
+def wrap_longitudes(longitudes) -> np.ndarray:
+    """Longitudes in -180..180, rounded to 4 decimals. Rounding comes first, so the
+    dateline column stored a hair below 180 (179.99998 in a 0..360 store) becomes
+    -180 like the CDS column, instead of staying at +180."""
+    lon = np.round(np.asarray(longitudes, dtype="float64"), 4)
+    return np.round(((lon + 180) % 360) - 180, 4)
+
+
 def normalize(da: xr.DataArray) -> xr.DataArray:
     """Common dimension names, longitudes in -180..180, rounded grid coordinates and
     no auxiliary coordinates, so the two sources align on value."""
@@ -191,10 +199,10 @@ def normalize(da: xr.DataArray) -> xr.DataArray:
     }
     da = da.rename(renames)
     da = da.drop_vars([c for c in da.coords if c not in da.dims])
-    lon = ((da.longitude + 180) % 360) - 180
     return (
         da.assign_coords(
-            longitude=np.round(lon.values, 4), latitude=np.round(da.latitude.values, 4)
+            longitude=wrap_longitudes(da.longitude.values),
+            latitude=np.round(da.latitude.values, 4),
         )
         .sortby("longitude")
         .sortby("latitude")
@@ -447,7 +455,7 @@ def bbox_indices(latitudes, longitudes) -> tuple[np.ndarray, np.ndarray]:
     columns."""
     north, west, south, east = DL_BBOX
     lat = np.asarray(latitudes, dtype="float64")
-    lon = ((np.asarray(longitudes, dtype="float64") + 180) % 360) - 180
+    lon = wrap_longitudes(longitudes)
     lat_idx = np.flatnonzero(
         (lat >= south - _EDGE_TOLERANCE) & (lat <= north + _EDGE_TOLERANCE)
     )

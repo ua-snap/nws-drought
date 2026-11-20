@@ -306,3 +306,19 @@ def test_comparison_names_the_cds_rows_and_columns_the_mirror_lacks():
     assert stats["cds_days_unmatched"] == 0
     grid = "\n".join(mirror.render_grid_alignment({"swvl1": stats}))
     assert "| swvl1 | 1 (72) | 1 (-180) | 0 |" in grid
+
+
+@pytest.mark.parametrize("stored", [179.99998, 180.0, 180.00002, -180.0])
+def test_dateline_column_wraps_to_minus_180_however_it_is_stored(
+    monkeypatch, stored
+):
+    # The Earth Data Hub store runs 0..359.9; its 180 column must line up with
+    # the CDS -180 column whatever float the store keeps for it.
+    monkeypatch.setattr(mirror, "DL_BBOX", [72, -180, 51, -129])
+    lon = np.round(np.arange(0, 360, 0.1), 1)
+    lon[1800] = stored
+
+    _, lon_idx = mirror.bbox_indices(np.array([60.0]), lon)
+
+    assert lon_idx.size == 511
+    assert mirror.wrap_longitudes([stored])[0] == -180.0
