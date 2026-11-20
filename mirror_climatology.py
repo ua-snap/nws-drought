@@ -123,7 +123,7 @@ def _has_mirror_mark(path: Path) -> bool:
         return False
 
 
-def _check(path: Path, variable_key: str, year: int) -> tuple[bool, str]:
+def check_year_file(path: Path, variable_key: str, year: int) -> tuple[bool, str]:
     """Whether ``path`` is a finished mirror-built year, and why not. The mark is
     read first, so CDS-built files (GRIB included) skip the full date check."""
     if not _has_mirror_mark(path):
@@ -136,7 +136,9 @@ def _check(path: Path, variable_key: str, year: int) -> tuple[bool, str]:
 
 
 def is_mirror_built(variable_key: str, year: int) -> bool:
-    return _check(climatology_file_path(variable_key, year), variable_key, year)[0]
+    return check_year_file(
+        climatology_file_path(variable_key, year), variable_key, year
+    )[0]
 
 
 def _cds_built_files(variable_key: str, year: int) -> list[Path]:
@@ -212,7 +214,7 @@ def _install_year(daily: xr.DataArray, variable_key: str, year: int) -> Path:
             engine=NETCDF_ENGINE,
             encoding={name: {"dtype": "float32", "zlib": True, "complevel": 4}},
         )
-        ok, reason = _check(staged, variable_key, year)
+        ok, reason = check_year_file(staged, variable_key, year)
         if not ok:
             raise RuntimeError(f"{target}: rebuilt year failed its check ({reason})")
         for cds_file in _cds_built_files(variable_key, year):

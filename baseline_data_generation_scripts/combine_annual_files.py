@@ -11,7 +11,12 @@ import xarray as xr
 from config import daily_combined_file_for_var, daily_year_dir_for_var
 from era5_land_variable_registry import VARIABLE_REGISTRY
 from file_helpers import NETCDF_ENGINE, discover_year_files, setup_logging
-from mirror_climatology import CLIMATOLOGY_SUFFIX
+from mirror_climatology import (
+    CLIMATOLOGY_END_YEAR,
+    CLIMATOLOGY_START_YEAR,
+    CLIMATOLOGY_SUFFIX,
+    check_year_file,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -87,6 +92,25 @@ def main() -> int:
     logging.info("Resolved combined output file: %s", output_file)
 
     available_years = discover_year_files(annual_dir, args.var, CLIMATOLOGY_SUFFIX)
+    # The climatology must be every year, all built from the mirror, before an
+    # existing combined file is replaced.
+    problems = [
+        f"{year}: no yearly file"
+        for year in range(CLIMATOLOGY_START_YEAR, CLIMATOLOGY_END_YEAR + 1)
+        if year not in available_years
+    ] + [
+        f"{year}: {reason}"
+        for year, path in available_years.items()
+        for ok, reason in [check_year_file(path, args.var, year)]
+        if not ok
+    ]
+    if problems:
+        logging.error(
+            "Not combining %s; finish the mirror climatology download first: %s",
+            args.var,
+            "; ".join(problems),
+        )
+        return 1
     years = sorted(available_years)
     annual_paths = [available_years[year] for year in years]
 
