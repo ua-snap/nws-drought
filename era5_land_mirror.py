@@ -160,6 +160,7 @@ def normalize(da: xr.DataArray) -> xr.DataArray:
         .sortby("latitude")
     )
 
+
 # ---------------------------------------------------------------------------
 # Store access
 # ---------------------------------------------------------------------------
@@ -191,9 +192,7 @@ def fetch_mirror(
     da = da.sel({time_dim: slice(f"{first}T00:00", f"{end}T23:00")})
     lat_idx, lon_idx = bbox_indices(da.latitude.values, da.longitude.values)
     da = da.isel(latitude=lat_idx, longitude=lon_idx)
-    return normalize(
-        da.load(scheduler="threads", num_workers=MAX_CONCURRENT_FETCHES)
-    )
+    return normalize(da.load(scheduler="threads", num_workers=MAX_CONCURRENT_FETCHES))
 
 
 # Half of the 0.1 degree ERA5-Land grid spacing: grid points this close outside the

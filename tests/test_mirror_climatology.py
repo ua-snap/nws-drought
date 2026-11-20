@@ -46,9 +46,9 @@ def make_store(first: str, last: str, *, increments: bool = False) -> xr.Dataset
     fields = {
         "tp": np.broadcast_to(tp[:, None, None], shape).astype("float32"),
         "pev": np.broadcast_to(-tp[:, None, None], shape).astype("float32"),
-        "swvl1": np.broadcast_to(
-            _swvl1_values(hours)[:, None, None], shape
-        ).astype("float32"),
+        "swvl1": np.broadcast_to(_swvl1_values(hours)[:, None, None], shape).astype(
+            "float32"
+        ),
     }
     store = xr.Dataset(
         {
@@ -131,10 +131,12 @@ def test_precipitation_year_holds_each_day_labeled_as_cds_labels_it(
         )
         assert ds["tp"].dtype == np.float32
         assert ds["tp"].attrs["units"] == "m"
-        assert ds.attrs[mirror_climatology.SOURCE_ATTR] == era5_land_mirror.EDH_STORE_URL
-    assert check_output_file(
-        path, "tp", mirror_climatology.expected_dates("tp", 2000)
-    )[0]
+        assert (
+            ds.attrs[mirror_climatology.SOURCE_ATTR] == era5_land_mirror.EDH_STORE_URL
+        )
+    assert check_output_file(path, "tp", mirror_climatology.expected_dates("tp", 2000))[
+        0
+    ]
 
 
 def test_hourly_increments_give_the_same_year_as_running_totals(
@@ -241,9 +243,7 @@ def _write_cds_files(root, years):
     for year in years:
         swvl1 = cds_named(root, "swvl1", year)
         swvl1.parent.mkdir(parents=True, exist_ok=True)
-        xr.Dataset({"swvl1": ("valid_time", [0.3])}).to_netcdf(
-            swvl1, engine="h5netcdf"
-        )
+        xr.Dataset({"swvl1": ("valid_time", [0.3])}).to_netcdf(swvl1, engine="h5netcdf")
         tp = cds_named(root, "tp", year)
         tp.parent.mkdir(parents=True, exist_ok=True)
         tp.write_bytes(f"GRIB {year}".encode())
@@ -265,7 +265,9 @@ def test_cds_files_are_archived_only_for_the_years_replaced(baseline_root, use_s
             assert cds_named(baseline_root, var, kept_year).exists()
             assert not (moved / cds_named(baseline_root, var, kept_year).name).exists()
         assert mirror_climatology.is_mirror_built(var, 2000)
-    assert (archive / "era5_land_daily_tp_1981_2020" / "total_precipitation_daily_2000.grib").read_bytes() == b"GRIB 2000"
+    assert (
+        archive / "era5_land_daily_tp_1981_2020" / "total_precipitation_daily_2000.grib"
+    ).read_bytes() == b"GRIB 2000"
 
 
 def test_archive_name_clash_stops_before_any_fetch_or_move(baseline_root, use_store):
@@ -304,7 +306,11 @@ def test_missing_key_stops_before_opening_the_store_or_moving_files(
         run(["swvl1"], 2000, 2000)
 
     assert all(path.exists() for path in written)
-    assert not (baseline_root / mirror_climatology.ARCHIVE_DIR_NAME / "era5_land_daily_swvl1_1981_2020").exists()
+    assert not (
+        baseline_root
+        / mirror_climatology.ARCHIVE_DIR_NAME
+        / "era5_land_daily_swvl1_1981_2020"
+    ).exists()
 
 
 def test_rejected_key_says_so_and_differs_from_a_missing_key(

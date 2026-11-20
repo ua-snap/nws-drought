@@ -147,13 +147,17 @@ def _daily_year(store, variable_key: str, year: int, convention: str | None):
         daily = era5_land_mirror.daily_totals(hourly, convention)
     else:
         daily = era5_land_mirror.daily_mean_6_hourly(hourly)
-    keep = pd.DatetimeIndex(daily.valid_time.values).floor("D").isin(
-        pd.DatetimeIndex(dates)
+    keep = (
+        pd.DatetimeIndex(daily.valid_time.values)
+        .floor("D")
+        .isin(pd.DatetimeIndex(dates))
     )
     daily = daily.isel(valid_time=keep).sortby("latitude", ascending=False)
     daily = daily.rename(entry["short_name"])
     source_attrs = store[entry["short_name"]].attrs
-    daily.attrs = {k: source_attrs[k] for k in ("units", "long_name") if k in source_attrs}
+    daily.attrs = {
+        k: source_attrs[k] for k in ("units", "long_name") if k in source_attrs
+    }
     return daily
 
 

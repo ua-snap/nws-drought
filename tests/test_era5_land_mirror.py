@@ -144,9 +144,7 @@ def test_box_on_a_grid_holding_plus_180_keeps_the_dateline_column(monkeypatch):
 
 
 @pytest.mark.parametrize("stored", [179.99998, 180.0, 180.00002, -180.0])
-def test_dateline_column_wraps_to_minus_180_however_it_is_stored(
-    monkeypatch, stored
-):
+def test_dateline_column_wraps_to_minus_180_however_it_is_stored(monkeypatch, stored):
     # The Earth Data Hub store runs 0..359.9; its 180 column must line up with
     # the CDS -180 column whatever float the store keeps for it.
     monkeypatch.setattr(mirror, "DL_BBOX", [72, -180, 51, -129])
@@ -182,7 +180,10 @@ def test_fetch_downloads_at_most_the_fixed_number_of_blocks_at_once(monkeypatch)
     )
 
     hourly = mirror.fetch_mirror(
-        store, "tp", pd.Timestamp("2000-01-01").date(), pd.Timestamp("2000-01-02").date()
+        store,
+        "tp",
+        pd.Timestamp("2000-01-01").date(),
+        pd.Timestamp("2000-01-02").date(),
     )
 
     assert hourly.sizes["valid_time"] == 72
