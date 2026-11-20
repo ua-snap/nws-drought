@@ -256,3 +256,53 @@ def test_timed_run_compares_one_variable_and_reports_both_times(
     assert "| exact match |" in text
     assert "| swvl1 |" in text and "| swe |" not in text
     assert "3600.0 s" in text
+
+
+def test_box_edges_stored_slightly_outside_are_kept(monkeypatch):
+    monkeypatch.setattr(mirror, "DL_BBOX", [72, -180, 51, -129])
+    # descending latitudes with 72 stored as 72.0000001; longitudes 0..360
+    lat = np.round(np.arange(90, -90.05, -0.1), 1)
+    lat[lat == 72.0] = 72.0000001
+    lon = np.round(np.arange(0, 360, 0.1), 1)
+
+    lat_idx, lon_idx = mirror.bbox_indices(lat, lon)
+
+    assert lat_idx.size == 211
+    assert lat[lat_idx].max() == pytest.approx(72.0)
+    assert lon_idx.size == 511
+    picked = ((lon[lon_idx] + 180) % 360) - 180
+    assert picked.min() == pytest.approx(-180.0)
+    assert picked.max() == pytest.approx(-129.0)
+
+
+def test_box_on_a_grid_holding_plus_180_keeps_the_dateline_column(monkeypatch):
+    monkeypatch.setattr(mirror, "DL_BBOX", [72, -180, 51, -129])
+    lon = np.round(np.arange(-179.9, 180.05, 0.1), 1)  # +180 present, -180 absent
+
+    _, lon_idx = mirror.bbox_indices(np.array([60.0]), lon)
+
+    assert lon_idx.size == 511
+    assert 180.0 in lon[lon_idx]
+
+
+def test_comparison_names_the_cds_rows_and_columns_the_mirror_lacks():
+    times = pd.date_range("2000-01-01", periods=2, freq="D")
+    cds = xr.DataArray(
+        np.ones((2, 3, 3)),
+        dims=("valid_time", "latitude", "longitude"),
+        coords={
+            "valid_time": times,
+            "latitude": [72.0, 71.9, 71.8],
+            "longitude": [-180.0, -179.9, -179.8],
+        },
+    )
+    candidate = cds.isel(latitude=slice(1, None), longitude=slice(1, None))
+
+    stats = mirror.compare_values(candidate, cds)
+
+    assert stats["cds_points_unmatched"] == 2 * (9 - 4)
+    assert stats["cds_latitudes_unmatched"] == [72.0]
+    assert stats["cds_longitudes_unmatched"] == [-180.0]
+    assert stats["cds_days_unmatched"] == 0
+    grid = "\n".join(mirror.render_grid_alignment({"swvl1": stats}))
+    assert "| swvl1 | 1 (72) | 1 (-180) | 0 |" in grid

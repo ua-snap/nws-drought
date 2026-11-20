@@ -201,6 +201,13 @@ def normalize(da: xr.DataArray) -> xr.DataArray:
     )
 
 
+def _unmatched(full: xr.DataArray, aligned: xr.DataArray) -> list:
+    values = np.setdiff1d(full.values, aligned.values)
+    if np.issubdtype(values.dtype, np.floating):
+        return [float(v) for v in values]
+    return [str(v) for v in values]
+
+
 def compare_values(candidate: xr.DataArray, cds: xr.DataArray) -> dict:
     """Value-by-value differences between a rebuilt candidate and the CDS values.
 
@@ -218,6 +225,10 @@ def compare_values(candidate: xr.DataArray, cds: xr.DataArray) -> dict:
     stats = {
         "points_compared": n,
         "cds_points_unmatched": int(cds.size - cds_aligned.size),
+        # CDS grid rows, columns and days with no counterpart in the candidate
+        "cds_latitudes_unmatched": _unmatched(cds.latitude, cds_aligned.latitude),
+        "cds_longitudes_unmatched": _unmatched(cds.longitude, cds_aligned.longitude),
+        "cds_days_unmatched": len(_unmatched(cds.valid_time, cds_aligned.valid_time)),
         "missing_mismatch": int(np.sum(c_ok != d_ok)),
         "max_abs_diff": float(diffs.max()) if n else float("nan"),
         "median_abs_diff": float(np.median(diffs)) if n else float("nan"),
@@ -240,6 +251,37 @@ def render_variable_row(var: str, stats: dict) -> str:
         f"| {stats['max_abs_diff']:.6g} | {stats['median_abs_diff']:.6g} "
         f"| {stats['share_equal']:.4%} | {verdict} |"
     )
+
+
+def _list_cell(values: list, limit: int = 6) -> str:
+    if not values:
+        return "none"
+    shown = ", ".join(f"{v:g}" if isinstance(v, float) else v for v in values[:limit])
+    more = f" and {len(values) - limit} more" if len(values) > limit else ""
+    return f"{len(values)} ({shown}{more})"
+
+
+def render_grid_alignment(results: dict) -> list[str]:
+    """Which CDS grid rows, columns and days the mirror has no counterpart for."""
+    lines = [
+        "### Grid alignment",
+        "",
+        "CDS latitudes, longitudes and days with no matching mirror point after "
+        "longitudes are put in -180..180 and coordinates rounded to 4 decimals. "
+        "\"none\" in every column means the two grids line up point for point.",
+        "",
+        "| Variable | CDS latitudes unmatched | CDS longitudes unmatched "
+        "| CDS days unmatched |",
+        "|---|---|---|---|",
+    ]
+    for var, stats in results.items():
+        lines.append(
+            f"| {var} | {_list_cell(stats.get('cds_latitudes_unmatched', []))} "
+            f"| {_list_cell(stats.get('cds_longitudes_unmatched', []))} "
+            f"| {stats.get('cds_days_unmatched', 0)} |"
+        )
+    lines.append("")
+    return lines
 
 
 def render_report(
@@ -292,6 +334,7 @@ def render_report(
         ]
         lines += [render_variable_row(v, s) for v, s in results.items()]
         lines.append("")
+        lines += render_grid_alignment(results)
         for var, reason in skipped.items():
             lines.append(f"- {var}: not compared ({reason}).")
         if skipped:
@@ -384,16 +427,34 @@ def fetch_mirror(
     """Load the hourly values from ``start`` through ``end`` over the bounding box,
     starting at 00:00 on the day before ``start`` so the first day's total can be
     rebuilt."""
-    north, west, south, east = DL_BBOX
     da = store[short_name]
     time_dim = "valid_time" if "valid_time" in da.dims else "time"
     first = start - datetime.timedelta(days=1)
     da = da.sel({time_dim: slice(f"{first}T00:00", f"{end}T23:00")})
-    lat = da.latitude.values
-    lat_slice = slice(north, south) if lat[0] > lat[-1] else slice(south, north)
-    if float(da.longitude.max()) > 180:
-        west, east = west % 360, east % 360
-    return normalize(da.sel(latitude=lat_slice, longitude=slice(west, east)).load())
+    lat_idx, lon_idx = bbox_indices(da.latitude.values, da.longitude.values)
+    return normalize(da.isel(latitude=lat_idx, longitude=lon_idx).load())
+
+
+# Half of the 0.1 degree ERA5-Land grid spacing: grid points this close outside the
+# bounding box are kept, so an edge stored as 72.0000001 is not dropped.
+_EDGE_TOLERANCE = 0.05
+
+
+def bbox_indices(latitudes, longitudes) -> tuple[np.ndarray, np.ndarray]:
+    """Indices of the grid rows and columns inside the download bounding box,
+    edges included within half a grid cell. Longitudes are compared in -180..180,
+    so a store in 0..360 or one holding +180 rather than -180 gives the same
+    columns."""
+    north, west, south, east = DL_BBOX
+    lat = np.asarray(latitudes, dtype="float64")
+    lon = ((np.asarray(longitudes, dtype="float64") + 180) % 360) - 180
+    lat_idx = np.flatnonzero(
+        (lat >= south - _EDGE_TOLERANCE) & (lat <= north + _EDGE_TOLERANCE)
+    )
+    lon_idx = np.flatnonzero(
+        (lon >= west - _EDGE_TOLERANCE) & (lon <= east + _EDGE_TOLERANCE)
+    )
+    return lat_idx, lon_idx
 
 
 def load_cds(path: Path, var: str, start: datetime.date, end: datetime.date):
@@ -482,7 +543,8 @@ def parse_args(argv=None) -> argparse.Namespace:
         action="store_true",
         help=(
             "Request the CDS values fresh, one request per variable, and time each "
-            "request, instead of reading the climatology yearly files."
+            "request, instead of reading the climatology yearly files. The mirror's "
+            "rebuilt daily values are saved beside the CDS files for later checks."
         ),
     )
     parser.add_argument(
@@ -560,6 +622,10 @@ def main(argv=None, *, client=None) -> None:
             daily = daily_mean_6_hourly(hourly)
             rebuild = "mean of 00/06/12/18 UTC"
 
+        if args.from_cds:
+            saved = Path(args.cds_dir) / f"mirror_{var}_{start:%Y-%m}_to_{end:%Y-%m}.nc"
+            daily.rename(entry["short_name"]).to_netcdf(saved)
+            logger.info("Saved the mirror's daily %s values to %s", var, saved)
         stats = compare_values(daily, load_cds(path, var, start, end))
         stats["rebuild"] = rebuild
         results[var] = stats
