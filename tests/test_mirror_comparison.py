@@ -231,3 +231,69 @@ def test_evaporation_uses_the_form_detected_from_precipitation(monkeypatch, tmp_
     text = report.read_text()
     assert "accumulated, detected from tp" in text
     assert "| exact match |" in text
+
+
+def _default_run(monkeypatch, tmp_path, loaded):
+    days = pd.date_range("2000-01-01", "2000-01-31", freq="D")
+    hours = pd.date_range("1999-12-31T00:00", "2000-01-31T23:00", freq="h")
+    hourly = xr.DataArray(
+        np.full((hours.size, 1, 1), 0.25),
+        dims=("valid_time", "latitude", "longitude"),
+        coords={"valid_time": hours, "latitude": [61.0], "longitude": [-150.0]},
+    )
+    monkeypatch.setattr(mirror, "BASELINE_DATA_ROOT", tmp_path)
+    monkeypatch.setenv(mirror.API_KEY_ENV_VAR, "test-key")
+    monkeypatch.setattr(mirror, "open_mirror_store", lambda key: None)
+    monkeypatch.setattr(mirror, "fetch_mirror", lambda store, name, s, e: hourly)
+
+    def fake_load(path, var, s, e):
+        loaded.append(path)
+        return hourly.sel(valid_time=days)
+
+    monkeypatch.setattr(mirror, "load_cds", fake_load)
+    report = tmp_path / "report.md"
+    mirror.main(
+        ["--year", "2000", "--months", "1", "--variable", "swvl1", "--variable",
+         "tp", "--accumulation", "accumulated", "--report", str(report)]
+    )
+    return report.read_text()
+
+
+def test_default_run_compares_against_the_archived_cds_file(monkeypatch, tmp_path):
+    archived = (
+        tmp_path
+        / "cds_climatology_archive"
+        / "era5_land_daily_swvl1_1981_2020"
+        / "volumetric_soil_water_level_1_daily_2000.nc"
+    )
+    archived.parent.mkdir(parents=True)
+    archived.write_bytes(b"CDS file")
+    loaded = []
+
+    text = _default_run(monkeypatch, tmp_path, loaded)
+
+    assert loaded == [archived]
+    assert "| swvl1 |" in text
+
+
+def test_variable_without_an_archived_cds_file_is_skipped_with_the_path(
+    monkeypatch, tmp_path
+):
+    loaded = []
+
+    text = _default_run(monkeypatch, tmp_path, loaded)
+
+    expected = (
+        tmp_path
+        / "cds_climatology_archive"
+        / "era5_land_daily_tp_1981_2020"
+        / "total_precipitation_daily_2000.grib"
+    )
+    assert f"CDS file not found: {expected}" in text
+
+
+def test_report_no_longer_says_cds_stays_the_source_unless_values_match():
+    text = mirror.render_report(period="2000", tested=True, results={})
+    assert "only if every value matches exactly" not in text
+    assert "keeps downloading from CDS" not in text
+    assert "small differences" in text

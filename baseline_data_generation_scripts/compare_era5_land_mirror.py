@@ -5,7 +5,8 @@ For a sample period over the download bounding box (a whole year by default, or
 some of its months with --months), this script reads the DestinE Earth Data Hub
 ERA5-Land Zarr store, rebuilds the daily values the way the CDS requests produce
 them, and compares them value by value with the CDS values. The CDS values come
-from the climatology yearly files on disk, which makes no CDS request, or, with
+from the CDS yearly files moved to the climatology archive when the mirror
+rebuilt them, which makes no CDS request, or, with
 --from-cds, from a fresh CDS request for the same variable and months, timed so
 the report can set the CDS wall time beside the mirror's. --variable limits the
 run to some variables. The result is a markdown report.
@@ -19,7 +20,8 @@ Daily values are rebuilt as CDS builds them:
 
 The API key is read from the environment variable named by API_KEY_ENV_VAR. Without
 it, the report records that the candidate could not be tested and nothing is fetched.
-A mirror should replace CDS only if every value matches exactly.
+The climatology is built from the mirror; small differences from CDS (the store
+keeps roughly 12 significant bits) are accepted. This script measures them.
 
 Needs the optional `mirror` dependency group for remote access:
     uv run --group mirror python -m baseline_data_generation_scripts.compare_era5_land_mirror
@@ -45,7 +47,6 @@ from download_helpers import (
     _ALL_DAYS,
     build_cds_request,
     bundle_suffix,
-    climatology_file_path,
     exclusive_download_lock,
     group_variables_by_dataset,
     month_dates,
@@ -63,6 +64,7 @@ from era5_land_mirror import (
 )
 from era5_land_variable_registry import VARIABLE_REGISTRY
 from file_helpers import check_output_file, ds_combination, setup_logging
+from mirror_climatology import ARCHIVE_DIR_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -198,8 +200,8 @@ def render_report(
         "value of the next day for tp and pev (or the sum of the day's 24 hourly "
         "increments if the store is de-accumulated), and the mean of the 00, 06, 12 "
         "and 18 UTC values for swe, swvl1 and swvl2. They are compared with the CDS "
-        "values for the same period. A mirror replaces CDS only if every value "
-        "matches exactly.",
+        "values for the same period. The climatology is built from the mirror, "
+        "and small differences from CDS are accepted.",
         "",
         "## DestinE Earth Data Hub (ERA5-Land Zarr)",
         "",
@@ -211,7 +213,7 @@ def render_report(
             f"**Result: not tested.** No API key was found in the `{API_KEY_ENV_VAR}` "
             "environment variable, so the store was not opened. Create a free Earth "
             f"Data Hub account, set `{API_KEY_ENV_VAR}`, install the `mirror` "
-            "dependency group and rerun. CDS stays the source.",
+            "dependency group and rerun.",
             "",
         ]
     else:
@@ -234,11 +236,10 @@ def render_report(
             and all(s["exact_match"] for s in results.values())
         )
         lines.append(
-            "**Verdict:** every value matches exactly; the mirror can be considered "
-            "for the climatology download."
+            "**Verdict:** every value matches exactly."
             if all_exact
-            else "**Verdict:** not an exact match for every variable; the "
-            "climatology keeps downloading from CDS."
+            else "**Verdict:** not an exact match for every variable; see the "
+            "differences above. The climatology accepts small differences from CDS."
         )
         lines.append("")
         lines.append("### Fetch time")
@@ -301,6 +302,18 @@ def load_cds(path: Path, var: str, start: datetime.date, end: datetime.date):
     entry = VARIABLE_REGISTRY[var]
     da = ds_combination([path], entry["suffix"])[entry["short_name"]]
     return da.sel(valid_time=slice(str(start), f"{end}T23:00")).load()
+
+
+def archived_cds_file(var: str, year: int) -> Path:
+    """The CDS-built yearly file for ``var`` and ``year``, as the mirror download
+    moved it to the climatology archive (CDS name and file type unchanged)."""
+    entry = VARIABLE_REGISTRY[var]
+    return (
+        BASELINE_DATA_ROOT
+        / ARCHIVE_DIR_NAME
+        / entry["climatology_dir"]
+        / f"{entry['prefix']}{year}{entry['suffix']}"
+    )
 
 
 def expected_cds_dates(start: datetime.date, end: datetime.date) -> list[str]:
@@ -382,7 +395,7 @@ def parse_args(argv=None) -> argparse.Namespace:
         action="store_true",
         help=(
             "Request the CDS values fresh, one request per variable, and time each "
-            "request, instead of reading the climatology yearly files. The mirror's "
+            "request, instead of reading the archived CDS yearly files. The mirror's "
             "rebuilt daily values are saved beside the CDS files for later checks."
         ),
     )
@@ -445,7 +458,7 @@ def main(argv=None, *, client=None) -> None:
         if args.from_cds:
             path, cds_seconds = fetch_cds(var, start, end, args.cds_dir, client=client)
         else:
-            path = climatology_file_path(var, args.year)
+            path = archived_cds_file(var, args.year)
             if not path.exists():
                 skipped[var] = f"CDS file not found: {path}"
                 continue
