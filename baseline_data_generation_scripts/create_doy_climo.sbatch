@@ -11,6 +11,10 @@
 
 set -euo pipefail
 
+# the baseline folder is shared with the cmip6 group: keep new files group-readable
+# and group-writable
+umask 007
+
 USAGE="Usage: sbatch baseline_data_generation_scripts/create_climo.sbatch <tp|swe> [--overwrite]"
 
 VARNAME="${1:-}"

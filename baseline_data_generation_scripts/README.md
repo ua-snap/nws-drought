@@ -27,7 +27,7 @@ EDH_API_KEY=... nohup setsid uv run --frozen --group mirror python -m baseline_d
   > logs/era5_land_climo_dl.log 2>&1 &
 ```
 
-Each CDS-built yearly file (the old netCDF file, or the GRIB file for precipitation and potential evaporation) is moved to `baseline_data/cds_climatology_archive/<climatology directory>/`, never deleted, just before its mirror replacement is written. Years outside `--start-year`/`--end-year` are left in place. If a file with the same name is already in the archive, the run stops before fetching or moving anything; move one of the two by hand. After the rebuild, rebuild the combined daily files by passing `--overwrite` to `combine_annual_files.sbatch` (next section), since an existing combined file is otherwise kept. The combine step refuses, leaving any existing combined file in place, until every year from 1981 through 2020 is present and built from the mirror.
+Each CDS-built yearly file (the old netCDF file, or the GRIB file for precipitation and potential evaporation) is moved to `cds_climatology_archive/<climatology directory>/` in the baseline folder (`/beegfs/CMIP6/snapdata/drought_reanalysis_baseline` unless `DROUGHT_BASELINE_ROOT` says otherwise), never deleted, just before its mirror replacement is written. Years outside `--start-year`/`--end-year` are left in place. If a file with the same name is already in the archive, the run stops before fetching or moving anything; move one of the two by hand. After the rebuild, rebuild the combined daily files by passing `--overwrite` to `combine_annual_files.sbatch` (next section), since an existing combined file is otherwise kept. The combine step refuses, leaving any existing combined file in place, until every year from 1981 through 2020 is present and built from the mirror.
 
 #### Cloud mirror comparison
 `compare_era5_land_mirror.py` measures how far the Earth Data Hub values are from the CDS values for one sample year, and writes `mirror_comparison.md`. By default it reads the CDS files the mirror download moved to the archive and makes no CDS requests. It needs `EDH_API_KEY` and the `mirror` dependency group:
@@ -36,7 +36,7 @@ Each CDS-built yearly file (the old netCDF file, or the GRIB file for precipitat
 EDH_API_KEY=... uv run --group mirror python -m baseline_data_generation_scripts.compare_era5_land_mirror --year 2000
 ```
 
-For a quick timed test, compare one variable over a few months and fetch the CDS values fresh with `--from-cds`. The script makes one CDS request for that variable and period, times it, times the mirror fetch for the same data, and puts both times beside the value comparison in the report. CDS files go to `baseline_data/mirror_comparison/`, never the climatology directories. Like any CDS download, don't run it while another CDS job is running.
+For a quick timed test, compare one variable over a few months and fetch the CDS values fresh with `--from-cds`. The script makes one CDS request for that variable and period, times it, times the mirror fetch for the same data, and puts both times beside the value comparison in the report. CDS files go to `mirror_comparison/` in the baseline folder, never the climatology directories. Like any CDS download, don't run it while another CDS job is running.
 
 ```sh
 EDH_API_KEY=... uv run --frozen --group mirror python -m baseline_data_generation_scripts.compare_era5_land_mirror \

@@ -40,7 +40,7 @@ Ensure that the baseline reference data is available at a known path with read p
 
 ### Environment Variables
 - Set `INDICES_DIR` to control the destination to which the results will be written. Default is `nws-drought/drought_ouputs`.
-- Set `CLIM_DIR` to control the destination that holds the baseline reference data (i.e. the climatologies and gamma parameters). Default is `nws-drought/baseline_data`.
+- The baseline reference data (the yearly climatology files, the climatologies and the SPI/SPEI parameters) lives in the shared folder `/beegfs/CMIP6/snapdata/drought_reanalysis_baseline`, readable by the `cmip6` group. Set `DROUGHT_BASELINE_ROOT` to build or read a development copy elsewhere, or `DROUGHT_CLIM_DIR` to read only the climatologies and parameters from another folder. Run scripts that write baseline data with `umask 007` so other `cmip6` members can read and update the files; the sbatch scripts set it.
 
 ### Pipeline Execution
 Each pipeline run will require the execution of the following two scripts:

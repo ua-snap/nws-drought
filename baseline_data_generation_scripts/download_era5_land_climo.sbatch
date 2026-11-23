@@ -29,6 +29,10 @@
 
 set -euo pipefail
 
+# the baseline folder is shared with the cmip6 group: keep new files group-readable
+# and group-writable
+umask 007
+
 : "${EDH_API_KEY:?Set EDH_API_KEY to your Earth Data Hub API key before submitting}"
 
 mkdir -p logs
