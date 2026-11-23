@@ -92,8 +92,8 @@ def main() -> int:
     logging.info("Resolved combined output file: %s", output_file)
 
     available_years = discover_year_files(annual_dir, args.var, CLIMATOLOGY_SUFFIX)
-    # The climatology must be every year, all built from the mirror, before an
-    # existing combined file is replaced.
+    # Every year must be present and complete before an existing combined file
+    # is replaced.
     problems = [
         f"{year}: no yearly file"
         for year in range(CLIMATOLOGY_START_YEAR, CLIMATOLOGY_END_YEAR + 1)

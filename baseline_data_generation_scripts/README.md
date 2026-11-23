@@ -13,7 +13,7 @@ The job needs a free Earth Data Hub API key in `EDH_API_KEY` and the optional `m
 EDH_API_KEY=... sbatch baseline_data_generation_scripts/download_era5_land_climo.sbatch
 ```
 
-Set `VARIABLE=<key>` to restrict it to one variable. A year whose file already holds the expected variable and dates and was built from the mirror is skipped, so if the job stops, submit it again and it continues where it stopped. The log gives each variable-year's time and the total time. Before the first full rebuild, time one year of every variable and check that the full 41 years fit the job's time request:
+Set `VARIABLE=<key>` to restrict it to one variable. A year whose file already holds the expected variable and dates is skipped, so if the job stops, submit it again and it continues where it stopped. The log gives each variable-year's time and the total time. Before the first full rebuild, time one year of every variable and check that the full 40 years fit the job's time request:
 
 ```sh
 EDH_API_KEY=... uv run --frozen --group mirror python -m baseline_data_generation_scripts.download_era5_land_climo \
@@ -27,7 +27,7 @@ EDH_API_KEY=... nohup setsid uv run --frozen --group mirror python -m baseline_d
   > logs/era5_land_climo_dl.log 2>&1 &
 ```
 
-Each CDS-built yearly file (the old netCDF file, or the GRIB file for precipitation and potential evaporation) is moved to `cds_climatology_archive/<climatology directory>/` in the baseline folder (`/beegfs/CMIP6/snapdata/drought_reanalysis_baseline` unless `DROUGHT_BASELINE_ROOT` says otherwise), never deleted, just before its mirror replacement is written. Years outside `--start-year`/`--end-year` are left in place. If a file with the same name is already in the archive, the run stops before fetching or moving anything; move one of the two by hand. After the rebuild, rebuild the combined daily files by passing `--overwrite` to `combine_annual_files.sbatch` (next section), since an existing combined file is otherwise kept. The combine step refuses, leaving any existing combined file in place, until every year from 1981 through 2020 is present and built from the mirror.
+The yearly files go to the baseline folder (`/beegfs/CMIP6/snapdata/drought_reanalysis_baseline` unless `DROUGHT_BASELINE_ROOT` says otherwise). After the rebuild, rebuild the combined daily files by passing `--overwrite` to `combine_annual_files.sbatch` (next section), since an existing combined file is otherwise kept. The combine step refuses, leaving any existing combined file in place, until every year from 1981 through 2020 is present and holds every day.
 
 ### Construct Single Daily File
 Merge each year of daily data into one combined daily NetCDF. Launch these jobs from the root directory of the repo.

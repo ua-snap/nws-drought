@@ -100,15 +100,6 @@ def yearly(var, year):
     return mirror_climatology.climatology_file_path(var, year)
 
 
-def cds_named(root, var, year, suffix=None):
-    entry = VARIABLE_REGISTRY[var]
-    return (
-        root
-        / entry["climatology_dir"]
-        / f"{entry['prefix']}{year}{suffix or entry['suffix']}"
-    )
-
-
 def test_precipitation_year_labels_each_total_by_the_day_it_measures(
     baseline_root, use_store
 ):
@@ -136,8 +127,7 @@ def test_precipitation_year_labels_each_total_by_the_day_it_measures(
         )
         assert ds["tp"].dtype == np.float32
         assert ds["tp"].attrs["units"] == "m"
-        for name, value in mirror_climatology.MIRROR_ATTRS.items():
-            assert ds.attrs[name] == value
+        assert era5_land_mirror.EDH_STORE_URL in ds.attrs["source"]
     assert check_output_file(path, "tp", mirror_climatology.expected_dates("tp", 2000))[
         0
     ]
@@ -186,29 +176,6 @@ def test_climatology_ends_with_2020_for_every_variable(baseline_root, use_store)
             assert days[0] == pd.Timestamp("2020-01-01")
             assert days[-1] == pd.Timestamp("2020-12-31") and days.size == 366
         assert not yearly(var, 2021).exists()
-
-
-def test_year_written_with_the_old_valid_time_labels_is_rebuilt(
-    baseline_root, use_store
-):
-    fetched = use_store(make_store("1999-12-30", "2001-01-01"))
-    run(["tp"], 2000, 2000)
-    path = yearly("tp", 2000)
-    with xr.open_dataset(path, engine="h5netcdf") as ds:
-        old = ds.load()
-    del old.attrs[mirror_climatology.DAY_LABEL_ATTR]
-    old.to_netcdf(path, engine="h5netcdf")
-    fetched.clear()
-
-    run(["tp"], 2000, 2000)
-
-    assert [name for name, _, _ in fetched if name == "tp"]
-    assert mirror_climatology.is_mirror_built("tp", 2000)
-    assert (
-        not (baseline_root / mirror_climatology.ARCHIVE_DIR_NAME)
-        .joinpath("era5_land_daily_tp_1981_2020", path.name)
-        .exists()
-    )
 
 
 def test_grid_matches_the_cds_box_and_order(baseline_root, use_store):
@@ -260,66 +227,10 @@ def test_mirror_file_missing_a_day_is_fetched_again(baseline_root, use_store):
     assert mirror_climatology.is_mirror_built("swvl1", 2000)
 
 
-def _write_cds_files(root, years):
-    """CDS-built files as they sit today: netCDF without the mirror mark for
-    soil moisture, GRIB stand-ins for precipitation."""
-    written = []
-    for year in years:
-        swvl1 = cds_named(root, "swvl1", year)
-        swvl1.parent.mkdir(parents=True, exist_ok=True)
-        xr.Dataset({"swvl1": ("valid_time", [0.3])}).to_netcdf(swvl1, engine="h5netcdf")
-        tp = cds_named(root, "tp", year)
-        tp.parent.mkdir(parents=True, exist_ok=True)
-        tp.write_bytes(f"GRIB {year}".encode())
-        written += [swvl1, tp]
-    return written
-
-
-def test_cds_files_are_archived_only_for_the_years_replaced(baseline_root, use_store):
-    use_store(make_store("1999-12-30", "2001-01-01"))
-    _write_cds_files(baseline_root, [1999, 2000, 2001])
-
-    run(["tp", "swvl1"], 2000, 2000)
-
-    archive = baseline_root / mirror_climatology.ARCHIVE_DIR_NAME
-    for var in ("tp", "swvl1"):
-        moved = archive / VARIABLE_REGISTRY[var]["climatology_dir"]
-        assert (moved / cds_named(baseline_root, var, 2000).name).exists()
-        for kept_year in (1999, 2001):
-            assert cds_named(baseline_root, var, kept_year).exists()
-            assert not (moved / cds_named(baseline_root, var, kept_year).name).exists()
-        assert mirror_climatology.is_mirror_built(var, 2000)
-    assert (
-        archive / "era5_land_daily_tp_1981_2020" / "total_precipitation_daily_2000.grib"
-    ).read_bytes() == b"GRIB 2000"
-
-
-def test_archive_name_clash_stops_before_any_fetch_or_move(baseline_root, use_store):
-    fetched = use_store(make_store("1999-12-31", "2001-12-31"))
-    cds_2000, cds_2001 = (cds_named(baseline_root, "swvl1", y) for y in (2000, 2001))
-    _write_cds_files(baseline_root, [2000, 2001])
-    clash = (
-        baseline_root
-        / mirror_climatology.ARCHIVE_DIR_NAME
-        / VARIABLE_REGISTRY["swvl1"]["climatology_dir"]
-        / cds_2001.name
-    )
-    clash.parent.mkdir(parents=True)
-    clash.write_bytes(b"older archive copy")
-
-    with pytest.raises(mirror_climatology.ArchiveClash, match=cds_2001.name):
-        run(["swvl1"], 2000, 2001)
-
-    assert fetched == []
-    assert cds_2000.exists() and cds_2001.exists()
-    assert clash.read_bytes() == b"older archive copy"
-
-
-def test_missing_key_stops_before_opening_the_store_or_moving_files(
+def test_missing_key_stops_before_opening_the_store_or_writing_files(
     baseline_root, use_store, monkeypatch
 ):
     monkeypatch.delenv(era5_land_mirror.API_KEY_ENV_VAR)
-    written = _write_cds_files(baseline_root, [2000])
 
     def no_open(key):
         raise AssertionError("the store must not be opened without a key")
@@ -329,19 +240,12 @@ def test_missing_key_stops_before_opening_the_store_or_moving_files(
     with pytest.raises(mirror_climatology.MirrorKeyMissing, match="EDH_API_KEY"):
         run(["swvl1"], 2000, 2000)
 
-    assert all(path.exists() for path in written)
-    assert not (
-        baseline_root
-        / mirror_climatology.ARCHIVE_DIR_NAME
-        / "era5_land_daily_swvl1_1981_2020"
-    ).exists()
+    assert not yearly("swvl1", 2000).exists()
 
 
 def test_rejected_key_says_so_and_differs_from_a_missing_key(
     baseline_root, monkeypatch
 ):
-    written = _write_cds_files(baseline_root, [2000])
-
     class Refused(Exception):
         status = 401
 
@@ -354,7 +258,7 @@ def test_rejected_key_says_so_and_differs_from_a_missing_key(
         run(["swvl1"], 2000, 2000)
 
     assert KEY not in str(err.value)
-    assert all(path.exists() for path in written)
+    assert not yearly("swvl1", 2000).exists()
 
 
 def test_fetch_error_keeps_finished_years_and_leaves_no_partial_file(

@@ -8,11 +8,8 @@ is the 00:00 reading on D+1, so the 2020 files read 1 January 2021. Small
 differences from CDS values are accepted: the mirror stores roughly 12 significant
 bits.
 
-A year counts as done when its file passes the date-and-variable check and carries
-the mirror mark, so running again after a stop continues where it stopped. A
-CDS-built yearly file (no mirror mark, or the old GRIB file for tp and pev) is
-moved to the archive directory, never deleted, just before its mirror replacement
-is written. Years outside the requested range are left alone.
+A year counts as done when its file passes the date-and-variable check, so running
+again after a stop continues where it stopped.
 """
 
 import datetime
@@ -38,14 +35,6 @@ logger = logging.getLogger(__name__)
 CLIMATOLOGY_START_YEAR = 1981
 CLIMATOLOGY_END_YEAR = 2020
 CLIMATOLOGY_SUFFIX = ".nc"
-ARCHIVE_DIR_NAME = "cds_climatology_archive"
-SOURCE_ATTR = "mirror_source"
-# Files from before daily totals were labeled by the day measured lack this.
-DAY_LABEL_ATTR = "day_label"
-MIRROR_ATTRS = {
-    SOURCE_ATTR: era5_land_mirror.EDH_STORE_URL,
-    DAY_LABEL_ATTR: "day measured",
-}
 
 
 _CDS_GRID_FILE = Path(__file__).resolve().parent / "era5_land_cds_grid.json"
@@ -88,10 +77,6 @@ class MirrorUnavailable(RuntimeError):
     """The mirror refused the key or could not be reached."""
 
 
-class ArchiveClash(RuntimeError):
-    """A CDS file to archive already has a same-name file in the archive."""
-
-
 def climatology_file_path(variable_key: str, year: int) -> Path:
     meta = VARIABLE_REGISTRY[variable_key]
     return (
@@ -106,32 +91,14 @@ def staged_path(target: Path) -> Path:
     return target.with_name(f"{target.name}.partial")
 
 
-def _archive_path(path: Path) -> Path:
-    return BASELINE_DATA_ROOT / ARCHIVE_DIR_NAME / path.parent.name / path.name
-
-
 def expected_dates(variable_key: str, year: int) -> list[str]:
     """Every day of the year, each labeled by the day it measures."""
     days = pd.date_range(f"{year}-01-01", f"{year}-12-31", freq="D")
     return [day.date().isoformat() for day in days]
 
 
-def _has_mirror_mark(path: Path) -> bool:
-    try:
-        with xr.open_dataset(path, engine=NETCDF_ENGINE) as ds:
-            return SOURCE_ATTR in ds.attrs
-    except Exception:
-        return False
-
-
 def check_year_file(path: Path, variable_key: str, year: int) -> tuple[bool, str]:
-    """Whether ``path`` is a finished mirror-built year, and why not. The mark is
-    read first, so CDS-built files (GRIB included) skip the full date check."""
-    if not _has_mirror_mark(path):
-        return False, f"{path.name} is missing or carries no mirror mark"
-    with xr.open_dataset(path, engine=NETCDF_ENGINE) as ds:
-        if ds.attrs.get(DAY_LABEL_ATTR) != MIRROR_ATTRS[DAY_LABEL_ATTR]:
-            return False, f"{path.name} labels days the old way"
+    """Whether ``path`` holds the variable for every day of ``year``, and why not."""
     return check_output_file(
         path,
         VARIABLE_REGISTRY[variable_key]["short_name"],
@@ -143,17 +110,6 @@ def is_mirror_built(variable_key: str, year: int) -> bool:
     return check_year_file(
         climatology_file_path(variable_key, year), variable_key, year
     )[0]
-
-
-def _cds_built_files(variable_key: str, year: int) -> list[Path]:
-    target = climatology_file_path(variable_key, year)
-    cds = target.with_suffix(VARIABLE_REGISTRY[variable_key]["suffix"])
-    found = []
-    if target.exists() and not _has_mirror_mark(target):
-        found.append(target)
-    if cds != target and cds.exists():
-        found.append(cds)
-    return found
 
 
 def _open_checked_store(api_key: str) -> xr.Dataset:
@@ -211,14 +167,13 @@ def _daily_year(store, variable_key: str, year: int, convention: str | None):
 
 
 def _install_year(daily: xr.DataArray, variable_key: str, year: int) -> Path:
-    """Write the year to a staged file, check it, archive the year's CDS files,
-    then rename the staged file into place."""
+    """Write the year to a staged file, check it, then rename it into place."""
     target = climatology_file_path(variable_key, year)
     target.parent.mkdir(parents=True, exist_ok=True)
     staged = staged_path(target)
     name = daily.name
     ds = daily.to_dataset()
-    ds.attrs.update(MIRROR_ATTRS)
+    ds.attrs["source"] = f"ERA5-Land from {era5_land_mirror.EDH_STORE_URL}"
     try:
         ds.to_netcdf(
             staged,
@@ -228,11 +183,6 @@ def _install_year(daily: xr.DataArray, variable_key: str, year: int) -> Path:
         ok, reason = check_year_file(staged, variable_key, year)
         if not ok:
             raise RuntimeError(f"{target}: rebuilt year failed its check ({reason})")
-        for cds_file in _cds_built_files(variable_key, year):
-            archived = _archive_path(cds_file)
-            archived.parent.mkdir(parents=True, exist_ok=True)
-            cds_file.rename(archived)
-            logger.info("Archived CDS file %s to %s", cds_file, archived)
         staged.replace(target)
     finally:
         staged.unlink(missing_ok=True)
@@ -247,9 +197,8 @@ def download_era5_land_climatology(
     """Build the yearly climatology files for ``variable_keys`` (default: every
     variable) over ``start_year``..``end_year`` from the Earth Data Hub mirror.
 
-    Raises MirrorKeyMissing or MirrorUnavailable before touching any file when the
-    key is missing, refused, or the mirror is unreachable, and ArchiveClash before
-    any fetch when a CDS file to archive already has a namesake in the archive.
+    Raises MirrorKeyMissing or MirrorUnavailable before writing any file when the
+    key is missing, refused, or the mirror is unreachable.
     """
     api_key = os.getenv(era5_land_mirror.API_KEY_ENV_VAR)
     if not api_key:
@@ -258,7 +207,7 @@ def download_era5_land_climatology(
         )
     variable_keys = list(variable_keys or VARIABLE_REGISTRY)
     started = time.perf_counter()
-    with exclusive_download_lock(BASELINE_DATA_ROOT / ARCHIVE_DIR_NAME):
+    with exclusive_download_lock(BASELINE_DATA_ROOT):
         store = _open_checked_store(api_key)
         logger.info(
             "Climatology download %d-%d from %s for %s, at most %d storage blocks "
@@ -277,16 +226,6 @@ def download_era5_land_climatology(
             ]
             for key in variable_keys
         }
-        for key, years in todo.items():
-            for year in years:
-                for cds_file in _cds_built_files(key, year):
-                    if _archive_path(cds_file).exists():
-                        raise ArchiveClash(
-                            f"{cds_file.name} is already in "
-                            f"{_archive_path(cds_file).parent}; move one of them "
-                            "by hand, then run again."
-                        )
-
         summed_years = [
             year
             for key, years in todo.items()

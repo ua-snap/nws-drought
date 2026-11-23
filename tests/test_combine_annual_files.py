@@ -1,5 +1,5 @@
-"""The combine step builds one file from the mirror's yearly netCDF files, and
-only from a complete, mirror-built set of years."""
+"""The combine step builds one file from the yearly netCDF files, and only from
+a complete set of years that each pass their check."""
 
 import sys
 
@@ -14,14 +14,14 @@ from mirror_climatology import (
     CLIMATOLOGY_END_YEAR,
     CLIMATOLOGY_START_YEAR,
     CLIMATOLOGY_SUFFIX,
-    MIRROR_ATTRS,
 )
 
 YEARS = range(CLIMATOLOGY_START_YEAR, CLIMATOLOGY_END_YEAR + 1)
 
 
-def _yearly_tp(path, year, *, mirror=True):
+def _yearly_tp(path, year, *, days_missing=0):
     dates = pd.DatetimeIndex(mirror_climatology.expected_dates("tp", year))
+    dates = dates[days_missing:]
     ds = xr.Dataset(
         {
             "tp": (
@@ -35,8 +35,6 @@ def _yearly_tp(path, year, *, mirror=True):
             "longitude": [-180.0, -179.9],
         },
     )
-    if mirror:
-        ds.attrs.update(MIRROR_ATTRS)
     ds.to_netcdf(path, engine="h5netcdf")
 
 
@@ -98,12 +96,12 @@ def test_missing_year_stops_before_the_existing_combined_file_is_replaced(
     assert combined.read_bytes() == b"the previous combined climatology"
 
 
-def test_cds_built_year_stops_before_the_existing_combined_file_is_replaced(
+def test_year_missing_a_day_stops_before_the_existing_combined_file_is_replaced(
     monkeypatch, tp_dirs
 ):
     annual, combined = tp_dirs
     for year in YEARS:
-        _yearly_tp(_yearly_path(annual, year), year, mirror=year != 2010)
+        _yearly_tp(_yearly_path(annual, year), year, days_missing=int(year == 2010))
     combined.write_bytes(b"the previous combined climatology")
 
     assert _run(monkeypatch, "--overwrite") == 1

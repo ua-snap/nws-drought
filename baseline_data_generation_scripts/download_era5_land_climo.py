@@ -3,8 +3,7 @@ mirror, for every variable or the variables given with --variable.
 
 Needs an Earth Data Hub API key in EDH_API_KEY and the `mirror` dependency group.
 Yearly files the mirror already built are kept, so running this again after a stop
-continues where it stopped. Each CDS-built yearly file is moved to the climatology
-archive just before its mirror replacement is written.
+continues where it stopped.
 """
 
 import argparse
@@ -16,7 +15,6 @@ from file_helpers import setup_logging
 from mirror_climatology import (
     CLIMATOLOGY_END_YEAR,
     CLIMATOLOGY_START_YEAR,
-    ArchiveClash,
     MirrorKeyMissing,
     MirrorUnavailable,
     download_era5_land_climatology,
@@ -67,7 +65,7 @@ def main() -> None:
             start_year=args.start_year,
             end_year=args.end_year,
         )
-    except (MirrorKeyMissing, MirrorUnavailable, ArchiveClash) as exc:
+    except (MirrorKeyMissing, MirrorUnavailable) as exc:
         logging.getLogger(__name__).error("%s", exc)
         sys.exit(1)
 
