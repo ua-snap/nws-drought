@@ -15,12 +15,26 @@ import cds_requests
 from cds_requests import (
     OutputCheckError,
     RequestRejectedError,
-    check_then_rename,
     request_hash,
     run_request,
 )
 
 DATASET = "reanalysis-era5-land"
+
+
+def check_then_rename(check, target):
+    """A finalize step that installs the download at ``target`` only if
+    ``check(path)`` passes."""
+
+    def finalize(temp_path):
+        ok, reason = check(temp_path)
+        if not ok:
+            raise OutputCheckError(f"{target}: {reason}")
+        temp_path.replace(target)
+
+    return finalize
+
+
 REQUEST = {"variable": ["total_precipitation"], "year": "2026", "month": ["08"]}
 CREATED = datetime.datetime(2026, 11, 18, 12, 0, 0)
 

@@ -1,10 +1,7 @@
 import calendar
-import contextlib
 import datetime
-import fcntl
 import itertools
 import logging
-import os
 import shutil
 import tempfile
 import zipfile
@@ -18,7 +15,7 @@ import xarray as xr
 from cds_requests import OutputCheckError, run_request
 from config import DATA_LAG_TIME_DAYS, DL_BBOX, RECENT_DATA_ROOT
 from era5_land_variable_registry import VARIABLE_REGISTRY
-from file_helpers import NETCDF_ENGINE, check_output_file
+from file_helpers import NETCDF_ENGINE, check_output_file, exclusive_download_lock
 
 logger = logging.getLogger(__name__)
 
@@ -346,11 +343,6 @@ def split_months_then_install(
     return finalize
 
 
-def api_credentials_check():
-    cds_api_prompt = "Climate Data Store API credentials were not found in your $HOME directory. Please verify and store a valid API key in a .cdsapirc file and visit https://cds.climate.copernicus.eu/api-how-to#install-the-cds-api-key for instructions."
-    assert ".cdsapirc" in os.listdir(os.environ["HOME"]), cds_api_prompt
-
-
 def get_analysis_date():
     """Create a date-of-analysis for which the prior 365 days will have their data fetched.
     We use this lagged date because data is not available in real-time.
@@ -371,30 +363,6 @@ def get_analysis_date():
 # the output check.
 _RECURRING_WINDOW_MONTHS = 3
 _BUNDLE_DIR = "cds_downloads"
-
-
-@contextlib.contextmanager
-def exclusive_download_lock(directory: Path):
-    """Hold an exclusive lock on ``directory`` for one download run.
-
-    Two runs sharing a download directory would reuse each other's saved
-    request IDs and delete each other's CDS jobs, and ECMWF asks for one
-    request at a time per account, so a second run stops before submitting.
-    """
-    directory = Path(directory)
-    directory.mkdir(parents=True, exist_ok=True)
-    with open(directory / ".lock", "w") as lock_file:
-        try:
-            fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            raise RuntimeError(
-                f"Another CDS download is already running in {directory}; "
-                "wait for it to finish before starting this one."
-            ) from None
-        try:
-            yield
-        finally:
-            fcntl.flock(lock_file, fcntl.LOCK_UN)
 
 
 def coverage_months(analysis_date: datetime.date) -> list[tuple[int, int]]:

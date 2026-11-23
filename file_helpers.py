@@ -1,5 +1,7 @@
 """General set of helper functions for file navigation."""
 
+import contextlib
+import fcntl
 import logging
 from pathlib import Path
 
@@ -133,3 +135,24 @@ def check_output_file(
         True,
         f"{path.name} holds {short_name} for all {len(expected)} expected dates",
     )
+
+
+@contextlib.contextmanager
+def exclusive_download_lock(directory: Path):
+    """Hold an exclusive lock on ``directory`` for one download run, so a second
+    run writing the same files stops before it starts. For CDS this also keeps
+    to ECMWF's one-request-at-a-time rule."""
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    with open(directory / ".lock", "w") as lock_file:
+        try:
+            fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise RuntimeError(
+                f"Another download is already running in {directory}; "
+                "wait for it to finish before starting this one."
+            ) from None
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)

@@ -16,6 +16,7 @@ import pytest
 import xarray as xr
 
 import download_helpers
+import file_helpers
 from cds_requests import STATE_FILE_NAME, OutputCheckError, request_hash
 from download_helpers import (
     _ACCUMULATION_FOR_PRIOR_24HRS,
@@ -710,10 +711,10 @@ def test_multi_month_split_missing_a_variable_installs_nothing(tmp_path):
 
 
 def test_second_download_run_in_the_same_directory_stops_before_submitting(tmp_path):
-    with download_helpers.exclusive_download_lock(tmp_path):
+    with file_helpers.exclusive_download_lock(tmp_path):
         with pytest.raises(RuntimeError, match="already running"):
-            with download_helpers.exclusive_download_lock(tmp_path):
+            with file_helpers.exclusive_download_lock(tmp_path):
                 pass
     # released when the first run ends
-    with download_helpers.exclusive_download_lock(tmp_path):
+    with file_helpers.exclusive_download_lock(tmp_path):
         pass

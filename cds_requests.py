@@ -41,21 +41,6 @@ def request_hash(dataset: str, request: dict[str, Any]) -> str:
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
-def check_then_rename(
-    check: Callable[[Path], tuple[bool, str]], target: Path
-) -> Callable[[Path], None]:
-    """Build a finalize step that moves the download to ``target`` only if
-    ``check(path)`` returns ``(True, reason)``."""
-
-    def finalize(temp_path: Path) -> None:
-        ok, reason = check(temp_path)
-        if not ok:
-            raise OutputCheckError(f"{target}: {reason}")
-        temp_path.replace(target)
-
-    return finalize
-
-
 def _default_client():
     # cdsapi reads ~/.cdsapirc inside the library; this project never opens it.
     import cdsapi
@@ -117,7 +102,7 @@ def run_request(
     """Run one CDS request to completion and hand its download to ``finalize``.
 
     The download is written to a temporary name beside ``target``, then
-    ``finalize(temp_path)`` installs it (see ``check_then_rename``) or raises
+    ``finalize(temp_path)`` installs it or raises
     ``OutputCheckError`` to have the request retried. Transport errors,
     failed jobs and check failures are retried up to ``max_attempts`` times,
     waiting ``backoff_seconds`` and doubling after each attempt. A rejected
