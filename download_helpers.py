@@ -253,51 +253,6 @@ def _split_bundle(bundle: Path, staged: dict[str, Path]) -> set[str]:
     return found
 
 
-def split_then_install(
-    targets: dict[str, Path], expected_dates: list
-) -> Callable[[Path], None]:
-    """Build a finalize step for a combined (several-variable) download.
-
-    The step splits the downloaded bundle into one file per variable, checks
-    every split file for its variable and ``expected_dates`` and, only if every
-    expected variable is present and passes, moves each into place. Otherwise it
-    removes the split files and raises ``OutputCheckError`` (so the request runner
-    resubmits) without installing anything.
-
-    Args:
-        targets: {registry short_name (GRIB shortName or netCDF variable name):
-            final path for that variable's file}
-        expected_dates: valid dates each split file must hold exactly.
-    """
-    targets = {name: Path(path) for name, path in targets.items()}
-
-    def finalize(bundle: Path) -> None:
-        bundle = Path(bundle)
-        staged = {}
-        for short_name, target in targets.items():
-            target.parent.mkdir(parents=True, exist_ok=True)
-            staged[short_name] = target.with_name(f"{target.stem}.split{target.suffix}")
-        try:
-            found = _split_bundle(bundle, staged)
-            missing = sorted(targets.keys() - found)
-            if missing:
-                raise OutputCheckError(
-                    f"{bundle.name} is missing expected variables {missing}"
-                )
-            for short_name, path in staged.items():
-                ok, reason = check_output_file(path, short_name, expected_dates)
-                if not ok:
-                    raise OutputCheckError(f"{targets[short_name]}: {reason}")
-            for short_name, path in staged.items():
-                path.replace(targets[short_name])
-                logger.info("Installed %s", targets[short_name])
-        finally:
-            for path in staged.values():
-                path.unlink(missing_ok=True)
-
-    return finalize
-
-
 def _split_netcdf_by_month(path: Path, staged: dict[tuple, Path]) -> set[tuple]:
     """Write each calendar month of a one-variable netCDF to ``staged[(y, m)]``.
 

@@ -33,7 +33,7 @@ from download_helpers import (
     plan_recurring_requests,
     recurring_monthly_files,
     split_months_then_install,
-    split_then_install,
+    _split_bundle,
 )
 from config import DL_BBOX
 from file_helpers import GRIB_BACKEND_KWARGS
@@ -160,8 +160,10 @@ def test_grib_split_copies_each_variables_messages_unchanged(tmp_path):
     bundle = tmp_path / "bundle.partial.grib"
     source = _write_two_variable_grib(bundle)
     targets = _grib_targets(tmp_path)
+    for target in targets.values():
+        target.parent.mkdir(parents=True)
 
-    split_then_install(targets, FIXTURE_DATES)(bundle)
+    assert _split_bundle(bundle, targets) == {"tp", "pev"}
 
     for short_name, target in targets.items():
         split = _raw_messages(target)
@@ -185,21 +187,6 @@ def test_grib_split_copies_each_variables_messages_unchanged(tmp_path):
             assert list(split_ds.data_vars) == [short_name]
             assert split_ds[short_name].shape[0] == 3
             xr.testing.assert_identical(split_ds[short_name], source_ds[short_name])
-    assert not list(tmp_path.rglob("*.split*"))
-
-
-def test_grib_missing_a_variable_raises_and_installs_nothing(tmp_path):
-    bundle = tmp_path / "bundle.partial.grib"
-    _write_two_variable_grib(bundle)
-    targets = _grib_targets(tmp_path)
-    targets["swvl1"] = tmp_path / "swvl1_dir" / "never.grib"
-
-    with pytest.raises(
-        OutputCheckError, match=r"missing expected variables \[.swvl1.\]"
-    ):
-        split_then_install(targets, FIXTURE_DATES)(bundle)
-
-    assert not [p for p in tmp_path.rglob("*") if p.is_file() and p != bundle]
 
 
 def _write_daily_netcdf(path, short_name, dates=FIXTURE_DATES):
@@ -233,53 +220,28 @@ def _write_zip(tmp_path, members):
     return bundle
 
 
-def test_zip_of_three_netcdfs_moves_each_to_its_target(tmp_path):
+def test_zip_of_three_netcdfs_places_each_by_its_contents(tmp_path):
     # Member names deliberately do not match their contents: the variable is
     # identified by opening each file.
     bundle = _write_zip(tmp_path, {"a.nc": "swvl2", "b.nc": "sd", "c.nc": "swvl1"})
     targets = _daily_targets(tmp_path)
+    for target in targets.values():
+        target.parent.mkdir(parents=True)
 
-    split_then_install(targets, FIXTURE_DATES)(bundle)
+    assert _split_bundle(bundle, targets) == {"sd", "swvl1", "swvl2"}
 
     for short_name, target in targets.items():
         with xr.open_dataset(target, engine="h5netcdf") as ds:
             assert list(ds.data_vars) == [short_name]
 
 
-def test_zip_missing_a_variable_raises_and_installs_nothing(tmp_path):
-    bundle = _write_zip(tmp_path, {"a.nc": "sd", "b.nc": "swvl1"})
-    targets = _daily_targets(tmp_path)
-
-    with pytest.raises(
-        OutputCheckError, match=r"missing expected variables \[.swvl2.\]"
-    ):
-        split_then_install(targets, FIXTURE_DATES)(bundle)
-
-    assert not any(target.exists() for target in targets.values())
-    leftovers = [
-        p
-        for p in tmp_path.rglob("*")
-        if p.is_file() and p != bundle and "members" not in p.parts
-    ]
-    assert leftovers == []
-
-
-def test_split_file_with_wrong_dates_raises_and_installs_nothing(tmp_path):
-    bundle = _write_zip(tmp_path, {"a.nc": "sd", "b.nc": "swvl1", "c.nc": "swvl2"})
-    targets = _daily_targets(tmp_path)
-
-    with pytest.raises(OutputCheckError, match="dates differ"):
-        split_then_install(targets, FIXTURE_DATES + ["2026-03-04"])(bundle)
-
-    assert not any(target.exists() for target in targets.values())
-
-
-def test_single_variable_bare_netcdf_is_installed(tmp_path):
+def test_single_variable_bare_netcdf_is_placed(tmp_path):
     bundle = tmp_path / "bundle.partial.zip"
     _write_daily_netcdf(bundle, "sd")
     target = _daily_targets(tmp_path)["sd"]
+    target.parent.mkdir(parents=True)
 
-    split_then_install({"sd": target}, FIXTURE_DATES)(bundle)
+    assert _split_bundle(bundle, {"sd": target}) == {"sd"}
 
     with xr.open_dataset(target, engine="h5netcdf") as ds:
         assert list(ds.data_vars) == ["sd"]
