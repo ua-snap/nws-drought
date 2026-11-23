@@ -133,20 +133,15 @@ def test_precipitation_year_labels_each_total_by_the_day_it_measures(
     ]
 
 
-def test_hourly_increments_give_the_same_year_as_running_totals(
-    baseline_root, use_store, tmp_path
+def test_store_holding_hourly_increments_stops_before_any_file_is_written(
+    baseline_root, use_store
 ):
-    use_store(make_store("1999-12-30", "2001-01-01"))
-    run(["tp"], 2000, 2000)
-    with xr.open_dataset(yearly("tp", 2000), engine="h5netcdf") as ds:
-        from_totals = ds["tp"].load()
-    yearly("tp", 2000).unlink()
-
     use_store(make_store("1999-12-30", "2001-01-01", increments=True))
-    run(["tp"], 2000, 2000)
 
-    with xr.open_dataset(yearly("tp", 2000), engine="h5netcdf") as ds:
-        xr.testing.assert_allclose(ds["tp"].load(), from_totals, rtol=1e-5)
+    with pytest.raises(RuntimeError, match="running totals"):
+        run(["tp", "pev"], 2000, 2000)
+
+    assert not yearly("tp", 2000).exists() and not yearly("pev", 2000).exists()
 
 
 def test_soil_moisture_day_is_the_mean_of_the_four_six_hourly_values(
@@ -243,7 +238,7 @@ def test_missing_key_stops_before_opening_the_store_or_writing_files(
     assert not yearly("swvl1", 2000).exists()
 
 
-def test_rejected_key_says_so_and_differs_from_a_missing_key(
+def test_refused_key_stops_before_any_file_is_written_and_hides_the_key(
     baseline_root, monkeypatch
 ):
     class Refused(Exception):
@@ -254,7 +249,9 @@ def test_rejected_key_says_so_and_differs_from_a_missing_key(
 
     monkeypatch.setattr(era5_land_mirror, "open_mirror_store", refuse)
 
-    with pytest.raises(mirror_climatology.MirrorUnavailable, match="rejected") as err:
+    with pytest.raises(
+        mirror_climatology.MirrorUnavailable, match="401 Unauthorized"
+    ) as err:
         run(["swvl1"], 2000, 2000)
 
     assert KEY not in str(err.value)
@@ -297,22 +294,14 @@ def test_log_names_each_year_and_the_total_and_never_the_key(
     assert KEY not in text
 
 
-def test_summed_form_is_read_from_precipitation_even_when_only_evaporation_runs(
+def test_running_totals_are_checked_on_precipitation_even_when_only_evaporation_runs(
     baseline_root, use_store, monkeypatch
 ):
-    use_store(make_store("1999-12-30", "2001-01-01"))
-    asked = []
-    real = era5_land_mirror.store_accumulation_convention
-
-    def recording(store, start):
-        asked.append(start)
-        return real(store, start)
-
-    monkeypatch.setattr(era5_land_mirror, "store_accumulation_convention", recording)
+    fetched = use_store(make_store("1999-12-30", "2001-01-01"))
 
     run(["pev"], 2000, 2000)
 
-    assert asked == [datetime.date(2000, 1, 1)]
+    assert fetched[0] == ("tp", datetime.date(2000, 1, 1), datetime.date(2000, 1, 7))
     assert mirror_climatology.is_mirror_built("pev", 2000)
 
 

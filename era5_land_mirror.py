@@ -2,10 +2,9 @@
 values the way the CDS requests produce them.
 
 Daily values:
-  - summed variables (tp, pev): the 00:00 UTC value of day D+1 is the total for
-    day D. If the store holds hourly increments instead of running totals, the 24
-    increments ending at 00:00 of day D+1 are summed. Which form the store uses is
-    detected from tp and applied to pev too.
+  - summed variables (tp, pev): the store holds running totals since 00 UTC, so
+    the 00:00 UTC value of day D+1 is the total for day D. A run checks that the
+    store still holds running totals before using them.
   - mean variables (swe, swvl1, swvl2): the mean of the 00, 06, 12 and 18 UTC values.
 
 Opening the store needs the optional `mirror` dependency group (zarr, aiohttp);
@@ -45,30 +44,10 @@ def _accumulation_period(times) -> pd.DatetimeIndex:
     return (pd.DatetimeIndex(times) - pd.Timedelta(hours=1)).floor("D")
 
 
-def daily_totals_from_accumulated(hourly: xr.DataArray) -> xr.DataArray:
+def daily_totals(hourly: xr.DataArray) -> xr.DataArray:
     """Daily totals from running totals since 00 UTC: the 00:00 values, labeled as CDS
     labels them (the total for day D sits at 00:00 on D+1)."""
     return hourly.sel(valid_time=hourly.valid_time.dt.hour == 0)
-
-
-def daily_totals_from_increments(hourly: xr.DataArray) -> xr.DataArray:
-    """Daily totals from hourly increments: the sum of the 24 increments from 01:00 on
-    D through 00:00 on D+1, labeled at 00:00 on D+1. Incomplete days are dropped."""
-    period = _accumulation_period(hourly.valid_time.values)
-    counts = pd.Series(period).value_counts()
-    complete = counts[counts == 24].index
-    totals = (
-        hourly.assign_coords(period=("valid_time", period))
-        .groupby("period")
-        .sum("valid_time", skipna=False)
-    )
-    totals = totals.sel(period=totals.period.isin(complete.values))
-    labels = pd.DatetimeIndex(totals.period.values) + pd.Timedelta(days=1)
-    return (
-        totals.rename(period="valid_time")
-        .assign_coords(valid_time=labels)
-        .sortby("valid_time")
-    )
 
 
 def detect_accumulation_convention(hourly: xr.DataArray) -> str:
@@ -98,14 +77,6 @@ def detect_accumulation_convention(hourly: xr.DataArray) -> str:
         raise ValueError("No complete, varying days to detect the convention from")
     share = monotonic / varying
     return "accumulated" if share >= _ACCUMULATED_MONOTONIC_SHARE else "increments"
-
-
-def daily_totals(hourly: xr.DataArray, convention: str) -> xr.DataArray:
-    if convention == "accumulated":
-        return daily_totals_from_accumulated(hourly)
-    if convention == "increments":
-        return daily_totals_from_increments(hourly)
-    raise ValueError(f"Unknown accumulation convention: {convention!r}")
 
 
 def daily_mean_6_hourly(hourly: xr.DataArray) -> xr.DataArray:
@@ -224,12 +195,13 @@ def bbox_indices(latitudes, longitudes) -> tuple[np.ndarray, np.ndarray]:
     return lat_idx, lon_idx
 
 
-# Days of precipitation read to tell how the store holds its summed variables.
+# Days of precipitation read to check how the store holds its summed variables.
 _CONVENTION_SAMPLE_DAYS = 7
 
 
-def store_accumulation_convention(store: xr.Dataset, start: datetime.date) -> str:
-    """How the store holds its summed variables, detected from precipitation.
+def require_running_totals(store: xr.Dataset, start: datetime.date) -> None:
+    """Stop if the store no longer holds its summed variables as running totals
+    since 00 UTC, which daily_totals relies on.
 
     One store uses one form for every summed variable, so it is read from tp, whose
     running totals never shrink within a day. Potential evaporation cannot be used:
@@ -238,11 +210,8 @@ def store_accumulation_convention(store: xr.Dataset, start: datetime.date) -> st
     """
     end = start + datetime.timedelta(days=_CONVENTION_SAMPLE_DAYS - 1)
     sample = fetch_mirror(store, VARIABLE_REGISTRY["tp"]["short_name"], start, end)
-    convention = detect_accumulation_convention(sample)
-    logger.info(
-        "The store holds summed variables as %s (detected from tp, %s to %s)",
-        convention,
-        start,
-        end,
-    )
-    return convention
+    if detect_accumulation_convention(sample) != "accumulated":
+        raise RuntimeError(
+            "The Earth Data Hub store no longer holds precipitation as running "
+            f"totals since 00 UTC ({start} to {end}); daily totals would be wrong."
+        )

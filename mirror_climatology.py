@@ -74,7 +74,7 @@ class MirrorKeyMissing(RuntimeError):
 
 
 class MirrorUnavailable(RuntimeError):
-    """The mirror refused the key or could not be reached."""
+    """The mirror could not be read: the key was refused or it was unreachable."""
 
 
 def climatology_file_path(variable_key: str, year: int) -> Path:
@@ -114,26 +114,21 @@ def is_mirror_built(variable_key: str, year: int) -> bool:
 
 def _open_checked_store(api_key: str) -> xr.Dataset:
     """Open the store and read one value, so a refused key or an unreachable
-    mirror stops the run before any file is moved or written."""
+    mirror stops the run before any file is written."""
     try:
         store = era5_land_mirror.open_mirror_store(api_key)
         tp = store[VARIABLE_REGISTRY["tp"]["short_name"]]
         tp.isel({dim: 0 for dim in tp.dims}).values
     except Exception as exc:
-        status = getattr(exc, "status", None)
-        if status in (401, 403) or " 401" in f" {exc}" or " 403" in f" {exc}":
-            raise MirrorUnavailable(
-                f"The Earth Data Hub mirror rejected the key in "
-                f"{era5_land_mirror.API_KEY_ENV_VAR} ({type(exc).__name__})."
-            ) from None
+        # the key travels in an auth header, so it is not in the error text
         raise MirrorUnavailable(
-            f"The Earth Data Hub mirror could not be reached: "
-            f"{type(exc).__name__}: {exc}"
+            f"Could not read the Earth Data Hub mirror with the key in "
+            f"{era5_land_mirror.API_KEY_ENV_VAR}: {type(exc).__name__}: {exc}"
         ) from exc
     return store
 
 
-def _daily_year(store, variable_key: str, year: int, convention: str | None):
+def _daily_year(store, variable_key: str, year: int):
     """The year's daily values, north to south, trimmed to the expected dates."""
     entry = VARIABLE_REGISTRY[variable_key]
     dates = expected_dates(variable_key, year)
@@ -144,7 +139,7 @@ def _daily_year(store, variable_key: str, year: int, convention: str | None):
     hourly = era5_land_mirror.fetch_mirror(store, entry["short_name"], first, last)
     if entry["daily_op"] == "sum":
         # rebuilt totals sit at 00:00 on the day after the one they measure
-        daily = era5_land_mirror.daily_totals(hourly, convention)
+        daily = era5_land_mirror.daily_totals(hourly)
         daily = daily.assign_coords(
             valid_time=daily.valid_time - np.timedelta64(1, "D")
         )
@@ -232,16 +227,15 @@ def download_era5_land_climatology(
             if VARIABLE_REGISTRY[key]["daily_op"] == "sum"
             for year in years
         ]
-        convention = None
         if summed_years:
-            convention = era5_land_mirror.store_accumulation_convention(
+            era5_land_mirror.require_running_totals(
                 store, datetime.date(min(summed_years), 1, 1)
             )
 
         for key, years in todo.items():
             for year in years:
                 year_started = time.perf_counter()
-                daily = _daily_year(store, key, year, convention)
+                daily = _daily_year(store, key, year)
                 path = _install_year(daily, key, year)
                 logger.info(
                     "%s %d: built %s in %.1f s (%.0f s elapsed)",

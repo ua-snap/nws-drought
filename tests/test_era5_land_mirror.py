@@ -48,7 +48,7 @@ def test_accumulated_daily_total_is_next_day_midnight_value():
     # first sample is 01:00 on 1 Jan, so 00:00 values land on 2, 3 and 4 Jan
     hourly = _hourly(accumulated, "2000-01-01T01:00")
 
-    daily = mirror.daily_totals_from_accumulated(hourly)
+    daily = mirror.daily_totals(hourly)
 
     midnights = hourly.sel(valid_time=hourly.valid_time.dt.hour == 0)
     assert list(daily.valid_time.values) == list(midnights.valid_time.values)
@@ -57,33 +57,6 @@ def test_accumulated_daily_total_is_next_day_midnight_value():
     np.testing.assert_allclose(
         daily.values, increments.reshape(3, 24, 2, 2).sum(axis=1)
     )
-
-
-def test_summed_increments_give_same_daily_totals_as_accumulated_form():
-    increments = _synthetic_increments(3, seed=1)
-    accumulated = _accumulate_from_midnight(increments)
-
-    from_acc = mirror.daily_totals_from_accumulated(
-        _hourly(accumulated, "2000-01-01T01:00")
-    )
-    from_inc = mirror.daily_totals_from_increments(
-        _hourly(increments, "2000-01-01T01:00")
-    )
-
-    assert list(from_inc.valid_time.values) == list(from_acc.valid_time.values)
-    np.testing.assert_allclose(from_inc.values, from_acc.values, rtol=1e-12)
-
-
-def test_increment_sum_drops_days_without_all_24_hours():
-    increments = _synthetic_increments(2, seed=2)
-    # drop 01:00 on 1 Jan, so 1 Jan has only 23 of its 24 increments
-    hourly = _hourly(increments[1:], "2000-01-01T02:00")
-
-    daily = mirror.daily_totals_from_increments(hourly)
-
-    assert list(pd.DatetimeIndex(daily.valid_time.values)) == [
-        pd.Timestamp("2000-01-03T00:00")
-    ]
 
 
 def test_convention_detection_tells_accumulated_from_increments():
