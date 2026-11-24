@@ -58,7 +58,6 @@ python pipeline_run.py
  - Requests are sent one at a time, as ECMWF asks. A normal run makes 4 requests (6 when the re-download window crosses into a new year).
  - Each request logs its queue, run and transfer time, and the script logs its total run time.
  - If a job is stopped, rerunning it picks up a request still queued at CDS instead of submitting a duplicate.
- - Files from the old chunked layout (`*_current_month`, `*_previous_year`, `*_current_year`) are ignored and can be deleted by hand.
 
 **Never run two CDS jobs at once on the same account.** Do not start a manual CDS download while `pipeline_download.py` is queued or running. ECMWF can suspend accounts that submit requests in parallel. The climatology download reads the Earth Data Hub mirror, not CDS, so it can run alongside the recurring download.
 
