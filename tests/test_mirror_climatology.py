@@ -4,6 +4,7 @@ column stored just below 180, latitudes north to south with 72 stored a hair
 high); nothing here touches the network."""
 
 import datetime
+import os
 import logging
 
 import numpy as np
@@ -128,9 +129,7 @@ def test_precipitation_year_labels_each_total_by_the_day_it_measures(
         assert ds["tp"].dtype == np.float32
         assert ds["tp"].attrs["units"] == "m"
         assert era5_land_mirror.EDH_STORE_URL in ds.attrs["source"]
-    assert check_output_file(path, "tp", mirror_climatology.expected_dates("tp", 2000))[
-        0
-    ]
+    assert check_output_file(path, "tp", mirror_climatology.expected_dates(2000))[0]
 
 
 def test_store_holding_hourly_increments_stops_before_any_file_is_written(
@@ -359,3 +358,19 @@ def test_staged_file_is_never_found_as_a_yearly_file(baseline_root, use_store):
     )
 
     assert list(found) == [2000]
+
+
+def test_another_runs_staged_file_is_left_alone(baseline_root, use_store):
+    # a second run on another node, still writing its own copy of the year; the
+    # shared lock does not reach across nodes on BeeGFS
+    use_store(make_store("1999-12-31", "2000-12-31"))
+    target = yearly("swvl1", 2000)
+    other = mirror_climatology.staged_path(target, pid=os.getpid() + 1)
+    other.parent.mkdir(parents=True, exist_ok=True)
+    other.write_bytes(b"another run's half-written year")
+
+    run(["swvl1"], 2000, 2000)
+
+    assert other.read_bytes() == b"another run's half-written year"
+    assert mirror_climatology.staged_path(target) != other
+    assert mirror_climatology.is_mirror_built("swvl1", 2000)

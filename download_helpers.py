@@ -83,9 +83,9 @@ def _build_hourly_grib_request(
     Note that the 00:00 UTC value on date D is the 24-hour accumulation for date
     D-1, and CDS treats the requested day list as valid times. A request for days
     01..N therefore yields accumulations for the last day of the previous month
-    through day N-1, each labeled by its valid_time (01..N). This matches the
-    convention used when building the climatology, so no day-window extension is
-    applied here.
+    through day N-1, each labeled by its valid_time (01..N). Recurring files keep
+    that label; pipeline_run.assemble_recent_downloads relabels the totals by the
+    day they measure when it reads them, as the climatology files are labeled.
     """
     return {
         "variable": list(cds_variables),

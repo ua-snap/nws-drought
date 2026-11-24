@@ -20,7 +20,7 @@ YEARS = range(CLIMATOLOGY_START_YEAR, CLIMATOLOGY_END_YEAR + 1)
 
 
 def _yearly_tp(path, year, *, days_missing=0):
-    dates = pd.DatetimeIndex(mirror_climatology.expected_dates("tp", year))
+    dates = pd.DatetimeIndex(mirror_climatology.expected_dates(year))
     dates = dates[days_missing:]
     ds = xr.Dataset(
         {

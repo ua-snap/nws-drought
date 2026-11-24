@@ -3,6 +3,7 @@
 
 import argparse
 import logging
+import os
 import sys
 
 import xarray as xr
@@ -55,6 +56,9 @@ def main() -> int:
     variable_key = args.var
 
     setup_logging()
+    # the baseline folder is shared with the cmip6 group: keep new files group-
+    # readable and group-writable however this script is started
+    os.umask(0o007)
 
     combined_file = daily_combined_file_for_var(variable_key)
     out_path = climo_file_for_var(variable_key)

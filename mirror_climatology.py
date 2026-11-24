@@ -85,12 +85,18 @@ def climatology_file_path(variable_key: str, year: int) -> Path:
     )
 
 
-def staged_path(target: Path) -> Path:
-    # not "*.nc", so a file left by a killed run is never taken for a year
-    return target.with_name(f"{target.name}.partial")
+def staged_path(target: Path, pid: int | None = None) -> Path:
+    """Where a run writes a year before checking it. Each process gets its own
+    name, because the baseline lock does not reach across nodes on BeeGFS: two
+    runs on different nodes never write into the same file, and whichever renames
+    last installs a complete year. Not "*.nc", so a file left by a killed run is
+    never taken for a year."""
+    return target.with_name(
+        f"{target.name}.{os.getpid() if pid is None else pid}.partial"
+    )
 
 
-def expected_dates(variable_key: str, year: int) -> list[str]:
+def expected_dates(year: int) -> list[str]:
     """Every day of the year, each labeled by the day it measures."""
     days = pd.date_range(f"{year}-01-01", f"{year}-12-31", freq="D")
     return [day.date().isoformat() for day in days]
@@ -101,7 +107,7 @@ def check_year_file(path: Path, variable_key: str, year: int) -> tuple[bool, str
     return check_output_file(
         path,
         VARIABLE_REGISTRY[variable_key]["short_name"],
-        expected_dates(variable_key, year),
+        expected_dates(year),
     )
 
 
@@ -130,7 +136,7 @@ def _open_checked_store(api_key: str) -> xr.Dataset:
 def _daily_year(store, variable_key: str, year: int):
     """The year's daily values, north to south, trimmed to the expected dates."""
     entry = VARIABLE_REGISTRY[variable_key]
-    dates = expected_dates(variable_key, year)
+    dates = expected_dates(year)
     first, last = (datetime.date.fromisoformat(d) for d in (dates[0], dates[-1]))
     if entry["daily_op"] == "sum":
         # the total for the year's last day is the 00:00 reading the next day

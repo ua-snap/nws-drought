@@ -3,6 +3,7 @@
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -85,6 +86,9 @@ def main() -> int:
     args = parse_args()
 
     setup_logging()
+    # the baseline folder is shared with the cmip6 group: keep new files group-
+    # readable and group-writable however this script is started
+    os.umask(0o007)
 
     annual_dir = daily_year_dir_for_var(args.var)
     output_file = daily_combined_file_for_var(args.var)

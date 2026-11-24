@@ -23,7 +23,9 @@
 #
 # The time request assumes the rough ~10 hour estimate for all five variables;
 # check it against the per-year times logged by a one-year run first. A second
-# climatology job started while one is running stops before fetching anything.
+# climatology job on the same node stops before fetching anything; the lock does
+# not reach across nodes on BeeGFS, so don't run a login-node copy alongside a
+# Slurm job (the two would only duplicate work, not damage files).
 # If compute nodes can't reach the mirror, run the same command detached on the
 # login node instead (see baseline_data_generation_scripts/README.md).
 

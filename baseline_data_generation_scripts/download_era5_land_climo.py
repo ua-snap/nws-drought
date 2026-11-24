@@ -8,6 +8,7 @@ continues where it stopped.
 
 import argparse
 import logging
+import os
 import sys
 
 from era5_land_variable_registry import VARIABLE_REGISTRY
@@ -59,6 +60,9 @@ def main() -> None:
     args = parser.parse_args()
 
     setup_logging()
+    # the baseline folder is shared with the cmip6 group: keep new files group-
+    # readable and group-writable however this script is started
+    os.umask(0o007)
     try:
         download_era5_land_climatology(
             args.variables,

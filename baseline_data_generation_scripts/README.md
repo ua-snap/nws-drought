@@ -20,7 +20,7 @@ EDH_API_KEY=... uv run --frozen --group mirror python -m baseline_data_generatio
   --start-year 2000 --end-year 2000
 ```
 
-If compute nodes can't reach the mirror, run the same command detached on the login node, which needs no Slurm time limit:
+If compute nodes can't reach the mirror, run the same command detached on the login node, which needs no Slurm time limit. Don't run it while a Slurm climatology job is running: the lock that stops a second run doesn't reach across nodes, so both would download the same years (each writes to its own temporary file, so neither damages the other's files):
 
 ```sh
 EDH_API_KEY=... nohup setsid uv run --frozen --group mirror python -m baseline_data_generation_scripts.download_era5_land_climo \
