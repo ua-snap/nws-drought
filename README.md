@@ -62,8 +62,6 @@ python pipeline_run.py
 
 **Never run two CDS jobs at once on the same account.** Do not start a manual CDS download while `pipeline_download.py` is queued or running. ECMWF can suspend accounts that submit requests in parallel. The climatology download reads the Earth Data Hub mirror, not CDS, so it can run alongside the recurring download.
 
-To confirm the new layout returns the same values as the old one, run the old download (from a checkout before this change) and the new one on the same day into two directories, then run `python -m qc.compare_download_values OLD_DIR NEW_DIR`.
-
 A drought indicator netCDF dataset, one file per summary interval, will be written to the `INDICES_DIR` directory. Each file contains results for all indices for the entire area of interest. `pipeline_run.py` names outputs `drought_indices_<summary_interval>day_<YYYY>_<MM>_<DD>.nc`.
 
 ### Figure Creation (`data_viz/`)
