@@ -5,16 +5,17 @@ from era5_land_variable_registry import SUPPORTED_VARS, VARIABLE_REGISTRY
 
 REPO_ROOT = Path(__file__).resolve().parent
 
-# Destination to which the baseline reference data is downloaded
-BASELINE_DATA_ROOT = Path(
-    os.getenv("DROUGHT_BASELINE_ROOT") or REPO_ROOT.joinpath("baseline_data")
-)
-BASELINE_DATA_ROOT.mkdir(exist_ok=True, parents=True)
+# Shared baseline reference data (yearly climatology files, combined files,
+# climatologies and SPI/SPEI parameters). Readable by the cmip6 group, so every
+# pipeline user reads the same baseline. Set DROUGHT_BASELINE_ROOT to build or
+# read a development copy elsewhere. Scripts that write here create the
+# folders they need; importing this module creates nothing, so it also works
+# on machines without /beegfs.
+SHARED_BASELINE_ROOT = Path("/beegfs/CMIP6/snapdata/drought_reanalysis_baseline")
+BASELINE_DATA_ROOT = Path(os.getenv("DROUGHT_BASELINE_ROOT") or SHARED_BASELINE_ROOT)
 
 # directory containing climatologies and SPI/SPEI parameters
-# for production runs, this var is likely set to a static dir on the file system
 CLIM_DIR = Path(os.getenv("DROUGHT_CLIM_DIR") or BASELINE_DATA_ROOT)
-CLIM_DIR.mkdir(exist_ok=True, parents=True)
 
 # Destination to which the pipeline data is downloaded
 RECENT_DATA_ROOT = REPO_ROOT.joinpath("recent_data")

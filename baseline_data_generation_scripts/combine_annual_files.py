@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Combine annual files with daily data frequency for one variable into one NetCDF."""
+"""Combine the yearly climatology netCDF files for one variable into one NetCDF."""
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -11,6 +12,12 @@ import xarray as xr
 from config import daily_combined_file_for_var, daily_year_dir_for_var
 from era5_land_variable_registry import VARIABLE_REGISTRY
 from file_helpers import NETCDF_ENGINE, discover_year_files, setup_logging
+from mirror_climatology import (
+    CLIMATOLOGY_END_YEAR,
+    CLIMATOLOGY_START_YEAR,
+    CLIMATOLOGY_SUFFIX,
+    check_year_file,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -49,31 +56,15 @@ def combine_annual_files(
 
     ds: xr.Dataset | None = None
 
-    try:  # TODO import this from file_helpers
-        if VARIABLE_REGISTRY[variable_key]["suffix"] == ".grib":
-            ds = xr.open_mfdataset(
-                annual_paths,
-                engine="cfgrib",
-                combine="nested",
-                concat_dim="valid_time",
-                data_vars="minimal",
-                coords="minimal",
-                compat="override",
-                backend_kwargs={
-                    "time_dims": ["valid_time"],
-                    "coords_as_attributes": ["surface", "number"],
-                    "indexpath": "",  # grib can spew auxillary .idx files, this halts that behavior
-                },
-            ).sortby("valid_time")
-        else:
-            ds = xr.open_mfdataset(
-                annual_paths,
-                combine="by_coords",
-                engine=NETCDF_ENGINE,
-                data_vars="minimal",
-                coords="minimal",
-                compat="override",
-            ).sortby("valid_time")
+    try:
+        ds = xr.open_mfdataset(
+            annual_paths,
+            combine="by_coords",
+            engine=NETCDF_ENGINE,
+            data_vars="minimal",
+            coords="minimal",
+            compat="override",
+        ).sortby("valid_time")
 
         ds.to_netcdf(
             output_file,
@@ -95,15 +86,35 @@ def main() -> int:
     args = parse_args()
 
     setup_logging()
+    # the baseline folder is shared with the cmip6 group: keep new files group-
+    # readable and group-writable however this script is started
+    os.umask(0o007)
 
     annual_dir = daily_year_dir_for_var(args.var)
     output_file = daily_combined_file_for_var(args.var)
     logging.info("Resolved annual directory: %s", annual_dir)
     logging.info("Resolved combined output file: %s", output_file)
 
-    available_years = discover_year_files(
-        annual_dir, args.var, VARIABLE_REGISTRY[args.var]["suffix"]
-    )
+    available_years = discover_year_files(annual_dir, args.var, CLIMATOLOGY_SUFFIX)
+    # Every year must be present and complete before an existing combined file
+    # is replaced.
+    problems = [
+        f"{year}: no yearly file"
+        for year in range(CLIMATOLOGY_START_YEAR, CLIMATOLOGY_END_YEAR + 1)
+        if year not in available_years
+    ] + [
+        f"{year}: {reason}"
+        for year, path in available_years.items()
+        for ok, reason in [check_year_file(path, args.var, year)]
+        if not ok
+    ]
+    if problems:
+        logging.error(
+            "Not combining %s; finish the mirror climatology download first: %s",
+            args.var,
+            "; ".join(problems),
+        )
+        return 1
     years = sorted(available_years)
     annual_paths = [available_years[year] for year in years]
 

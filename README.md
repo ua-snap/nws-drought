@@ -40,7 +40,7 @@ Ensure that the baseline reference data is available at a known path with read p
 
 ### Environment Variables
 - Set `INDICES_DIR` to control the destination to which the results will be written. Default is `nws-drought/drought_ouputs`.
-- Set `CLIM_DIR` to control the destination that holds the baseline reference data (i.e. the climatologies and gamma parameters). Default is `nws-drought/baseline_data`.
+- The baseline reference data (the yearly climatology files, the climatologies and the SPI/SPEI parameters) lives in the shared folder `/beegfs/CMIP6/snapdata/drought_reanalysis_baseline`, readable by the `cmip6` group. Set `DROUGHT_BASELINE_ROOT` to build or read a development copy elsewhere, or `DROUGHT_CLIM_DIR` to read only the climatologies and parameters from another folder. Run scripts that write baseline data with `umask 007` so other `cmip6` members can read and update the files; the sbatch scripts set it.
 
 ### Pipeline Execution
 Each pipeline run will require the execution of the following two scripts:
@@ -49,6 +49,17 @@ Each pipeline run will require the execution of the following two scripts:
 python pipeline_download.py
 python pipeline_run.py
 ```
+
+#### How the download works
+`pipeline_download.py` keeps one file per variable per month under `recent_data/`, named `<prefix><YYYY>-<MM>.<grib|nc>`, covering January 1 of the previous year through the analysis date.
+ - Each run downloads the current month and re-downloads the three months before it. Recent ERA5-Land data is first released as a preliminary version and replaced with final values about two months later.
+ - Older months are reused if their file holds the expected variable and every expected date. Missing or damaged months are downloaded again.
+ - Variables from the same CDS dataset are requested together (precipitation with potential evaporation, and snow water equivalent with both soil-moisture layers), and the result is split back into one file per variable. CDS refuses a daily-statistics request for all three variables over a whole year ("cost limits exceeded"), so those requests cover at most 4 months; a first run with no files on disk therefore makes more requests than a normal run.
+ - Requests are sent one at a time, as ECMWF asks. A normal run makes 4 requests (6 when the re-download window crosses into a new year).
+ - Each request logs its queue, run and transfer time, and the script logs its total run time.
+ - If a job is stopped, rerunning it picks up a request still queued at CDS instead of submitting a duplicate.
+
+**Never run two CDS jobs at once on the same account.** Do not start a manual CDS download while `pipeline_download.py` is queued or running. ECMWF can suspend accounts that submit requests in parallel. The climatology download reads the Earth Data Hub mirror, not CDS, so it can run alongside the recurring download.
 
 A drought indicator netCDF dataset, one file per summary interval, will be written to the `INDICES_DIR` directory. Each file contains results for all indices for the entire area of interest. `pipeline_run.py` names outputs `drought_indices_<summary_interval>day_<YYYY>_<MM>_<DD>.nc`.
 

@@ -3,6 +3,7 @@
 
 import argparse
 import logging
+import os
 import sys
 
 import xarray as xr
@@ -59,6 +60,9 @@ def main() -> int:
     """Run weighted soil moisture climatology workflow."""
     args = parse_args()
     setup_logging()
+    # the baseline folder is shared with the cmip6 group: keep new files group-
+    # readable and group-writable however this script is started
+    os.umask(0o007)
 
     swvl1_file = daily_combined_file_for_var("swvl1")
     swvl2_file = daily_combined_file_for_var("swvl2")

@@ -9,6 +9,7 @@ single output used by the drought indicator pipeline.
 
 import argparse
 import logging
+import os
 from pathlib import Path
 
 import xarray as xr
@@ -193,6 +194,9 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     """Run the requested calibration parameter workflow."""
     setup_logging()
+    # the baseline folder is shared with the cmip6 group: keep new files group-
+    # readable and group-writable however this script is started
+    os.umask(0o007)
     args = parse_args()
 
     if args.command == "compute":
